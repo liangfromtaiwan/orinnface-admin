@@ -47,6 +47,17 @@ export type BodyPart =
 
 export type Plan = "Guest" | "Member" | "Premium"
 
+export type ActivityRecord = {
+  analyzedAt: string
+  expression: Expression
+  fatigueAi: Fatigue
+  subjectiveFatigue: SubjectiveFatigue
+  subjectiveFocus?: SubjectiveFocus
+  bodyPart?: BodyPart
+  careVideoTitle?: string
+  careCompleted?: boolean
+}
+
 export type User = {
   id: number
   name: string
@@ -58,6 +69,7 @@ export type User = {
   subjectiveFocus: SubjectiveFocus
   bodyPart: BodyPart
   lastAnalysisAt: string
+  activityLog: ActivityRecord[]
 }
 
 export type DailyAnalytics = {
@@ -112,6 +124,13 @@ export function fatigueGap(user: User): number {
 
 export function hasFatigueGap(user: User): boolean {
   return fatigueGap(user) >= 2
+}
+
+export function recordHasGap(r: ActivityRecord): boolean {
+  return (
+    Math.abs(fatigueLevel(r.fatigueAi) - subjectiveLevel(r.subjectiveFatigue)) >=
+    2
+  )
 }
 
 export const EXPRESSIONS: Expression[] = [

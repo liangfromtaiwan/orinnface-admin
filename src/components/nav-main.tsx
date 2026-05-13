@@ -22,6 +22,8 @@ export type NavItem = {
   url: string
   icon?: React.ReactNode
   items?: { title: string; url: string }[]
+  // ?type= が一致する視点で非表示にする。例:["b2b"] は b2b 視点で非表示
+  hiddenFor?: string[]
 }
 
 function isUrlActive(pathname: string, url: string) {

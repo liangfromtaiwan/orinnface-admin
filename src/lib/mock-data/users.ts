@@ -1,6 +1,87 @@
-import type { User } from "./types"
+import type { ActivityRecord, User } from "./types"
+import {
+  BODY_PARTS,
+  EXPRESSIONS,
+  FATIGUES,
+  SUBJECTIVE_FATIGUES,
+  SUBJECTIVE_FOCUSES,
+} from "./types"
 
-export const users: User[] = [
+function mulberry32(seed: number) {
+  let a = seed
+  return function () {
+    a |= 0
+    a = (a + 0x6d2b79f5) | 0
+    let t = a
+    t = Math.imul(t ^ (t >>> 15), t | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+const CARE_VIDEOS = [
+  "肩こり解消ストレッチ",
+  "首回り軽体操",
+  "全身リラックス瞑想",
+  "腰痛改善ヨガ",
+  "目の疲れケア",
+  "腹式呼吸エクササイズ",
+]
+
+function generateActivityLog(
+  seed: number,
+  latest: Omit<ActivityRecord, "careVideoTitle" | "careCompleted">
+): ActivityRecord[] {
+  const rng = mulberry32(seed)
+  const count = 6 + Math.floor(rng() * 3) // 6-8 件
+
+  const records: ActivityRecord[] = [
+    {
+      ...latest,
+      careVideoTitle: CARE_VIDEOS[Math.floor(rng() * CARE_VIDEOS.length)],
+      careCompleted: rng() > 0.3,
+    },
+  ]
+
+  let cursorMs = new Date(latest.analyzedAt + "Z").getTime()
+  for (let i = 1; i < count; i++) {
+    const daysBack = 2 + Math.floor(rng() * 5)
+    cursorMs -= daysBack * 86400000
+    const dt = new Date(cursorMs)
+    dt.setUTCHours(8 + Math.floor(rng() * 12), Math.floor(rng() * 60), 0, 0)
+
+    const aiLevel = Math.floor(rng() * 5)
+    const ai = FATIGUES[aiLevel]
+
+    // 25% 強制落差(警告色テスト用)、それ以外は AI レベルに近い主観
+    let subj: (typeof SUBJECTIVE_FATIGUES)[number]
+    if (rng() < 0.25) {
+      subj = aiLevel < 2 ? SUBJECTIVE_FATIGUES[2] : SUBJECTIVE_FATIGUES[0]
+    } else {
+      const subjIdx = aiLevel < 2 ? 0 : aiLevel < 4 ? 1 : 2
+      subj = SUBJECTIVE_FATIGUES[subjIdx]
+    }
+
+    records.push({
+      analyzedAt: dt.toISOString().slice(0, 19),
+      expression: EXPRESSIONS[Math.floor(rng() * EXPRESSIONS.length)],
+      fatigueAi: ai,
+      subjectiveFatigue: subj,
+      subjectiveFocus:
+        SUBJECTIVE_FOCUSES[Math.floor(rng() * SUBJECTIVE_FOCUSES.length)],
+      bodyPart: BODY_PARTS[Math.floor(rng() * BODY_PARTS.length)],
+      careVideoTitle:
+        rng() > 0.3
+          ? CARE_VIDEOS[Math.floor(rng() * CARE_VIDEOS.length)]
+          : undefined,
+      careCompleted: rng() > 0.35,
+    })
+  }
+
+  return records
+}
+
+const baseUsers: Omit<User, "activityLog">[] = [
   // 店舗A (companyId 1) — 8 users
   {
     id: 1,
@@ -369,6 +450,18 @@ export const users: User[] = [
     lastAnalysisAt: "2026-05-13T10:40:00",
   },
 ]
+
+export const users: User[] = baseUsers.map((u) => ({
+  ...u,
+  activityLog: generateActivityLog(u.id * 137 + 31, {
+    analyzedAt: u.lastAnalysisAt,
+    expression: u.expression,
+    fatigueAi: u.fatigueAi,
+    subjectiveFatigue: u.subjectiveFatigue,
+    subjectiveFocus: u.subjectiveFocus,
+    bodyPart: u.bodyPart,
+  }),
+}))
 
 export function getUsersByCompany(companyId: number): User[] {
   return users.filter((u) => u.companyId === companyId)

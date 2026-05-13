@@ -8,6 +8,7 @@ import {
   UsersIcon,
   VideoIcon,
 } from "lucide-react"
+import { useSearchParams } from "react-router-dom"
 
 import { CompanySwitcher } from "@/components/CompanySwitcher"
 import { NavMain, type NavItem } from "@/components/nav-main"
@@ -22,7 +23,13 @@ import {
 
 const navItems: NavItem[] = [
   { title: "ダッシュボード", url: "/dashboard", icon: <LayoutDashboardIcon /> },
-  { title: "ユーザー", url: "/users", icon: <UsersIcon /> },
+  // b2b は個人情報非開示のため ユーザー画面 を表示しない
+  {
+    title: "ユーザー",
+    url: "/users",
+    icon: <UsersIcon />,
+    hiddenFor: ["b2b"],
+  },
   { title: "コンテンツ分析", url: "/content", icon: <VideoIcon /> },
   { title: "ステータス", url: "/status", icon: <ActivityIcon /> },
   { title: "設定", url: "/settings", icon: <Settings2Icon /> },
@@ -35,13 +42,19 @@ const adminUser = {
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const [searchParams] = useSearchParams()
+  const type = searchParams.get("type") ?? "admin"
+  const visibleNavItems = navItems.filter(
+    (item) => !item.hiddenFor?.includes(type)
+  )
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
         <CompanySwitcher />
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={navItems} />
+        <NavMain items={visibleNavItems} />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={adminUser} />
