@@ -11,13 +11,13 @@
 | Day | 主題 | 預估時間 | 狀態 | 完成日 |
 |-----|------|---------|------|--------|
 | 1 | 基礎環境設定 | 4-5 小時 | ✅ 完成 | _______ |
-| 2 | Mock Data + Layout | 3-4 小時 | ⬜ 待辦 | _______ |
+| 2 | Mock Data + Layout | 3-4 小時 | ✅ 完成 | 2026-05-13 |
 | 3 | ① 運営 Dashboard | 3-4 小時 | ⬜ 待辦 | _______ |
 | 4 | ③ BtoB Dashboard | 3 小時 | ⬜ 待辦 | _______ |
 | 5 | OEM 視角 + 警告色 | 2-3 小時 | ⬜ 待辦 | _______ |
 | 6 | 部署 + 文件 | 2 小時 | ⬜ 待辦 | _______ |
 
-**進度條**:▓░░░░░ 17% (1/6)
+**進度條**:▓▓░░░░ 33% (2/6)
 
 ---
 
@@ -53,70 +53,48 @@
 
 ---
 
-## ⬜ Day 2:Mock Data + Routing + Layout [預計明天]
+## ✅ Day 2:Mock Data + Routing + Layout [完成]
 
 **目標**:建立資料骨架與導航框架,讓後續做 Dashboard 時有資料、有 layout。
 
 ### 任務拆解
 
-#### 2-1. Mock Data(估 1.5 小時)
+#### 2-1. Mock Data(估 1.5 小時)✅
 在 `src/lib/mock-data/` 建立:
 
-- [ ] `companies.ts`
-  - 5 間公司:OrinnME運営(id=0)、店舗A(id=1, oem)、KOL B(id=2, oem)、
-    企業X(id=3, b2b)、企業Y(id=4, b2b)
-  - TypeScript type: `Company { id, name, type: 'admin'|'oem'|'b2b', createdAt }`
+- [x] `companies.ts` — 5 間公司(admin/oem/b2b 三類)
+- [x] `users.ts` — 30 假使用者,含 3-5 個主観 vs AI 落差大者(警告色測試用)
+- [x] `analytics.ts` — 過去 30 天時間序列(DAU、再分析率、ケア実行率、改善率、分布)
+- [x] `plans.ts` — 會員方案統計(Guest/Member/Premium)+ 升級/解約推移
+- [x] `index.ts` — 統一 export
+- [x] `types.ts`(超出原計畫):集中型別 + 落差判定 helper
 
-- [ ] `users.ts`
-  - 30 個假使用者,跨不同 company_id
-  - 含表情分類(5種)、疲労度(5階段)、主観疲労、會員方案
-  - **故意製造 3-5 個「主觀 vs AI 落差大」的資料**(警告色測試用)
+#### 2-2. Routing(估 30 分鐘)✅
+- [x] App.tsx 設定 BrowserRouter + Routes
+- [x] 7 個路由(/、/dashboard、/users、/users/:id、/content、/status、/messages、/settings、404 → /dashboard)
 
-- [ ] `analytics.ts`
-  - 過去 30 天的時間序列資料
-  - DAU、再分析率、ケア実行率、改善率
-  - 表情分布、疲労度分布(每天的比例)
+#### 2-3. Admin Layout(估 1.5 小時)✅
+- [x] 安裝 sidebar-07 block(連帶 breadcrumb + collapsible)
+- [x] 改造 sidebar 為日文導航(6 項:ダッシュボード / ユーザー / コンテンツ分析 / ステータス / 文言管理 / 設定)
+- [x] CompanySwitcher 元件(URL 同步 ?company_id=X&type=Y,5 間公司含 type icon)
+- [x] NavUser 客製日文化(アカウント / 通知設定 / ログアウト)
+- [x] Layout 元件包住所有頁面(SidebarProvider + AppSidebar + Header + Outlet)
+- [x] App.tsx 全部 route 包進 Layout,加 TooltipProvider + Toaster
+- [x] 刪除不用的 team-switcher + nav-projects
+- [x] NavMain 接 React Router Link + useLocation(動態 active state)
+- [x] CLI 自動轉好 IconPlaceholder → lucide-react(完全沒手動處理)
 
-- [ ] `plans.ts`
-  - 會員方案統計(Guest/Member/Premium)
-  - 過去 30 天的升級/解約數
+#### 2-4. 字體接線(估 15 分鐘)✅
+- [x] src/index.css @import Inter (400/500/600) + Noto Sans JP Variable
+- [x] --font-sans fallback:'Geist Variable', 'Inter', 'Noto Sans JP Variable', system-ui, sans-serif
 
-- [ ] `index.ts`
-  - 統一 export
-
-#### 2-2. Routing(估 30 分鐘)
-- [ ] App.tsx 設定 BrowserRouter + Routes
-- [ ] 路由結構:
-  - `/` → 重定向 `/dashboard`
-  - `/dashboard` → DashboardPage(佔位)
-  - `/users` → UsersPage(佔位)
-  - `/users/:id` → UserDetailPage(佔位)
-  - `/content` → ContentPage(佔位)
-  - `/status` → StatusPage(佔位)
-  - `/messages` → MessagesPage(佔位)
-  - `/settings` → SettingsPage(佔位)
-
-#### 2-3. Admin Layout(估 1.5 小時)
-- [ ] 安裝 sidebar block:`npx shadcn@latest add sidebar-07`
-- [ ] 改造 sidebar 為日文導航(ダッシュボード / ユーザー / 等)
-- [ ] 頂部 Header 加 CompanySwitcher 元件:
-  - 下拉選單列出所有 company
-  - 切換時更新 URL query string(?company_id=X&type=Y)
-  - 當前選中要明顯標示
-- [ ] Header 右側放 user avatar + 設定按鈕
-- [ ] 在 Layout 元件包住所有頁面
-
-#### 2-4. 字體接線(估 15 分鐘)
-- [ ] src/index.css @import noto-sans-jp 與 inter
-- [ ] 在 body 設定 font-family fallback:
-  `font-family: "Inter", "Noto Sans JP", system-ui, sans-serif;`
-
-#### 2-5. 收尾(估 15 分鐘)
-- [ ] npm run dev 驗證所有頁面能切換
-- [ ] 確認 company switcher 切換時 URL 有變
-- [ ] 更新 .claude/components-installed.md(新裝的元件勾起來)
-- [ ] 更新 PROGRESS.md
-- [ ] Git commit:"Day 2: Mock data + 路由 + Admin Layout"
+#### 2-5. 收尾(估 15 分鐘)✅
+- [x] npx tsc --noEmit exit 0
+- [x] npm run dev 啟動正常(Vite 1.2s ready,zero error)
+- [x] CompanySwitcher URL 同步驗證(瀏覽器測試 by user)
+- [x] 更新 .claude/components-installed.md(breadcrumb / collapsible / sidebar-07 / Layout / CompanySwitcher 等勾起來)
+- [x] 更新 PROGRESS.md
+- [x] Git commit
 
 ### Day 2 結束時你應該有
 - 跑得起來的 admin 框架
@@ -355,4 +333,4 @@
 
 ---
 
-最後更新:Day 1 完成日
+最後更新:Day 2 完成日 (2026-05-13)

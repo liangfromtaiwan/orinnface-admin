@@ -1,4 +1,8 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom"
+
+import { Layout } from "@/components/Layout"
+import { Toaster } from "@/components/ui/sonner"
+import { TooltipProvider } from "@/components/ui/tooltip"
 import DashboardPage from "./pages/DashboardPage"
 import UsersPage from "./pages/UsersPage"
 import UserDetailPage from "./pages/UserDetailPage"
@@ -9,18 +13,23 @@ import SettingsPage from "./pages/SettingsPage"
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/users" element={<UsersPage />} />
-        <Route path="/users/:id" element={<UserDetailPage />} />
-        <Route path="/content" element={<ContentPage />} />
-        <Route path="/status" element={<StatusPage />} />
-        <Route path="/messages" element={<MessagesPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
-    </BrowserRouter>
+    <TooltipProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route element={<Layout />}>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/users" element={<UsersPage />} />
+            <Route path="/users/:id" element={<UserDetailPage />} />
+            <Route path="/content" element={<ContentPage />} />
+            <Route path="/status" element={<StatusPage />} />
+            <Route path="/messages" element={<MessagesPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+      <Toaster />
+    </TooltipProvider>
   )
 }
