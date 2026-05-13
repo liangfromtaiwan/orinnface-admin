@@ -14,10 +14,10 @@
 | 2 | Mock Data + Layout | 3-4 小時 | ✅ 完成 | 2026-05-13 |
 | 3 | ① 運営 Dashboard | 3-4 小時 | ✅ 完成 | 2026-05-13 |
 | 4 | ③ BtoB Dashboard | 3 小時 | ✅ 完成 | 2026-05-13 |
-| 5 | OEM 視角 + 警告色 | 2-3 小時 | ⬜ 待辦 | _______ |
+| 5 | OEM 視角 + 警告色 | 2-3 小時 | ✅ 完成 | 2026-05-14 |
 | 6 | 部署 + 文件 | 2 小時 | ⬜ 待辦 | _______ |
 
-**進度條**:▓▓▓▓░░ 67% (4/6)
+**進度條**:▓▓▓▓▓░ 83% (5/6)
 
 ---
 
@@ -213,52 +213,58 @@
 
 ---
 
-## ⬜ Day 5:② OEM 視角 + 警告色實作
+## ✅ Day 5:② OEM 視角 + 警告色實作 [完成]
 
 **目標**:補完第三套畫面,實作雇主特別在意的「警告色」邏輯。
 
 ### 任務拆解
 
-#### 5-1. OEM Dashboard(估 1 小時)
-- [ ] 建立 `<OEMDashboard />` 元件
-- [ ] 內容跟 AdminDashboard **幾乎一樣**,但:
-  - 資料只 filter 自家 company_id
-  - 移除「提供先別利用狀況」(自己只有一家)
-  - 頂部加 badge:「店舗A の管理画面」之類
-- [ ] 切到「店舗A」視角時顯示
+#### 5-1. OEM Dashboard ✅(commit 302a251)
+- [x] 建立 `<OEMDashboard />` 元件(copy AdminDashboard + 4 處差異)
+- [x] 資料源全部 filter:`getAnalytics(companyId)` / `getPlanStats(companyId)` / `getUsersByCompany(companyId)`
+- [x] 移除「提供先別利用狀況」Card(自己只有一家,不該看別家)
+- [x] 頂部 Badge + LogoFor icon(shop/influencer/company subType 映射)
+- [x] URL fallback:type=oem 但 company_id 不合 → id=1 店舗A
 
-#### 5-2. 警告色実装(規格 3-1 ベース)— 計画再評価済み
+#### 5-2. 警告色実装(規格 3-1 ベース)✅(commit e955d63 + cc96094)
 
 警告色の正しい実装位置について再評価。詳細は本節末尾の「設計決策記錄」参照。
-原計画(Dashboard 上の AttentionUsersTable)は捨棄、以下 3 サブタスクに分解。
+原計画(Dashboard 上の AttentionUsersTable)は捨棄、以下 3 サブタスクで実装。
 
-##### 5-2A. ユーザー一覽頁(/users)(估 45 分鐘)
-- [ ] 標題 + filter bar + Table
-- [ ] 欄位:avatar / 名前 / 最終分析 / 表情(最新)/ 疲労(最新)/ 要注目 badge
-- [ ] 要注目 badge:該 user の activity に「主観 vs AI 落差 >= 2」のレコードがあれば ⚠️ 表示
-- [ ] type filter:admin → 全部、oem → 自家、b2b → 重定向 /dashboard
-- [ ] 點擊一列 → /users/:id
+##### 5-2A. ユーザー一覽頁(/users)✅
+- [x] 標題 + 名前 search + Table
+- [x] 欄位:avatar+名前 / 提供先(admin only)/ 最新表情 / 最新AI疲労 / 最終分析 / 要注目 badge
+- [x] 要注目判定:`hasFatigueGap(u)` snapshot 為主(履歷層級警告在詳細頁)
+- [x] type filter:admin → 全部、oem → 自家、b2b → `<Navigate to="/dashboard" />`
+- [x] 點擊一列 → /users/:id
+- [x] flagged 列:bg-red-50 + 名前 text-destructive + Badge variant=destructive
 
-##### 5-2B. ユーザー詳細頁雛形(/users/:id)(估 45 分鐘)[規格重點]
-- [ ] 頂部使用者資訊(基本情報 + 最新狀態 snapshot)
-- [ ] 推移圖 placeholder(「グラフ:Day 7+ 実装予定」)
-- [ ] **全行動履歴** Table:日時 / 表情+AI疲労 / 主観回答 / ケア動画 / 警告 icon
-- [ ] **規格 3-1 警告色完全落地**:`|主観-AI| >= 2` の row → `bg-red-50` + `AlertTriangle`
+##### 5-2B. ユーザー詳細頁(/users/:id)✅[規格重點]
+- [x] 頂部使用者資訊(avatar + name + company・plan)+ 「← ユーザー一覧に戻る」
+- [x] 基本情報 Card(プラン / 最新表情 / 最新AI疲労 / 最終分析)
+- [x] 3 個推移圖 placeholder(「グラフ:Day 7+ 実装予定」)
+- [x] **全行動履歴** Table:日時 / 表情 / AI疲労 / 主観疲労 / 主観集中 / 部位 / ケア動画 / 要注目
+- [x] **規格 3-1 警告色完全落地**:`recordHasGap(r)` → `bg-red-50` row + 主観疲労紅+粗 + 要注目 Badge
+- [x] ケア完成:CheckCircle2 icon(emerald)
+- [x] 三視角守則:b2b 重定向、oem 非自家用戶 → 跳回 /users
 
-##### 5-2C. 配套(估 15 分鐘)
-- [ ] sidebar:NavItem 加 `hiddenFor?: CompanyType[]`,b2b 隱藏「ユーザー」項目
-- [ ] types.ts:加 `ActivityRecord` type + `User.activityLog: ActivityRecord[]`
-- [ ] users.ts:生成 5-10 筆/人 activityLog(seeded random)
-- [ ] 故意製造 2-3 個 user 有 1-2 筆落差大 records(規格警告色測試用)
+##### 5-2C. 配套 ✅
+- [x] types.ts:加 `ActivityRecord` type + `recordHasGap()` helper + `User.activityLog`
+- [x] users.ts:mulberry32 seeded 生成 6-8 records/人(總 212,gapped 40 = 18.9%)
+- [x] activityLog[0] = snapshot(一覽/詳細一致性保證)
+- [x] sidebar NavItem.hiddenFor + AppSidebar 讀 `?type=` 過濾,b2b 視角隱藏「ユーザー」項目
 
-#### 5-3. 細節調整(估 30 分鐘)
-- [ ] 三個視角切換流暢
-- [ ] 沒有殘留的「console.log」或 placeholder 文字
-- [ ] 沒有顯眼的 layout bug
-- [ ] 全部用日文文案
+#### 5-3. 細節調整 ✅
+- [x] 三視角切換流暢:CompanySwitcher 切換 → URL 更新 → Sidebar nav filter / DashboardPage 條件渲染 / UsersPage URL 守則 同步反應
+- [x] console.log / debug / warn / error 殘留:**0 處**(grep 確認)
+- [x] 中文殘留:**0 處**(grep CJK 命中皆為日文 vocabulary;管/設/前/今 等屬 CJK 共享字)
+- [x] placeholder 殘留:`StatusPage / ContentPage / SettingsPage` 仍是 stub(**非 Day 5 範圍,保留**);Input search placeholder 為合法用法
+- [x] 顯眼 layout bug:無(瀏覽器確認 by user)
+- 📝 TODO 1 處(`Layout.tsx:23` Breadcrumb 預留):**保留**,Day 6 視需要再加
 
-#### 5-4. 收尾(估 15 分鐘)
-- [ ] Git commit:"Day 5: OEM 視角 + 警告色實作"
+#### 5-4. 收尾 ✅
+- [x] PROGRESS.md Day 5 全段勾完,進度條 67% → 83%
+- [x] Git commit(本 docs commit)
 
 ### Day 5 結束時你應該有
 - 三套畫面(①②③)全部能切換顯示
@@ -393,4 +399,4 @@
 
 ---
 
-最後更新:Day 4 完成日 (2026-05-13)
+最後更新:Day 5 完成日 (2026-05-14)
