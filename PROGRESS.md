@@ -13,11 +13,11 @@
 | 1 | 基礎環境設定 | 4-5 小時 | ✅ 完成 | _______ |
 | 2 | Mock Data + Layout | 3-4 小時 | ✅ 完成 | 2026-05-13 |
 | 3 | ① 運営 Dashboard | 3-4 小時 | ✅ 完成 | 2026-05-13 |
-| 4 | ③ BtoB Dashboard | 3 小時 | ⬜ 待辦 | _______ |
+| 4 | ③ BtoB Dashboard | 3 小時 | ✅ 完成 | 2026-05-13 |
 | 5 | OEM 視角 + 警告色 | 2-3 小時 | ⬜ 待辦 | _______ |
 | 6 | 部署 + 文件 | 2 小時 | ⬜ 待辦 | _______ |
 
-**進度條**:▓▓▓░░░ 50% (3/6)
+**進度條**:▓▓▓▓░░ 67% (4/6)
 
 ---
 
@@ -166,48 +166,45 @@
 
 ---
 
-## ⬜ Day 4:③ BtoB Dashboard + 視覺差異化
+## ✅ Day 4:③ BtoB Dashboard + 視覺差異化 [完成]
 
 **目標**:做出跟 ① 明顯不同的 b2b 版本,展示「我理解三套畫面差異」。
 
 ### 任務拆解
 
-#### 4-1. 條件渲染架構(估 30 分鐘)
-- [ ] DashboardPage 內部依 `type` 切換子元件:
-  - type=admin → `<AdminDashboard />` (Day 3 做的)
-  - type=oem → `<OEMDashboard />` (Day 5 做)
-  - type=b2b → `<B2BDashboard />` (本日做)
+#### 4-1. 條件渲染架構 ✅
+- [x] `DashboardPage` 讀 URL `?type=`:`b2b` → `<B2BDashboard />`、其他 → `<AdminDashboard />`
+- [x] `type=oem` 暫時 fallback Admin(Day 5 補 `<OEMDashboard />`)
 
-#### 4-2. 隱私提示 Banner(估 15 分鐘)
-- [ ] 安裝 alert 元件:`npx shadcn@latest add alert`
-- [ ] 頁面最上方放 Alert:
-  - Icon:Shield 或 Lock
-  - 文字:「本画面は集計データのみを表示します。
-    個人を特定できる情報は含まれません。」
+#### 4-2. 隱私 Banner ✅
+- [x] 安裝 shadcn `alert` 元件
+- [x] 頁面上方放 `<Alert>` + `<ShieldIcon>` + 標題「集計データのみ表示」
+- [x] 描述文(規格原文):「本画面は集計データのみを表示します。個人を特定できる情報は含まれません。」
 
-#### 4-3. 集計專用 Stat Cards(估 30 分鐘)
-- [ ] 4 個 stat card,但只有集計資訊:
-  - 利用人数(120名 が利用中)
-  - 全体コンディションスコア
-  - ケア実行率
-  - 平均改善率
+#### 4-3. 集計專用 Stat Cards ✅
+- [x] 4 個卡(全部 filter by company_id):
+  - 利用人数 — 「8 名」(現時點登録ユーザー)
+  - 全体コンディションスコア — 5 段階(軽やか=5〜踏ん張りどき=1)平均
+  - ケア実行率(本日)— delta vs 前週同曜日
+  - 平均改善率(7 日)— delta vs 前週
 
-#### 4-4. 集計圖表(估 1 小時)
-- [ ] 表情分類分布(filter 後資料)
-- [ ] 主観疲労分布(疲労 / 集中 / 部位三個 mini chart)
-- [ ] 部位別コンディション(horizontal bar 或人體圖)
+#### 4-4. 集計圖表 ✅
+- [x] 表情カテゴリ分布(5 類 single bar)
+- [x] AI 疲労ステージ分布(5 階 single bar、從 today 的 fatigueDist)
+- [x] 主観疲労分布(3 段)
+- [x] 主観集中分布(3 段)
+- [x] **部位別コンディション**(5 部位,horizontal bar,左側 100px reserve 給日文 labels)
 
-#### 4-5. 絕對不顯示的內容(確認)
-- [ ] 無個人姓名
-- [ ] 無個別 user list
-- [ ] 無頭像
-- [ ] 無行動歷史
+#### 4-5. 隱私 audit ✅
+- [x] grep 確認 0 處 `u.name` / `.avatar` / `userId` / `getUserById`
+- [x] 全部 aggregate(count by category),無個別資料外洩
 
-#### 4-6. 收尾(估 30 分鐘)
-- [ ] 切到「企業X」視角,確認顯示 b2b 版本
-- [ ] 切到「OrinnME運営」,確認顯示 admin 版本
-- [ ] 兩版本視覺差異明顯
-- [ ] Git commit:"Day 4: BtoB Dashboard 完成"
+#### 4-6. 收尾 ✅
+- [x] 切「企業X」→ b2b 版本(Alert + 4 stats + 5 charts)
+- [x] 切「OrinnME運営」→ admin 版本(原 Day 3 dashboard)
+- [x] 視覺差異明顯:b2b 有醒目 Alert + 「BtoB 集計画面」badge
+- [x] components-installed.md / PROGRESS.md 更新
+- [x] Git commit:"Day 4 完了: BtoB Dashboard + 視覺差異化"
 
 ### Day 4 結束時你應該有
 - 切換視角時看到截然不同的 Dashboard
@@ -351,4 +348,4 @@
 
 ---
 
-最後更新:Day 3 完成日 (2026-05-13)
+最後更新:Day 4 完成日 (2026-05-13)

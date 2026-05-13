@@ -48,7 +48,7 @@
 - [x] `tooltip` ✅ Day 1
 
 ### 浮層 & 互動
-- [ ] `alert`          ← b2b dashboard 警告 banner 會用
+- [x] `alert` ✅ Day 4(b2b dashboard 隱私 banner)
 - [x] `alert-dialog` ✅ Day 1
 - [x] `breadcrumb` ✅ Day 2(sidebar-07 帶入,目前 Layout 還沒用)
 - [ ] `command`
@@ -89,9 +89,11 @@
 - [x] `nav-main` ✅ Day 2 - 主導航,接 React Router NavLink + 動態 active
 - [x] `nav-user` ✅ Day 2 - Sidebar Footer 使用者選單(日文化)
 - [x] `CompanySwitcher` ✅ Day 2 - 視角切換,URL 同步 `?company_id=X&type=Y`
+- [x] `StatCard` ✅ Day 3 - KPI 卡(title + big number + delta arrow + description)
+- [x] `ChartCard` ✅ Day 3 - 圖表卡片包裝(title + description + content)
+- [x] `AdminDashboard` ✅ Day 3 - ① 運営視角 dashboard 組合
+- [x] `B2BDashboard` ✅ Day 4 - ③ BtoB 集計專用 dashboard(隱私 banner + 集計圖)
 - [ ] `PageHeader` - 頁面標題列
-- [ ] `StatCard` - Dashboard KPI 卡片(OrinnME 專案重點)
-- [ ] `ChartCard` - 含標題的圖表卡片
 - [ ] `EmptyState` - 空狀態顯示
 
 ## 維護指引
