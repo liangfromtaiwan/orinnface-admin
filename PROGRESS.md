@@ -12,12 +12,12 @@
 |-----|------|---------|------|--------|
 | 1 | 基礎環境設定 | 4-5 小時 | ✅ 完成 | _______ |
 | 2 | Mock Data + Layout | 3-4 小時 | ✅ 完成 | 2026-05-13 |
-| 3 | ① 運営 Dashboard | 3-4 小時 | ⬜ 待辦 | _______ |
+| 3 | ① 運営 Dashboard | 3-4 小時 | ✅ 完成 | 2026-05-13 |
 | 4 | ③ BtoB Dashboard | 3 小時 | ⬜ 待辦 | _______ |
 | 5 | OEM 視角 + 警告色 | 2-3 小時 | ⬜ 待辦 | _______ |
 | 6 | 部署 + 文件 | 2 小時 | ⬜ 待辦 | _______ |
 
-**進度條**:▓▓░░░░ 33% (2/6)
+**進度條**:▓▓▓░░░ 50% (3/6)
 
 ---
 
@@ -73,6 +73,14 @@
 - **retentionRate 欄位獨立於 reanalysisRate**:對應規格書 2-1「継續率(リテンション)」指標,
   不可用「再分析率」代替(規格中是兩個獨立概念)。
   生成邏輯:平日(月〜金)0.82±0.05,週末(土日)0.70±0.04,clamp 0.65〜0.92。
+- **プラン推移は「営収シグナル」として Premium 推移のみ追跡(Day 3 中決定)**:
+  ビジネスモデル上、**Premium のみが課金プラン**(Guest / Member は無料)。
+  そのため `PlanStats.daily` は営収に影響する 2 欄位のみ:
+  - `newPremium`  = M→P + G→P(Premium 化したユーザー)
+  - `lostPremium` = P→M + P→Guest(Premium から離脱したユーザー)
+  G→M / M→Guest など Premium に絡まない遷移は集計から除外。
+  検討経緯:当初 4 欄位の細分化、次に「全アップグレード vs 全解約」、
+  最後にビジネス意図(営収判定)優先で Premium 限定の集計に確定。
 
 #### 2-2. Routing(估 30 分鐘)✅
 - [x] App.tsx 設定 BrowserRouter + Routes
@@ -109,42 +117,47 @@
 
 ---
 
-## ⬜ Day 3:① 運営 Dashboard [核心戰役]
+## ✅ Day 3:① 運営 Dashboard [完成]
 
 **目標**:做出視覺豐富、資料豐富的完整 Dashboard,展示給雇主看的核心畫面。
 
 ### 任務拆解
 
-#### 3-1. Stat Cards 區塊(估 45 分鐘)
-- [ ] 建立 `src/components/StatCard.tsx` 客製元件
-- [ ] Dashboard 頂部放 4 個 stat card:
-  - 今日の再分析率
-  - 今週の継続率
-  - ケア実行率
-  - 主観とAI一致率
-- [ ] 每個 card 顯示:大數字 + vs 上週對比 + 趨勢小圖示
+#### 3-1. Stat Cards 區塊 ✅
+- [x] `src/components/StatCard.tsx`:title + 大數字 + delta icon(↑/↓/→)+ description
+- [x] Dashboard 頂部 4 個 KPI:今日の再分析率 / 今週の継続率 / 今日のケア実行率 / 主観とAI一致率
+- [x] 前 3 個有 delta(vs 前週同曜日 / vs 前週);第 4 個一致率 snapshot 從 users.ts 即時算,**無 delta**(沒有歷史資料,不假造)
+- [x] 響應式:`grid-cols-1 md:grid-cols-2 lg:grid-cols-4`
 
-#### 3-2. 表情・疲労度分布圖表(估 1 小時)
-- [ ] 建立 `ChartCard` 元件(含標題、說明、圖表內容)
-- [ ] 表情分布:堆疊 Bar Chart,5 種分類(過去 7 天)
-- [ ] 疲労度分布:堆疊 Bar Chart,5 階段(過去 7 天)
-- [ ] 用 shadcn chart + Recharts
+#### 3-2. 表情・疲労度分布圖表 ✅
+- [x] `src/components/ChartCard.tsx`:通用圖表卡片包裝
+- [x] 表情カテゴリ分布:5 類 stacked bar(過去 7 天)
+- [x] 疲労ステージ分布:5 階 stacked bar(過去 7 天)
+- [x] shadcn chart + Recharts;`--chart-1` ~ `--chart-5`;頂底 bar 圓角、中段直角
 
-#### 3-3. プラン構成比 + 推移圖(估 45 分鐘)
-- [ ] Pie Chart:會員方案分布(Guest/Member/Premium)
-- [ ] Line Chart:過去 30 天的升級/解約推移(雙線)
+#### 3-3. プラン構成比 + 営収シグナル ✅
+- [x] Pie chart:Guest/Member/Premium 構成比,donut style,中央顯示 30 名總數
+- [x] **営収シグナル Line chart(Premium 推移)**:3 條線
+  - Premium 会員数(trajectory 3→8)
+  - Premium 新規(M→P + G→P)
+  - Premium 離脱(P→M + P→Guest)
+  - G→M / M→Guest 等不影響營收的遷移不顯示
+- [x] 標題下方顯示「現在 Premium 会員数 8 名」
+- [x] 設計決策已記錄於上方 設計決策 段落(Premium 為唯一課金 tier)
 
-#### 3-4. 提供先別利用狀況一覧(估 30 分鐘)
-- [ ] Table 列出所有 company
-- [ ] 欄位:name、type badge、DAU、継続率、ケア実行率
-- [ ] 點擊列可切換到該 company 視角
+#### 3-4. 提供先別利用狀況 ✅
+- [x] Card + Table 列出 4 家提供先(id=0 OrinnME運営本身排除)
+- [x] 欄位:提供先 / 区分(OEM/BtoB Badge)/ DAU(7日平均)/ 継続率(7日)/ ケア実行率(本日)
+- [x] 點擊列 → setSearchParams(`?company_id=X&type=Y`),sidebar CompanySwitcher 即時同步
+- [x] Day 4 加 type 條件渲染後完成切換動線
 
-#### 3-5. 響應式 + 收尾(估 30 分鐘)
-- [ ] 桌面:4 column 排版
-- [ ] 平板:2 column
-- [ ] 手機:1 column
-- [ ] 全部用日文文案
-- [ ] Git commit:"Day 3: 運営 Dashboard 完成"
+#### 3-5. 響應式 + 收尾 ✅
+- [x] Stat cards:1 (mobile) / 2 (md tablet) / 4 (lg desktop)
+- [x] 圖表 sections:1 / 1 / 2(平板維持 1 col,2 chart 並列在 768px 太擠)
+- [x] 提供先 Table:全寬,自然 responsive
+- [x] 全文案日文(含 chart legend / tooltip 標籤)
+- [x] npx tsc --noEmit exit 0
+- [x] Git commit:"Day 3 完了: 運営 Dashboard"
 
 ### Day 3 結束時你應該有
 - 第一個視覺完整、功能完整的頁面
@@ -338,4 +351,4 @@
 
 ---
 
-最後更新:Day 2 完成日 (2026-05-13)
+最後更新:Day 3 完成日 (2026-05-13)

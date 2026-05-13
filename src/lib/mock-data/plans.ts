@@ -36,23 +36,30 @@ function currentByCompany(companyId: number): Record<Plan, number> {
   return base
 }
 
-function buildDaily(seed: number, baseUpgrades: number, baseCancellations: number) {
+function buildDaily(seed: number, baseNewPremium: number, baseLostPremium: number) {
   const rng = mulberry32(seed)
-  const result: { date: string; upgrades: number; cancellations: number }[] = []
+  const result: PlanStats["daily"] = []
   for (let i = DAYS - 1; i >= 0; i--) {
     const date = isoDateOffsetDaysBack(END_DATE, i)
-    const upgrades = Math.max(0, Math.round(baseUpgrades * (0.6 + rng() * 0.9)))
-    const cancellations = Math.max(0, Math.round(baseCancellations * (0.5 + rng() * 0.9)))
-    result.push({ date, upgrades, cancellations })
+    const newPremium = Math.max(
+      0,
+      Math.round(baseNewPremium * (0.5 + rng() * 1.1))
+    )
+    const lostPremium = Math.max(
+      0,
+      Math.round(baseLostPremium * (0.4 + rng() * 1.2))
+    )
+    result.push({ date, newPremium, lostPremium })
   }
   return result
 }
 
-const BASE_BY_COMPANY: Record<number, { up: number; down: number }> = {
-  1: { up: 1.4, down: 0.5 },
-  2: { up: 1.0, down: 0.4 },
-  3: { up: 2.2, down: 0.7 },
-  4: { up: 1.8, down: 0.6 },
+// Premium 加入は健全な成長を示すため、離脱より明確に多めに設定
+const BASE_BY_COMPANY: Record<number, { newP: number; lostP: number }> = {
+  1: { newP: 1.0, lostP: 0.4 },
+  2: { newP: 0.7, lostP: 0.3 },
+  3: { newP: 1.5, lostP: 0.5 },
+  4: { newP: 1.2, lostP: 0.4 },
 }
 
 export const plansByCompany: Record<number, PlanStats> = Object.fromEntries(
@@ -62,7 +69,7 @@ export const plansByCompany: Record<number, PlanStats> = Object.fromEntries(
       cid,
       {
         current: currentByCompany(cid),
-        daily: buildDaily(200 + cid, base.up, base.down),
+        daily: buildDaily(200 + cid, base.newP, base.lostP),
       } satisfies PlanStats,
     ]
   })
@@ -71,20 +78,21 @@ export const plansByCompany: Record<number, PlanStats> = Object.fromEntries(
 export const globalPlans: PlanStats = {
   current: currentByCompany(0),
   daily: Array.from({ length: DAYS }, (_, i) => {
-    const date = isoDateOffsetDaysBack(END_DATE, DAYS - 1 - i)
-    const upgrades = Object.values(plansByCompany).reduce(
-      (s, p) => s + p.daily[i].upgrades,
-      0
-    )
-    const cancellations = Object.values(plansByCompany).reduce(
-      (s, p) => s + p.daily[i].cancellations,
-      0
-    )
-    return { date, upgrades, cancellations }
+    const dailyByCompany = Object.values(plansByCompany).map((p) => p.daily[i])
+    return {
+      date: dailyByCompany[0].date,
+      newPremium: dailyByCompany.reduce((s, d) => s + d.newPremium, 0),
+      lostPremium: dailyByCompany.reduce((s, d) => s + d.lostPremium, 0),
+    }
   }),
 }
 
 export function getPlanStats(companyId: number): PlanStats {
   if (companyId === 0) return globalPlans
-  return plansByCompany[companyId] ?? { current: { Guest: 0, Member: 0, Premium: 0 }, daily: [] }
+  return (
+    plansByCompany[companyId] ?? {
+      current: { Guest: 0, Member: 0, Premium: 0 },
+      daily: [],
+    }
+  )
 }

@@ -1,5 +1,5 @@
-import { Placeholder } from "./_placeholder"
+import { AdminDashboard } from "@/components/AdminDashboard"
 
 export default function DashboardPage() {
-  return <Placeholder title="ダッシュボード" />
+  return <AdminDashboard />
 }

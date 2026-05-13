@@ -75,7 +75,11 @@ export type DailyAnalytics = {
 
 export type PlanStats = {
   current: Record<Plan, number>
-  daily: { date: string; upgrades: number; cancellations: number }[]
+  // Premium のみが課金プラン。G→M / M→G は営収に影響しないため、
+  // 営収シグナルとなる「Premium 化」と「Premium 離脱」のみを追跡する。
+  // newPremium  = M→P + G→P(新たに Premium になった人数)
+  // lostPremium = P→M + P→Guest(Premium から離脱した人数)
+  daily: { date: string; newPremium: number; lostPremium: number }[]
 }
 
 const FATIGUE_AI_ORDER: Fatigue[] = [
