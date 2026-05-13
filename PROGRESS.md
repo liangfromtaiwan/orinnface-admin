@@ -1,0 +1,358 @@
+# OrinnME 管理画面 - 6 日プロジェクト進度追蹤
+
+> 起始日:Day 1 已完成
+> 目標:下週一交付可點擊原型給雇主
+> 工具:Claude Code + shadcn/ui + Vite + React 19
+
+---
+
+## 📊 整體進度
+
+| Day | 主題 | 預估時間 | 狀態 | 完成日 |
+|-----|------|---------|------|--------|
+| 1 | 基礎環境設定 | 4-5 小時 | ✅ 完成 | _______ |
+| 2 | Mock Data + Layout | 3-4 小時 | ⬜ 待辦 | _______ |
+| 3 | ① 運営 Dashboard | 3-4 小時 | ⬜ 待辦 | _______ |
+| 4 | ③ BtoB Dashboard | 3 小時 | ⬜ 待辦 | _______ |
+| 5 | OEM 視角 + 警告色 | 2-3 小時 | ⬜ 待辦 | _______ |
+| 6 | 部署 + 文件 | 2 小時 | ⬜ 待辦 | _______ |
+
+**進度條**:▓░░░░░ 17% (1/6)
+
+---
+
+## ✅ Day 1:基礎環境設定 [完成]
+
+**目標**:把所有工具、規範、套件都備好,讓後續開發暢通無阻。
+
+### 完成項目
+- [x] Vite + React 19 + TypeScript 專案
+- [x] Tailwind CSS v4
+- [x] shadcn/ui v3 init(Nova preset + Zinc 色票)
+- [x] TypeScript paths 設定(@/* → src/*)
+- [x] 18 個 shadcn 核心元件
+  (button, card, input, select, badge, table, dropdown-menu,
+  sheet, dialog, alert-dialog, tabs, separator, avatar,
+  tooltip, skeleton, sonner, chart, sidebar)
+- [x] React Router v7
+- [x] Noto Sans JP 字體(已安裝未 @import)
+- [x] React Hook Form + Zod + @hookform/resolvers
+- [x] CLAUDE.md(OrinnME 強化版,含 self-check)
+- [x] .claude/ 規範資料夾(mcp-usage、shadcn-usage、design-tokens、
+  components-installed、patterns/{data-table,form-page,settings-page})
+- [x] .mcp.json(shadcn MCP 設定)
+- [x] .gitignore 含 .env 排除
+- [x] Git init + 第一個 commit
+- [x] PROGRESS.md(或類似進度文件)
+
+### Day 1 學到的事
+- shadcn v3 改成 preset 系統(Nova = 舊 New York)
+- React 19 + Router v7 是最新版本
+- Claude Code 會做事實檢查,規範要跟實況一致
+- 收尾(commit、文件)比衝刺(新功能)更重要
+
+---
+
+## ⬜ Day 2:Mock Data + Routing + Layout [預計明天]
+
+**目標**:建立資料骨架與導航框架,讓後續做 Dashboard 時有資料、有 layout。
+
+### 任務拆解
+
+#### 2-1. Mock Data(估 1.5 小時)
+在 `src/lib/mock-data/` 建立:
+
+- [ ] `companies.ts`
+  - 5 間公司:OrinnME運営(id=0)、店舗A(id=1, oem)、KOL B(id=2, oem)、
+    企業X(id=3, b2b)、企業Y(id=4, b2b)
+  - TypeScript type: `Company { id, name, type: 'admin'|'oem'|'b2b', createdAt }`
+
+- [ ] `users.ts`
+  - 30 個假使用者,跨不同 company_id
+  - 含表情分類(5種)、疲労度(5階段)、主観疲労、會員方案
+  - **故意製造 3-5 個「主觀 vs AI 落差大」的資料**(警告色測試用)
+
+- [ ] `analytics.ts`
+  - 過去 30 天的時間序列資料
+  - DAU、再分析率、ケア実行率、改善率
+  - 表情分布、疲労度分布(每天的比例)
+
+- [ ] `plans.ts`
+  - 會員方案統計(Guest/Member/Premium)
+  - 過去 30 天的升級/解約數
+
+- [ ] `index.ts`
+  - 統一 export
+
+#### 2-2. Routing(估 30 分鐘)
+- [ ] App.tsx 設定 BrowserRouter + Routes
+- [ ] 路由結構:
+  - `/` → 重定向 `/dashboard`
+  - `/dashboard` → DashboardPage(佔位)
+  - `/users` → UsersPage(佔位)
+  - `/users/:id` → UserDetailPage(佔位)
+  - `/content` → ContentPage(佔位)
+  - `/status` → StatusPage(佔位)
+  - `/messages` → MessagesPage(佔位)
+  - `/settings` → SettingsPage(佔位)
+
+#### 2-3. Admin Layout(估 1.5 小時)
+- [ ] 安裝 sidebar block:`npx shadcn@latest add sidebar-07`
+- [ ] 改造 sidebar 為日文導航(ダッシュボード / ユーザー / 等)
+- [ ] 頂部 Header 加 CompanySwitcher 元件:
+  - 下拉選單列出所有 company
+  - 切換時更新 URL query string(?company_id=X&type=Y)
+  - 當前選中要明顯標示
+- [ ] Header 右側放 user avatar + 設定按鈕
+- [ ] 在 Layout 元件包住所有頁面
+
+#### 2-4. 字體接線(估 15 分鐘)
+- [ ] src/index.css @import noto-sans-jp 與 inter
+- [ ] 在 body 設定 font-family fallback:
+  `font-family: "Inter", "Noto Sans JP", system-ui, sans-serif;`
+
+#### 2-5. 收尾(估 15 分鐘)
+- [ ] npm run dev 驗證所有頁面能切換
+- [ ] 確認 company switcher 切換時 URL 有變
+- [ ] 更新 .claude/components-installed.md(新裝的元件勾起來)
+- [ ] 更新 PROGRESS.md
+- [ ] Git commit:"Day 2: Mock data + 路由 + Admin Layout"
+
+### Day 2 結束時你應該有
+- 跑得起來的 admin 框架
+- Sidebar 能點擊切換頁面(每頁先顯示頁名)
+- Header 的 company switcher 切換時 URL 變化
+- 假資料完整就緒
+
+---
+
+## ⬜ Day 3:① 運営 Dashboard [核心戰役]
+
+**目標**:做出視覺豐富、資料豐富的完整 Dashboard,展示給雇主看的核心畫面。
+
+### 任務拆解
+
+#### 3-1. Stat Cards 區塊(估 45 分鐘)
+- [ ] 建立 `src/components/StatCard.tsx` 客製元件
+- [ ] Dashboard 頂部放 4 個 stat card:
+  - 今日の再分析率
+  - 今週の継続率
+  - ケア実行率
+  - 主観とAI一致率
+- [ ] 每個 card 顯示:大數字 + vs 上週對比 + 趨勢小圖示
+
+#### 3-2. 表情・疲労度分布圖表(估 1 小時)
+- [ ] 建立 `ChartCard` 元件(含標題、說明、圖表內容)
+- [ ] 表情分布:堆疊 Bar Chart,5 種分類(過去 7 天)
+- [ ] 疲労度分布:堆疊 Bar Chart,5 階段(過去 7 天)
+- [ ] 用 shadcn chart + Recharts
+
+#### 3-3. プラン構成比 + 推移圖(估 45 分鐘)
+- [ ] Pie Chart:會員方案分布(Guest/Member/Premium)
+- [ ] Line Chart:過去 30 天的升級/解約推移(雙線)
+
+#### 3-4. 提供先別利用狀況一覧(估 30 分鐘)
+- [ ] Table 列出所有 company
+- [ ] 欄位:name、type badge、DAU、継続率、ケア実行率
+- [ ] 點擊列可切換到該 company 視角
+
+#### 3-5. 響應式 + 收尾(估 30 分鐘)
+- [ ] 桌面:4 column 排版
+- [ ] 平板:2 column
+- [ ] 手機:1 column
+- [ ] 全部用日文文案
+- [ ] Git commit:"Day 3: 運営 Dashboard 完成"
+
+### Day 3 結束時你應該有
+- 第一個視覺完整、功能完整的頁面
+- 4 種圖表類型都跑起來(stat、bar、pie、line)
+- 切換到「OrinnME運営」視角時顯示這個 Dashboard
+
+---
+
+## ⬜ Day 4:③ BtoB Dashboard + 視覺差異化
+
+**目標**:做出跟 ① 明顯不同的 b2b 版本,展示「我理解三套畫面差異」。
+
+### 任務拆解
+
+#### 4-1. 條件渲染架構(估 30 分鐘)
+- [ ] DashboardPage 內部依 `type` 切換子元件:
+  - type=admin → `<AdminDashboard />` (Day 3 做的)
+  - type=oem → `<OEMDashboard />` (Day 5 做)
+  - type=b2b → `<B2BDashboard />` (本日做)
+
+#### 4-2. 隱私提示 Banner(估 15 分鐘)
+- [ ] 安裝 alert 元件:`npx shadcn@latest add alert`
+- [ ] 頁面最上方放 Alert:
+  - Icon:Shield 或 Lock
+  - 文字:「本画面は集計データのみを表示します。
+    個人を特定できる情報は含まれません。」
+
+#### 4-3. 集計專用 Stat Cards(估 30 分鐘)
+- [ ] 4 個 stat card,但只有集計資訊:
+  - 利用人数(120名 が利用中)
+  - 全体コンディションスコア
+  - ケア実行率
+  - 平均改善率
+
+#### 4-4. 集計圖表(估 1 小時)
+- [ ] 表情分類分布(filter 後資料)
+- [ ] 主観疲労分布(疲労 / 集中 / 部位三個 mini chart)
+- [ ] 部位別コンディション(horizontal bar 或人體圖)
+
+#### 4-5. 絕對不顯示的內容(確認)
+- [ ] 無個人姓名
+- [ ] 無個別 user list
+- [ ] 無頭像
+- [ ] 無行動歷史
+
+#### 4-6. 收尾(估 30 分鐘)
+- [ ] 切到「企業X」視角,確認顯示 b2b 版本
+- [ ] 切到「OrinnME運営」,確認顯示 admin 版本
+- [ ] 兩版本視覺差異明顯
+- [ ] Git commit:"Day 4: BtoB Dashboard 完成"
+
+### Day 4 結束時你應該有
+- 切換視角時看到截然不同的 Dashboard
+- 雇主一眼就能看出三套畫面的設計差異
+- 「保護隱私」的設計理念清楚傳達
+
+---
+
+## ⬜ Day 5:② OEM 視角 + 警告色實作
+
+**目標**:補完第三套畫面,實作雇主特別在意的「警告色」邏輯。
+
+### 任務拆解
+
+#### 5-1. OEM Dashboard(估 1 小時)
+- [ ] 建立 `<OEMDashboard />` 元件
+- [ ] 內容跟 AdminDashboard **幾乎一樣**,但:
+  - 資料只 filter 自家 company_id
+  - 移除「提供先別利用狀況」(自己只有一家)
+  - 頂部加 badge:「店舗A の管理画面」之類
+- [ ] 切到「店舗A」視角時顯示
+
+#### 5-2. 要注目ユーザー區塊(估 1 小時)[重點]
+- [ ] 在 AdminDashboard 加新區塊
+- [ ] Table 列出「主観 vs AI 落差大」的使用者:
+  - 計算邏輯:主観疲労等級與 AI 疲労等級差 >= 2 階段
+  - 列底色:`bg-red-50`
+  - 名前左側:`<AlertTriangle>` icon(text-destructive)
+  - 欄位:名前、主観疲労、AI 疲労、差異、最終分析時刻
+- [ ] 確認 mock-data/users.ts 有 3-5 個這種異常資料
+
+#### 5-3. 細節調整(估 30 分鐘)
+- [ ] 三個視角切換流暢
+- [ ] 沒有殘留的「console.log」或 placeholder 文字
+- [ ] 沒有顯眼的 layout bug
+- [ ] 全部用日文文案
+
+#### 5-4. 收尾(估 15 分鐘)
+- [ ] Git commit:"Day 5: OEM 視角 + 警告色實作"
+
+### Day 5 結束時你應該有
+- 三套畫面(①②③)全部能切換顯示
+- 警告色邏輯運作,異常資料明顯
+- 整體完成度足夠展示給雇主
+
+---
+
+## ⬜ Day 6:部署 + 文件 [週日,交件前一天]
+
+**目標**:把成果交付到雇主能輕鬆查看的形式。
+
+### 任務拆解
+
+#### 6-1. 部署到 Vercel(估 30 分鐘)
+- [ ] 安裝 Vercel CLI(如果還沒):`npm i -g vercel`
+- [ ] 在專案根目錄跑:`vercel`
+- [ ] 跟著指示登入(用 GitHub 帳號)
+- [ ] 完成部署,拿到 production URL
+- [ ] 在手機、平板上各打開一次測試
+
+#### 6-2. README 寫給雇主看的版本(估 30 分鐘)
+- [ ] 建立 `DEMO.md` 或更新 README.md:
+  - 部署 URL
+  - 視角切換說明(怎麼切三個視角)
+  - 本版本含哪些頁面/功能
+  - **未完成項目清楚列出**(設定預期)
+  - 想請雇主確認的問題清單
+  - 技術棧簡介
+
+#### 6-3. 自己跑一遍 user testing(估 30 分鐘)
+- [ ] 用 production URL(不是 localhost)
+- [ ] 模擬雇主視角,把每個功能點一遍
+- [ ] 記錄 broken 的地方、奇怪的文案、視覺 bug
+- [ ] 馬上修,重新 deploy
+
+#### 6-4. 開會前最後檢查(估 15 分鐘)
+- [ ] 確認下週一開會時間
+- [ ] 準備好 demo 流程(先給 ①、再切 ②、最後切 ③)
+- [ ] 把 Vercel URL 加到行事曆 / 備忘錄
+- [ ] dev server 也跑起來,以便會議中即時修改
+
+### Day 6 結束時你應該有
+- 一個雇主可以從手機點開看的 URL
+- 一份簡短專業的說明文件
+- 充足的信心進入下週一會議
+
+---
+
+## 🗓️ 開會當天:下週一
+
+### 開會前 1 小時
+- [ ] 重新跑 npm run dev,確認本機環境也活著
+- [ ] 開好 Claude Code,準備即時修改
+- [ ] 準備好兩個瀏覽器分頁:Production URL + localhost
+
+### 開會 demo 順序建議
+1. 簡介背景:「依規格書,管理畫面有三套」
+2. 展示視角切換:「我建立的架構支援這個切換」
+3. 演示 ① 運営 Dashboard:「這是弊社內部用的全資料版」
+4. 切到 ③ BtoB:「企業客戶看到的是這個,無個人資料」
+5. 切到 ② OEM:「店家看到的是 ① 的 filter 版本」
+6. 展示警告色:「規格特別提到的『主觀 vs AI 落差』邏輯」
+7. 列出未完成項目,討論下一輪優先順序
+
+### 開會時的心態
+- 雇主有意見 → **當場改、即時看**(展示這個流程本身就贏)
+- 雇主說「這裡不對」→ 不要辯護,先問「您期待的是?」
+- 雇主說「太簡單了」→ 提醒這是 v0.1 原型,核心架構正確才重要
+
+---
+
+## 📋 每天結束 checklist
+
+每天結束做這 3 件事,確保隔天無痛續接:
+
+1. [ ] 更新 PROGRESS.md(把今天完成的勾起來)
+2. [ ] 更新 .claude/components-installed.md(裝了新元件就勾)
+3. [ ] Git commit(commit message 寫清楚做了什麼)
+
+---
+
+## 🚨 風險與緩衝
+
+| 風險 | 緩衝策略 |
+|------|---------|
+| 某天進度落後 | Day 5 是「精修日」,可挪用緩衝 |
+| Claude Code 卡關 | /clear 重開對話,讓它重讀 CLAUDE.md |
+| 元件 API 不熟 | 用 shadcn MCP 即時查 |
+| 視覺風格走偏 | 隨時對照 design-tokens.md |
+| 雇主臨時加需求 | 列入「Day 7 以後」,不破壞下週一交付 |
+
+---
+
+## 💡 給未來自己的提醒
+
+1. **規範與事實必須一致**:CLAUDE.md 寫的、package.json 裝的、實際 code 用的,三者要對得上
+2. **收尾比衝刺重要**:每天結束花 15 分鐘做 commit 與文件更新
+3. **MCP 不是裝飾**:寫 shadcn 元件前先用 MCP 查 API,不要靠記憶
+4. **不確定就停下來問**:Claude Code 抓到不一致時,認真處理,不要急著繼續
+5. **累了就休息**:疲倦時做的決定,明天會花更多時間修
+
+---
+
+最後更新:Day 1 完成日

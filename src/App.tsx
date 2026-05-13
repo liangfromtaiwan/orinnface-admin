@@ -1,13 +1,26 @@
-import { Button } from "@/components/ui/button"
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom"
+import DashboardPage from "./pages/DashboardPage"
+import UsersPage from "./pages/UsersPage"
+import UserDetailPage from "./pages/UserDetailPage"
+import ContentPage from "./pages/ContentPage"
+import StatusPage from "./pages/StatusPage"
+import MessagesPage from "./pages/MessagesPage"
+import SettingsPage from "./pages/SettingsPage"
 
-function App() {
+export default function App() {
   return (
-    <div className="p-8 space-y-4">
-      <Button>Default</Button>
-      <Button variant="outline">Outline</Button>
-      <Button variant="destructive">Destructive</Button>
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/users" element={<UsersPage />} />
+        <Route path="/users/:id" element={<UserDetailPage />} />
+        <Route path="/content" element={<ContentPage />} />
+        <Route path="/status" element={<StatusPage />} />
+        <Route path="/messages" element={<MessagesPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      </Routes>
+    </BrowserRouter>
   )
 }
-
-export default App
