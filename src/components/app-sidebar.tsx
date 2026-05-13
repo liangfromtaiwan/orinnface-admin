@@ -4,7 +4,6 @@ import * as React from "react"
 import {
   ActivityIcon,
   LayoutDashboardIcon,
-  MessageSquareIcon,
   Settings2Icon,
   UsersIcon,
   VideoIcon,
@@ -26,7 +25,6 @@ const navItems: NavItem[] = [
   { title: "ユーザー", url: "/users", icon: <UsersIcon /> },
   { title: "コンテンツ分析", url: "/content", icon: <VideoIcon /> },
   { title: "ステータス", url: "/status", icon: <ActivityIcon /> },
-  { title: "文言管理", url: "/messages", icon: <MessageSquareIcon /> },
   { title: "設定", url: "/settings", icon: <Settings2Icon /> },
 ]
 

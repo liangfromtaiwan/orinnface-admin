@@ -77,12 +77,10 @@ OrinnME 是 AI 表情分析 + 疲勞度照護的健康類產品。
 ### ① 運営管理畫面 (type=admin, company_id=0)
 - 完整資料,看所有 company
 - 可看個人詳細資料
-- 文言管理:可改 master 文言
 
 ### ② OEM 管理畫面 (type=oem)
 - 只有自家 company 資料(filter by company_id)
 - 可看自家客戶個人資料
-- 文言管理:只改自家文案
 
 ### ③ BtoB 企業畫面 (type=b2b)
 - **🔴 重要:只有集計資料,絕對不顯示個人資料**
@@ -136,7 +134,6 @@ OrinnME 是 AI 表情分析 + 疲勞度照護的健康類產品。
 /users/:id            → ユーザー詳細 (b2b 時不可進入)
 /content              → コンテンツ分析
 /status               → ステータス
-/messages             → 文言管理
 /settings             → 設定
 ```
 

@@ -76,11 +76,11 @@
 
 #### 2-2. Routing(估 30 分鐘)✅
 - [x] App.tsx 設定 BrowserRouter + Routes
-- [x] 7 個路由(/、/dashboard、/users、/users/:id、/content、/status、/messages、/settings、404 → /dashboard)
+- [x] 6 個路由(/、/dashboard、/users、/users/:id、/content、/status、/settings、404 → /dashboard)
 
 #### 2-3. Admin Layout(估 1.5 小時)✅
 - [x] 安裝 sidebar-07 block(連帶 breadcrumb + collapsible)
-- [x] 改造 sidebar 為日文導航(6 項:ダッシュボード / ユーザー / コンテンツ分析 / ステータス / 文言管理 / 設定)
+- [x] 改造 sidebar 為日文導航(5 項:ダッシュボード / ユーザー / コンテンツ分析 / ステータス / 設定)
 - [x] CompanySwitcher 元件(URL 同步 ?company_id=X&type=Y,5 間公司含 type icon)
 - [x] NavUser 客製日文化(アカウント / 通知設定 / ログアウト)
 - [x] Layout 元件包住所有頁面(SidebarProvider + AppSidebar + Header + Outlet)
