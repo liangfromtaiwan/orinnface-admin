@@ -1,9 +1,16 @@
 export type CompanyType = "admin" | "oem" | "b2b"
 
+// operator   = OrinnME運営
+// shop       = 店家(美容サロン等)
+// influencer = 網紅(KOL)
+// company    = 企業(BtoB クライアント)
+export type CompanySubType = "operator" | "shop" | "influencer" | "company"
+
 export type Company = {
   id: number
   name: string
   type: CompanyType
+  subType: CompanySubType
   createdAt: string
 }
 
@@ -57,6 +64,9 @@ export type DailyAnalytics = {
   date: string
   dau: number
   reanalysisRate: number
+  // 7 日内に再訪したユーザーの割合
+  // 規格書 2-1 「継続率(リテンション)」に対応
+  retentionRate: number
   careExecutionRate: number
   improvementRate: number
   expressionDist: Record<Expression, number>

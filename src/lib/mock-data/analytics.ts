@@ -36,6 +36,11 @@ function distribute(total: number, weights: number[]): number[] {
   return floored
 }
 
+function dayOfWeek(date: string): number {
+  // 0 = Sun, 6 = Sat
+  return new Date(date + "T00:00:00Z").getUTCDay()
+}
+
 function buildSeries(seed: number, baseDau: number): DailyAnalytics[] {
   const rng = mulberry32(seed)
   const series: DailyAnalytics[] = []
@@ -44,6 +49,15 @@ function buildSeries(seed: number, baseDau: number): DailyAnalytics[] {
     const dauJitter = 1 + (rng() - 0.5) * 0.3
     const dau = Math.max(1, Math.round(baseDau * dauJitter))
     const reanalysisRate = 0.45 + (rng() - 0.5) * 0.18
+
+    // retentionRate: 平日(月〜金)は高め、週末(土日)は低め
+    // 平日 0.82±0.05, 週末 0.70±0.04 範囲。最終 clamp で 0.65〜0.92
+    const dow = dayOfWeek(date)
+    const isWeekend = dow === 0 || dow === 6
+    const retentionBase = isWeekend ? 0.7 : 0.82
+    const retentionJitter = (rng() - 0.5) * (isWeekend ? 0.08 : 0.1)
+    const retentionRate = Math.min(0.92, Math.max(0.65, retentionBase + retentionJitter))
+
     const careExecutionRate = 0.62 + (rng() - 0.5) * 0.16
     const improvementRate = 0.38 + (rng() - 0.5) * 0.2
 
@@ -83,6 +97,7 @@ function buildSeries(seed: number, baseDau: number): DailyAnalytics[] {
       date,
       dau,
       reanalysisRate: round(reanalysisRate),
+      retentionRate: round(retentionRate),
       careExecutionRate: round(careExecutionRate),
       improvementRate: round(improvementRate),
       expressionDist,
@@ -112,8 +127,9 @@ export const analyticsByCompany: Record<number, DailyAnalytics[]> = {
 
 function sumDay(rows: DailyAnalytics[]): DailyAnalytics {
   const dau = rows.reduce((s, r) => s + r.dau, 0)
-  const weighted = (key: "reanalysisRate" | "careExecutionRate" | "improvementRate") =>
-    round(rows.reduce((s, r) => s + r[key] * r.dau, 0) / Math.max(1, dau))
+  const weighted = (
+    key: "reanalysisRate" | "retentionRate" | "careExecutionRate" | "improvementRate"
+  ) => round(rows.reduce((s, r) => s + r[key] * r.dau, 0) / Math.max(1, dau))
   const expressionDist = EXPRESSIONS.reduce(
     (acc, key) => {
       acc[key] = rows.reduce((s, r) => s + r.expressionDist[key], 0)
@@ -132,6 +148,7 @@ function sumDay(rows: DailyAnalytics[]): DailyAnalytics {
     date: rows[0].date,
     dau,
     reanalysisRate: weighted("reanalysisRate"),
+    retentionRate: weighted("retentionRate"),
     careExecutionRate: weighted("careExecutionRate"),
     improvementRate: weighted("improvementRate"),
     expressionDist,

@@ -5,6 +5,7 @@ import {
   Building2Icon,
   ChevronsUpDownIcon,
   ShieldIcon,
+  SparklesIcon,
   StoreIcon,
 } from "lucide-react"
 
@@ -24,7 +25,11 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { companies, getCompany } from "@/lib/mock-data/companies"
-import type { Company, CompanyType } from "@/lib/mock-data/types"
+import type {
+  Company,
+  CompanySubType,
+  CompanyType,
+} from "@/lib/mock-data/types"
 
 const typeLabel: Record<CompanyType, string> = {
   admin: "運営管理",
@@ -32,9 +37,10 @@ const typeLabel: Record<CompanyType, string> = {
   b2b: "BtoB企業",
 }
 
-function LogoFor({ type }: { type: CompanyType }) {
-  if (type === "admin") return <ShieldIcon className="size-4" />
-  if (type === "oem") return <StoreIcon className="size-4" />
+function LogoFor({ subType }: { subType: CompanySubType }) {
+  if (subType === "operator") return <ShieldIcon className="size-4" />
+  if (subType === "shop") return <StoreIcon className="size-4" />
+  if (subType === "influencer") return <SparklesIcon className="size-4" />
   return <Building2Icon className="size-4" />
 }
 
@@ -63,7 +69,7 @@ export function CompanySwitcher() {
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
               <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                <LogoFor type={active.type} />
+                <LogoFor subType={active.subType} />
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{active.name}</span>
@@ -90,7 +96,7 @@ export function CompanySwitcher() {
                 className="gap-2 p-2"
               >
                 <div className="flex size-6 items-center justify-center rounded-md border">
-                  <LogoFor type={c.type} />
+                  <LogoFor subType={c.subType} />
                 </div>
                 <div className="flex-1">
                   <div className="text-sm font-medium">{c.name}</div>

@@ -64,10 +64,15 @@
 
 - [x] `companies.ts` — 5 間公司(admin/oem/b2b 三類)
 - [x] `users.ts` — 30 假使用者,含 3-5 個主観 vs AI 落差大者(警告色測試用)
-- [x] `analytics.ts` — 過去 30 天時間序列(DAU、再分析率、ケア実行率、改善率、分布)
+- [x] `analytics.ts` — 過去 30 天時間序列(DAU、再分析率、継續率、ケア実行率、改善率、分布)
 - [x] `plans.ts` — 會員方案統計(Guest/Member/Premium)+ 升級/解約推移
 - [x] `index.ts` — 統一 export
 - [x] `types.ts`(超出原計畫):集中型別 + 落差判定 helper
+
+##### 設計決策(Day 3 啟動前回填)
+- **retentionRate 欄位獨立於 reanalysisRate**:對應規格書 2-1「継續率(リテンション)」指標,
+  不可用「再分析率」代替(規格中是兩個獨立概念)。
+  生成邏輯:平日(月〜金)0.82±0.05,週末(土日)0.70±0.04,clamp 0.65〜0.92。
 
 #### 2-2. Routing(估 30 分鐘)✅
 - [x] App.tsx 設定 BrowserRouter + Routes
