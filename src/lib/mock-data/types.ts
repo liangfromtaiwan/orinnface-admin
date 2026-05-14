@@ -47,6 +47,38 @@ export type BodyPart =
 
 export type Plan = "Guest" | "Member" | "Premium"
 
+export type VideoCategory =
+  | "stretch"
+  | "meditation"
+  | "yoga"
+  | "breathing"
+  | "eye-care"
+
+export type Video = {
+  id: number
+  title: string
+  durationSeconds: number
+  category: VideoCategory
+  // どんな疲労状態のユーザーに推薦されやすいか(optional)
+  recommendedFor?: Fatigue[]
+}
+
+export type VideoViewRecord = {
+  userId: number
+  videoId: number
+  watchedAt: string
+  completed: boolean
+  // 視聴後 24 時間以内に再分析を行ったか
+  reanalyzedWithin24h: boolean
+}
+
+export type PlanChangeEvent = {
+  userId: number
+  changedAt: string
+  fromPlan: Plan
+  toPlan: Plan
+}
+
 export type ActivityRecord = {
   analyzedAt: string
   expression: Expression
@@ -164,3 +196,41 @@ export const BODY_PARTS: BodyPart[] = [
 ]
 
 export const PLANS: Plan[] = ["Guest", "Member", "Premium"]
+
+export const VIDEO_CATEGORIES: VideoCategory[] = [
+  "stretch",
+  "meditation",
+  "yoga",
+  "breathing",
+  "eye-care",
+]
+
+export const VIDEO_CATEGORY_LABEL: Record<VideoCategory, string> = {
+  stretch: "ストレッチ",
+  meditation: "瞑想",
+  yoga: "ヨガ",
+  breathing: "呼吸",
+  "eye-care": "アイケア",
+}
+
+// 動画尺バケット(現 catalog は 30s / 60s / 120s の 3 種類)
+export type DurationBucket = {
+  key: "short" | "medium" | "long"
+  label: string
+  minSeconds: number
+  maxSeconds: number
+}
+
+export const DURATION_BUCKETS: DurationBucket[] = [
+  { key: "short", label: "短(30秒)", minSeconds: 0, maxSeconds: 30 },
+  { key: "medium", label: "中(60秒)", minSeconds: 31, maxSeconds: 90 },
+  { key: "long", label: "長(120秒)", minSeconds: 91, maxSeconds: 99999 },
+]
+
+export function getDurationBucket(seconds: number): DurationBucket {
+  return (
+    DURATION_BUCKETS.find(
+      (b) => seconds >= b.minSeconds && seconds <= b.maxSeconds
+    ) ?? DURATION_BUCKETS[DURATION_BUCKETS.length - 1]
+  )
+}
