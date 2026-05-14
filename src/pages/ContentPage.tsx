@@ -1,5 +1,7 @@
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
 import { useSearchParams } from "react-router-dom"
 
+import { ChartCard } from "@/components/ChartCard"
 import { StatCard } from "@/components/StatCard"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -9,6 +11,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import {
+  ChartContainer,
+  ChartTooltip,
+  type ChartConfig,
+} from "@/components/ui/chart"
 import {
   Table,
   TableBody,
@@ -23,11 +30,16 @@ import {
   allViewRecords,
   getAllVideoStats,
   getViewsByCompany,
+  groupVideosByDurationBucket,
   videos,
 } from "@/lib/mock-data/videos"
 
 function pct(value: number, decimals = 1): string {
   return `${(value * 100).toFixed(decimals)}%`
+}
+
+const durationChartConfig: ChartConfig = {
+  completionRate: { label: "完遂率", color: "var(--chart-1)" },
 }
 
 export default function ContentPage() {
@@ -56,6 +68,19 @@ export default function ContentPage() {
   const ranked = videos
     .map((v, i) => ({ video: v, stats: videoStats[i] }))
     .sort((a, b) => b.stats.viewCount - a.stats.viewCount)
+
+  // 動画尺別 bucket stats(6 段階)
+  const bucketStats = groupVideosByDurationBucket(records)
+  const bucketChartData = bucketStats.map((b) => {
+    const completedCount = Math.round(b.viewCount * b.completionRate)
+    return {
+      label: b.bucket.label,
+      completionRate: b.completionRate * 100,
+      viewCount: b.viewCount,
+      completedCount,
+      videoCount: b.videoCount,
+    }
+  })
 
   const stats = [
     {
@@ -106,6 +131,82 @@ export default function ContentPage() {
           <StatCard key={s.title} {...s} />
         ))}
       </section>
+
+      <ChartCard
+        title="動画尺別 完遂率"
+        description="動画の長さによる完遂率の傾向。0% は該当尺の動画が catalog に未登録または視聴ゼロ。"
+      >
+        <ChartContainer
+          config={durationChartConfig}
+          className="h-[300px] w-full"
+        >
+          <BarChart
+            accessibilityLayer
+            data={bucketChartData}
+            margin={{ left: 8, right: 8 }}
+          >
+            <CartesianGrid vertical={false} />
+            <XAxis
+              dataKey="label"
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+              fontSize={11}
+            />
+            <YAxis
+              domain={[0, 100]}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={(v: number) => `${v}%`}
+              width={40}
+              fontSize={11}
+            />
+            <ChartTooltip
+              cursor={false}
+              content={({ active, payload }) => {
+                if (!active || !payload?.length) return null
+                const d = payload[0].payload as (typeof bucketChartData)[number]
+                return (
+                  <div className="rounded-lg border bg-background px-3 py-2 text-xs shadow-sm">
+                    <div className="mb-1 font-medium">{d.label}</div>
+                    <div className="grid gap-0.5 text-muted-foreground">
+                      <div>
+                        catalog 内動画:{" "}
+                        <span className="tabular-nums text-foreground">
+                          {d.videoCount} 本
+                        </span>
+                      </div>
+                      <div>
+                        視聴件数:{" "}
+                        <span className="tabular-nums text-foreground">
+                          {d.viewCount} 件
+                        </span>
+                      </div>
+                      <div>
+                        完遂件数:{" "}
+                        <span className="tabular-nums text-foreground">
+                          {d.completedCount} 件
+                        </span>
+                      </div>
+                      <div>
+                        完遂率:{" "}
+                        <span className="tabular-nums font-medium text-foreground">
+                          {d.completionRate.toFixed(1)}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )
+              }}
+            />
+            <Bar
+              dataKey="completionRate"
+              fill="var(--color-completionRate)"
+              radius={4}
+            />
+          </BarChart>
+        </ChartContainer>
+      </ChartCard>
 
       <Card>
         <CardHeader>
@@ -161,7 +262,6 @@ export default function ContentPage() {
         </CardContent>
       </Card>
 
-      {/* TODO Day 8: 動画尺別 完遂率 bar chart */}
       {/* TODO Day 8 optional: カテゴリ別 完遂率 chart */}
     </div>
   )

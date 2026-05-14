@@ -213,18 +213,23 @@ export const VIDEO_CATEGORY_LABEL: Record<VideoCategory, string> = {
   "eye-care": "アイケア",
 }
 
-// 動画尺バケット(現 catalog は 30s / 60s / 120s の 3 種類)
+// 動画尺バケット(6 段階、規格指定の粒度)。
+// 現 catalog は 30/60/120 秒のみで前 3 バケットに集中、
+// 後 3 バケットは将来の長尺動画追加に備えた予約枠。
 export type DurationBucket = {
-  key: "short" | "medium" | "long"
+  key: string
   label: string
   minSeconds: number
   maxSeconds: number
 }
 
 export const DURATION_BUCKETS: DurationBucket[] = [
-  { key: "short", label: "短(30秒)", minSeconds: 0, maxSeconds: 30 },
-  { key: "medium", label: "中(60秒)", minSeconds: 31, maxSeconds: 90 },
-  { key: "long", label: "長(120秒)", minSeconds: 91, maxSeconds: 99999 },
+  { key: "0-30s", label: "30秒以下", minSeconds: 0, maxSeconds: 30 },
+  { key: "30-60s", label: "30秒〜1分", minSeconds: 31, maxSeconds: 60 },
+  { key: "1-2min", label: "1〜2分", minSeconds: 61, maxSeconds: 120 },
+  { key: "2-3min", label: "2〜3分", minSeconds: 121, maxSeconds: 180 },
+  { key: "3-5min", label: "3〜5分", minSeconds: 181, maxSeconds: 300 },
+  { key: "5min+", label: "5分以上", minSeconds: 301, maxSeconds: 99999 },
 ]
 
 export function getDurationBucket(seconds: number): DurationBucket {
