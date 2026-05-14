@@ -31,7 +31,13 @@ const navItems: NavItem[] = [
     hiddenFor: ["b2b"],
   },
   { title: "コンテンツ分析", url: "/content", icon: <VideoIcon /> },
-  { title: "ステータス", url: "/status", icon: <ActivityIcon /> },
+  // b2b は個別プラン変更履歴を見られないため ステータス を表示しない
+  {
+    title: "ステータス",
+    url: "/status",
+    icon: <ActivityIcon />,
+    hiddenFor: ["b2b"],
+  },
   { title: "設定", url: "/settings", icon: <Settings2Icon /> },
 ]
 
