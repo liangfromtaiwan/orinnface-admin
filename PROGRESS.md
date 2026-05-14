@@ -479,6 +479,12 @@ Day 6 計畫:
 
 v1.0 範圍將於下週一 demo 後與雇主對齊。詳細選項清單參見 [NEXT_STEPS.md](./NEXT_STEPS.md)。
 
+#### GitHub auto-deploy 已啟用 (Day 7)
+
+- Repo:`liangfromtaiwan/orinnme-admin`(Private)
+- Vercel git connect 完了、push to main → 自動 production deploy
+- 以後 `git push` 即發布、不需要手動 `npx vercel --prod`
+
 ---
 
 最後更新:Day 7 進行中 (2026-05-15)
