@@ -89,6 +89,8 @@ export function B2BDashboard() {
     company = getCompany(DEFAULT_B2B_COMPANY_ID)
     companyId = DEFAULT_B2B_COMPANY_ID
   }
+  // company is guaranteed by mock-data (id=3 always exists)
+  if (!company) return null
 
   const series = getAnalytics(companyId)
   const today = series[series.length - 1]
