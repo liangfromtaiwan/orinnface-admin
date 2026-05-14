@@ -15,9 +15,9 @@
 | 3 | ① 運営 Dashboard | 3-4 小時 | ✅ 完成 | 2026-05-13 |
 | 4 | ③ BtoB Dashboard | 3 小時 | ✅ 完成 | 2026-05-13 |
 | 5 | OEM 視角 + 警告色 | 2-3 小時 | ✅ 完成 | 2026-05-14 |
-| 6 | 部署 + 文件 | 2 小時 | ⬜ 待辦 | _______ |
+| 6 | 部署 + 文件 | 2 小時 | ✅ 完成 | 2026-05-14 |
 
-**進度條**:▓▓▓▓▓░ 83% (5/6)
+**進度條**:▓▓▓▓▓▓ 100% (6/6) 🎉
 
 ---
 
@@ -303,39 +303,55 @@
 
 ---
 
-## ⬜ Day 6:部署 + 文件 [週日,交件前一天]
+## ✅ Day 6:部署 + 文件 [完成]
 
 **目標**:把成果交付到雇主能輕鬆查看的形式。
 
 ### 任務拆解
 
-#### 6-1. 部署到 Vercel(估 30 分鐘)
-- [ ] 安裝 Vercel CLI(如果還沒):`npm i -g vercel`
-- [ ] 在專案根目錄跑:`vercel`
-- [ ] 跟著指示登入(用 GitHub 帳號)
-- [ ] 完成部署,拿到 production URL
-- [ ] 在手機、平板上各打開一次測試
+#### 6-1. 部署到 Vercel ✅(commit 3428daa + c02797c)
 
-#### 6-2. README 寫給雇主看的版本(估 30 分鐘)
-- [ ] 建立 `DEMO.md` 或更新 README.md:
-  - 部署 URL
-  - 視角切換說明(怎麼切三個視角)
-  - 本版本含哪些頁面/功能
-  - **未完成項目清楚列出**(設定預期)
-  - 想請雇主確認的問題清單
-  - 技術棧簡介
+**6-1A pre-flight**:
+- [x] `npm run build` 通過(854 kB / 253 kB gzip)
+- [x] 修 B2BDashboard.tsx `company is possibly undefined`(tsc strict 在 build 階段抓到、`tsc --noEmit` 平常漏掉)
+- [x] 加 `vercel.json` SPA rewrite(`/(.*)` → `/index.html`)
 
-#### 6-3. 自己跑一遍 user testing(估 30 分鐘)
-- [ ] 用 production URL(不是 localhost)
-- [ ] 模擬雇主視角,把每個功能點一遍
-- [ ] 記錄 broken 的地方、奇怪的文案、視覺 bug
-- [ ] 馬上修,重新 deploy
+**6-1B deploy(使用者執行)**:
+- [x] `npx vercel login`(GitHub OAuth)
+- [x] `npx vercel`(框架自動偵測 Vite)
+- [x] **本番 URL: https://orinnme-admin.vercel.app**
+- [x] SPA 子路由刷新驗證:`/users`、`/users/3` 都 HTTP 200
+- [x] `.vercel/` + `.claude/worktrees/` 加入 `.gitignore`
 
-#### 6-4. 開會前最後檢查(估 15 分鐘)
-- [ ] 確認下週一開會時間
-- [ ] 準備好 demo 流程(先給 ①、再切 ②、最後切 ③)
-- [ ] 把 Vercel URL 加到行事曆 / 備忘錄
-- [ ] dev server 也跑起來,以便會議中即時修改
+#### 6-2. DEMO.md(雇主向け、日本語)✅(commit 1e5b2fc、148 行)
+
+- [x] 本番 URL + 視角切換方法
+- [x] 実装済み / 未実装 対照表
+- [x] 規格書について確認したい 5 点
+- [x] 技術スタック
+- [x] 推奨デモ順序
+
+#### 6-3. Production QA ✅(使用者確認)
+
+- [x] 三視角切換 production URL 確認
+- [x] 警告色(規格 3-1)production 上正常顯示
+- [x] SPA routing 刷新無 404
+- [x] 自家 Badge 位置確認
+
+#### 6-4. 開會前準備 ✅(commit 7ab6d73 MEETING.md、113 行)
+
+- [x] MEETING.md(自分用):
+  - 開會前 1 時間チェックリスト
+  - Demo 順序 8〜10 分 5 ステップ
+  - Fallback 計画(production 落ち / デモ中 bug / 雇主反対意見)
+  - 開會結束後すぐにやる checklist
+- [ ] **下週一開會時間確認**(使用者後續填入)
+- [ ] **Vercel URL 加行事曆 / 備忘錄**(使用者後續做)
+
+#### 6-5. Day 6 收尾 ✅(本 commit)
+
+- [x] PROGRESS.md Day 6 全段更新、進度條 83% → 100%
+- [x] Day 6 反思追加
 
 ### Day 6 結束時你應該有
 - 一個雇主可以從手機點開看的 URL
@@ -399,6 +415,27 @@
 
 ---
 
+## Day 6 反思
+
+今天的關鍵學習:
+- Pre-flight 比 deploy 重要(B2BDashboard 漏網的 strict check 在 build 才抓到,如果沒先跑 `npm run build` 就 deploy 會失敗)
+- `tsc --noEmit` 和 `tsc -b`(build mode)抓的東西不一樣 — CI 應該用 build mode
+- Vercel CLI 互動部分(login / setup)由使用者親自操作,我準備好周邊;`! <command>` 在這 Claude Code 不會自動執行
+- DEMO.md 給雇主、MEETING.md 自用 — 受眾不同就分開檔案,避免心智負擔
+- 規格模糊處主動列「確認したいこと」清單,demo 時逐項討論,比演到一半被打斷好
+
+完成度:Day 6 主體任務 100%
+進度:**100% (6/6) 🎉**
+
+成果:
+- Production URL: https://orinnme-admin.vercel.app
+- DEMO.md(雇主向):視角切替方法 + 機能對照 + 5 個 open 質問
+- MEETING.md(自分用):開會前後 checklist + Demo 8-10 分流程
+
+下週一開會 → 議事録 → Day 7+ の sprint plan(本 PROGRESS.md は ここで終了)
+
+---
+
 ## Day 5 反思
 
 今天的關鍵學習:
@@ -419,4 +456,4 @@ Day 6 計畫:
 
 ---
 
-最後更新:Day 5 完成日 (2026-05-14)
+最後更新:Day 6 完成日 (2026-05-14) — 6 日間プロジェクト完了 🎉
