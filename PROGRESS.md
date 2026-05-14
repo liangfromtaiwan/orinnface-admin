@@ -485,6 +485,25 @@ v1.0 範圍將於下週一 demo 後與雇主對齊。詳細選項清單參見 [N
 - Vercel git connect 完了、push to main → 自動 production deploy
 - 以後 `git push` 即發布、不需要手動 `npx vercel --prod`
 
+### 待解問題(明天上午處理)
+
+**Vercel 帳號狀況:**
+- CLI 登入身份: liang
+- Project 在 aaagoodaaa scope 下
+- 兩個帳號 Vercel 認為是不同人,liang 被擋
+
+**Current production:** 仍是 8 小時前的版本(3xnETtEKd)
+**Bar Chart code:** 已 commit + push 到 GitHub,等 deploy
+
+**處理方向(明天決定):**
+- A) 把 project 從 aaagoodaaa 搬到 liang scope
+- B) 用瀏覽器登入 aaagoodaaa,在 dashboard 上直接 redeploy
+- C) 確認 aaagoodaaa email,vercel logout + login 用對的 email
+- D) 其他方案
+
+**現在的 Production URL 不變:**
+https://orinnme-admin.vercel.app(顯示 8 小時前版本)
+
 ---
 
 最後更新:Day 7 進行中 (2026-05-15)
