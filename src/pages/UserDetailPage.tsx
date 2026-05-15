@@ -62,12 +62,15 @@ export default function UserDetailPage() {
   const userId = id ? Number(id) : NaN
   if (isNaN(userId)) return <Navigate to="/users" replace />
 
+  const qs = searchParams.toString()
+  const usersHref = qs ? `/users?${qs}` : "/users"
+
   const user = getUserById(userId)
   if (!user) {
     return (
       <div className="space-y-4">
         <Link
-          to="/users"
+          to={usersHref}
           className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeftIcon className="mr-1 size-4" />
@@ -91,7 +94,7 @@ export default function UserDetailPage() {
     <div className="space-y-8">
       <div>
         <Link
-          to="/users"
+          to={usersHref}
           className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeftIcon className="mr-1 size-4" />

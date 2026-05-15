@@ -107,7 +107,10 @@ export default function UsersPage() {
                 return (
                   <TableRow
                     key={u.id}
-                    onClick={() => navigate(`/users/${u.id}`)}
+                    onClick={() => {
+                      const qs = searchParams.toString()
+                      navigate(qs ? `/users/${u.id}?${qs}` : `/users/${u.id}`)
+                    }}
                     className={
                       flagged
                         ? "cursor-pointer bg-red-50 hover:bg-red-100"

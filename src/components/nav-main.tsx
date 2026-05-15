@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom"
+import { Link, useLocation, useSearchParams } from "react-router-dom"
 import { ChevronRightIcon } from "lucide-react"
 
 import {
@@ -33,6 +33,11 @@ function isUrlActive(pathname: string, url: string) {
 
 export function NavMain({ items }: { items: NavItem[] }) {
   const { pathname } = useLocation()
+  const [searchParams] = useSearchParams()
+  // 視点切替の context(?company_id / ?type)を nav 遷移時に保持する
+  const search = searchParams.toString()
+  const withSearch = (url: string) =>
+    search ? `${url}?${search}` : url
 
   return (
     <SidebarGroup>
@@ -49,7 +54,7 @@ export function NavMain({ items }: { items: NavItem[] }) {
                   tooltip={item.title}
                   isActive={active}
                 >
-                  <Link to={item.url}>
+                  <Link to={withSearch(item.url)}>
                     {item.icon}
                     <span>{item.title}</span>
                   </Link>
@@ -81,7 +86,7 @@ export function NavMain({ items }: { items: NavItem[] }) {
                           asChild
                           isActive={pathname === subItem.url}
                         >
-                          <Link to={subItem.url}>
+                          <Link to={withSearch(subItem.url)}>
                             <span>{subItem.title}</span>
                           </Link>
                         </SidebarMenuSubButton>
