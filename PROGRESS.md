@@ -485,25 +485,56 @@ v1.0 範圍將於下週一 demo 後與雇主對齊。詳細選項清單參見 [N
 - Vercel git connect 完了、push to main → 自動 production deploy
 - 以後 `git push` 即發布、不需要手動 `npx vercel --prod`
 
-### 待解問題(明天上午處理)
+### 待解問題(已解決 Day 8 上午)
 
-**Vercel 帳號狀況:**
-- CLI 登入身份: liang
-- Project 在 aaagoodaaa scope 下
-- 兩個帳號 Vercel 認為是不同人,liang 被擋
+**真因(昨晚誤判)**:Vercel 帳號 / scope / GitHub App 都沒問題。
+**真正原因**:`git config user.email` 沒設、commit author = `liang@Liang-EQU-MAC-002.local`
+(macOS hostname-based fallback),這個 email 不對應任何 GitHub user,
+Vercel 收到 webhook 但 block build:
 
-**Current production:** 仍是 8 小時前的版本(3xnETtEKd)
-**Bar Chart code:** 已 commit + push 到 GitHub,等 deploy
+> The Deployment was blocked because GitHub could not associate the committer with a GitHub user.
 
-**處理方向(明天決定):**
-- A) 把 project 從 aaagoodaaa 搬到 liang scope
-- B) 用瀏覽器登入 aaagoodaaa,在 dashboard 上直接 redeploy
-- C) 確認 aaagoodaaa email,vercel logout + login 用對的 email
-- D) 其他方案
+**解法**(2026-05-16 適用):
+```bash
+git config --global user.email "92705187+liangfromtaiwan@users.noreply.github.com"
+git config --global user.name "liangfromtaiwan"
+git commit --allow-empty -m "..."
+git push                              # 13 秒で Ready ✓
+```
 
-**現在的 Production URL 不變:**
-https://orinnme-admin.vercel.app(顯示 8 小時前版本)
+詳細診斷流程已存 memory(`project_vercel_github_email.md`)。
 
 ---
 
-最後更新:Day 7 進行中 (2026-05-15)
+## ✅ Day 7 設計決策記錄(続き)
+
+#### nav context preservation(2026-05-16 Day 8 抓到)
+
+**bug**:`/dashboard?company_id=1&type=oem`(oem 店舗A 視角)→ sidebar 點「ユーザー」
+→ URL 變 `/users`(掉了 query),admin 視角看全 30 人。視角 context 丟失。
+
+**修正**:nav-main.tsx Link、UsersPage row click、UserDetailPage 返回連結
+都改成 search 帶到下個頁面。`<Navigate to="/dashboard">` 系的 redirect
+(b2b 隱私要求)和 CompanySwitcher 切換動作刻意保留(要切斷 context)。
+
+---
+
+## Day 8 反思
+
+今天的關鍵學習:
+- **昨晚診斷錯了 3 個方向**(CLI auth / scope / GitHub App permission),
+  其實只要看 Vercel dashboard error message 就立刻知道是 email 問題。
+  教訓:**遇到陌生工具 stuck,先讀 error UI 再猜原因**
+- nav context 那個 bug demo 時雇主可能立刻發現
+  (oem 視角點 ユーザー 看到別家數據 = 災難),Day 8 整合測試是最後防線
+- 規格 3-2 / 3-3 兩頁的「率 + 件數 並列」設計,在小規模 mock(30 user)上
+  特別重要,demo 雇主才能看懂「為什麼 churn 25% 不是壞事」
+
+完成度:Day 7-8 追加功能(Content + Status + GitHub auto-deploy)100%
+進度:**規格 1-3 章全実装、4-4 將来対応の 3 項目は NEXT_STEPS.md で議題化**
+
+下週一 demo 用 production URL: https://orinnme-admin.vercel.app(現バンドル = 最新コード)
+
+---
+
+最後更新:Day 8 完成日 (2026-05-16) — 規格 1-3 章実装完了、デモ準備済み
