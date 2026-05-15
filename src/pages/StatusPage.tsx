@@ -135,7 +135,7 @@ export default function StatusPage() {
     {
       title: "プラン変更総件数(30 日)",
       value: `${totalEvents} 件`,
-      description: `↑${eventsByKind.upgrade} ↻${eventsByKind.reactivate} ↓${eventsByKind.downgrade} ✕${eventsByKind.cancel}`,
+      description: `アップ ${eventsByKind.upgrade} ・ 再開 ${eventsByKind.reactivate} ・ ダウン ${eventsByKind.downgrade} ・ 解約 ${eventsByKind.cancel}`,
     },
   ] as const
 
