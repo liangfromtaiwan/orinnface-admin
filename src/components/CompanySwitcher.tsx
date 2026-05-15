@@ -1,6 +1,6 @@
 "use client"
 
-import { useSearchParams } from "react-router-dom"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import {
   Building2Icon,
   ChevronsUpDownIcon,
@@ -46,17 +46,20 @@ function LogoFor({ subType }: { subType: CompanySubType }) {
 
 export function CompanySwitcher() {
   const { isMobile } = useSidebar()
-  const [searchParams, setSearchParams] = useSearchParams()
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
 
   const companyIdRaw = searchParams.get("company_id")
   const companyId = companyIdRaw != null ? Number(companyIdRaw) : 0
   const active: Company = getCompany(companyId) ?? companies[0]
 
   function selectCompany(c: Company) {
-    const next = new URLSearchParams(searchParams)
+    // 視点切替時は常に /dashboard へ戻る。ユーザー詳細頁や
+    // status などのコンテキストを持ち越さない方が UX として明確。
+    const next = new URLSearchParams()
     next.set("company_id", String(c.id))
     next.set("type", c.type)
-    setSearchParams(next)
+    navigate({ pathname: "/dashboard", search: next.toString() })
   }
 
   return (
