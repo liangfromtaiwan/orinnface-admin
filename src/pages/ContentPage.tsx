@@ -69,8 +69,11 @@ export default function ContentPage() {
     .map((v, i) => ({ video: v, stats: videoStats[i] }))
     .sort((a, b) => b.stats.viewCount - a.stats.viewCount)
 
-  // 動画尺別 bucket stats(6 段階)
-  const bucketStats = groupVideosByDurationBucket(records)
+  // 動画尺別 bucket stats(6 段階定義、但只顯示有 catalog 動画的 bucket)
+  // 将来動画追加で新 bucket が catalog に乗ったら自動的に表示される
+  const bucketStats = groupVideosByDurationBucket(records).filter(
+    (b) => b.videoCount > 0
+  )
   const bucketChartData = bucketStats.map((b) => {
     const completedCount = Math.round(b.viewCount * b.completionRate)
     return {
@@ -134,11 +137,11 @@ export default function ContentPage() {
 
       <ChartCard
         title="動画尺別 完遂率"
-        description="動画の長さによる完遂率の傾向。0% は該当尺の動画が catalog に未登録または視聴ゼロ。"
+        description="動画の長さによる完遂率の傾向。catalog に該当尺の動画がある bucket のみ表示。"
       >
         <ChartContainer
           config={durationChartConfig}
-          className="h-[300px] w-full"
+          className="aspect-auto h-[300px] w-full"
         >
           <BarChart
             accessibilityLayer

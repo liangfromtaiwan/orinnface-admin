@@ -262,7 +262,7 @@ export function OEMDashboard() {
         >
           <ChartContainer
             config={expressionConfig}
-            className="h-[260px] w-full"
+            className="aspect-auto h-[260px] w-full"
           >
             <BarChart accessibilityLayer data={distributionData}>
               <CartesianGrid vertical={false} />
@@ -283,7 +283,7 @@ export function OEMDashboard() {
           title="疲労ステージ分布"
           description="過去 7 日間の自社ユーザー AI 判定別人数"
         >
-          <ChartContainer config={fatigueConfig} className="h-[260px] w-full">
+          <ChartContainer config={fatigueConfig} className="aspect-auto h-[260px] w-full">
             <BarChart accessibilityLayer data={distributionData}>
               <CartesianGrid vertical={false} />
               <XAxis
@@ -371,7 +371,7 @@ export function OEMDashboard() {
           </div>
           <ChartContainer
             config={planTrendConfig}
-            className="h-[260px] w-full"
+            className="aspect-auto h-[260px] w-full"
           >
             <LineChart
               accessibilityLayer

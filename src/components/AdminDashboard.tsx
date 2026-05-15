@@ -271,7 +271,7 @@ export function AdminDashboard() {
         >
           <ChartContainer
             config={expressionConfig}
-            className="h-[260px] w-full"
+            className="aspect-auto h-[260px] w-full"
           >
             <BarChart accessibilityLayer data={distributionData}>
               <CartesianGrid vertical={false} />
@@ -292,7 +292,7 @@ export function AdminDashboard() {
           title="疲労ステージ分布"
           description="過去 7 日間の AI 判定疲労ステージ別ユーザー数"
         >
-          <ChartContainer config={fatigueConfig} className="h-[260px] w-full">
+          <ChartContainer config={fatigueConfig} className="aspect-auto h-[260px] w-full">
             <BarChart accessibilityLayer data={distributionData}>
               <CartesianGrid vertical={false} />
               <XAxis
@@ -380,7 +380,7 @@ export function AdminDashboard() {
           </div>
           <ChartContainer
             config={planTrendConfig}
-            className="h-[260px] w-full"
+            className="aspect-auto h-[260px] w-full"
           >
             <LineChart
               accessibilityLayer

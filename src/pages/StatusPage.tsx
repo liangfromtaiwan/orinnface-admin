@@ -178,7 +178,7 @@ export default function StatusPage() {
         title="プラン構成 推移"
         description="過去 30 日間の各プラン人数(stacked)"
       >
-        <ChartContainer config={planAreaConfig} className="h-[300px] w-full">
+        <ChartContainer config={planAreaConfig} className="aspect-auto h-[300px] w-full">
           <AreaChart
             accessibilityLayer
             data={chartData}

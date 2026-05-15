@@ -182,7 +182,7 @@ export function B2BDashboard() {
         >
           <ChartContainer
             config={distributionConfig}
-            className="h-[220px] w-full"
+            className="aspect-auto h-[220px] w-full"
           >
             <BarChart data={expressionData} accessibilityLayer>
               <CartesianGrid vertical={false} />
@@ -205,7 +205,7 @@ export function B2BDashboard() {
         >
           <ChartContainer
             config={distributionConfig}
-            className="h-[220px] w-full"
+            className="aspect-auto h-[220px] w-full"
           >
             <BarChart data={fatigueData} accessibilityLayer>
               <CartesianGrid vertical={false} />
@@ -228,7 +228,7 @@ export function B2BDashboard() {
         >
           <ChartContainer
             config={distributionConfig}
-            className="h-[200px] w-full"
+            className="aspect-auto h-[200px] w-full"
           >
             <BarChart data={subjFatigueData} accessibilityLayer>
               <CartesianGrid vertical={false} />
@@ -251,7 +251,7 @@ export function B2BDashboard() {
         >
           <ChartContainer
             config={distributionConfig}
-            className="h-[200px] w-full"
+            className="aspect-auto h-[200px] w-full"
           >
             <BarChart data={subjFocusData} accessibilityLayer>
               <CartesianGrid vertical={false} />
@@ -275,7 +275,7 @@ export function B2BDashboard() {
       >
         <ChartContainer
           config={distributionConfig}
-          className="h-[260px] w-full"
+          className="aspect-auto h-[260px] w-full"
         >
           <BarChart
             data={bodyPartData}
