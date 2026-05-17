@@ -148,6 +148,23 @@ export function subjectiveLevel(s: SubjectiveFatigue): number {
   return SUBJECTIVE_FATIGUE_TO_5SCALE[s]
 }
 
+// 表情カテゴリの「wellness 順」マッピング(おだやか=5 最良 〜 ゆらぎ強=1 不調)
+// 表情は本質的にカテゴリ(順序性無し)だが、推移グラフで他指標と
+// 重ね合わせ表示するため敢えて 1-5 にマップ。
+// fatigueLevel / subjectiveLevel と Y 軸方向を揃えるため、推移チャート
+// 側では subjective / fatigue を invert(6 - level)して「5 = 良好」に統一する。
+const EXPRESSION_WELLNESS_SCORE: Record<Expression, number> = {
+  "おだやか": 5,
+  "張り(弱)": 4,
+  "ゆらぎ(弱)": 3,
+  "張り(強)": 2,
+  "ゆらぎ(強)": 1,
+}
+
+export function expressionLevel(e: Expression): number {
+  return EXPRESSION_WELLNESS_SCORE[e]
+}
+
 export function fatigueGap(user: User): number {
   return Math.abs(
     fatigueLevel(user.fatigueAi) - subjectiveLevel(user.subjectiveFatigue)

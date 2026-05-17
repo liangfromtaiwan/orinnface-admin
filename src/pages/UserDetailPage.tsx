@@ -3,8 +3,16 @@ import {
   ArrowLeftIcon,
   CheckCircle2Icon,
 } from "lucide-react"
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  XAxis,
+  YAxis,
+} from "recharts"
 import { Link, Navigate, useParams, useSearchParams } from "react-router-dom"
 
+import { ChartCard } from "@/components/ChartCard"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -15,6 +23,13 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import {
+  ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
+  ChartTooltip,
+  type ChartConfig,
+} from "@/components/ui/chart"
+import {
   Table,
   TableBody,
   TableCell,
@@ -23,8 +38,67 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { getCompany } from "@/lib/mock-data/companies"
-import { recordHasGap } from "@/lib/mock-data/types"
+import {
+  expressionLevel,
+  fatigueLevel,
+  recordHasGap,
+  subjectiveLevel,
+} from "@/lib/mock-data/types"
+import type { ActivityRecord } from "@/lib/mock-data/types"
 import { getUserById } from "@/lib/mock-data/users"
+
+const trendConfig: ChartConfig = {
+  expression: { label: "表情", color: "var(--chart-1)" },
+  subjective: { label: "主観疲労", color: "var(--chart-2)" },
+  aiFatigue: { label: "AI 疲労", color: "var(--chart-3)" },
+}
+
+const TREND_END_DATE_MS = new Date("2026-05-13T00:00:00Z").getTime()
+const TREND_DAYS = 30
+
+type TrendPoint = {
+  date: string
+  expression: number | null
+  subjective: number | null
+  aiFatigue: number | null
+  rawExpression?: string
+  rawSubjective?: string
+  rawAiFatigue?: string
+}
+
+// activityLog から 30 日分の TrendPoint 配列を生成。
+// 同日複数記録ある場合は最新(activityLog は新→旧 sort 済)を採用、
+// 該当日記録無しは null(Line は connectNulls で繋ぐ)。
+// subjective / aiFatigue は 6 - level で invert、全 line で「5 = 良好」に統一。
+function buildTrendData(activityLog: ActivityRecord[]): TrendPoint[] {
+  const result: TrendPoint[] = []
+  for (let i = TREND_DAYS - 1; i >= 0; i--) {
+    const d = new Date(TREND_END_DATE_MS - i * 86400000)
+    const dateIso = d.toISOString().slice(0, 10)
+    const mmdd = dateIso.slice(5)
+
+    const rec = activityLog.find((r) => r.analyzedAt.slice(0, 10) === dateIso)
+    if (rec) {
+      result.push({
+        date: mmdd,
+        expression: expressionLevel(rec.expression),
+        subjective: 6 - subjectiveLevel(rec.subjectiveFatigue),
+        aiFatigue: 6 - fatigueLevel(rec.fatigueAi),
+        rawExpression: rec.expression,
+        rawSubjective: rec.subjectiveFatigue,
+        rawAiFatigue: rec.fatigueAi,
+      })
+    } else {
+      result.push({
+        date: mmdd,
+        expression: null,
+        subjective: null,
+        aiFatigue: null,
+      })
+    }
+  }
+  return result
+}
 
 function formatDate(iso: string): string {
   return iso.slice(0, 16).replace("T", " ")
@@ -89,6 +163,7 @@ export default function UserDetailPage() {
 
   const company = getCompany(user.companyId)
   const gappedCount = user.activityLog.filter((r) => recordHasGap(r)).length
+  const trendData = buildTrendData(user.activityLog)
 
   return (
     <div className="space-y-8">
@@ -133,25 +208,130 @@ export default function UserDetailPage() {
         </CardContent>
       </Card>
 
-      <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {[
-          { title: "表情カテゴリ推移", desc: "過去 30 日の表情変化" },
-          { title: "疲労ステージ推移", desc: "AI 判定と主観の併記" },
-          { title: "ケア実行履歴", desc: "おすすめ動画の実行率" },
-        ].map((c) => (
-          <Card key={c.title}>
-            <CardHeader>
-              <CardTitle className="text-base">{c.title}</CardTitle>
-              <CardDescription>{c.desc}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex aspect-video items-center justify-center rounded-md bg-muted/50 text-sm text-muted-foreground">
-                グラフ:Day 7+ 実装予定
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </section>
+      <ChartCard
+        title="コンディション推移"
+        description="過去 30 日間の表情・主観疲労・AI 判定疲労の重ね合わせ(5 = 良好、1 = 不調 のスケールに正規化)"
+      >
+        <ChartContainer
+          config={trendConfig}
+          className="aspect-auto h-[280px] w-full"
+        >
+          <LineChart
+            accessibilityLayer
+            data={trendData}
+            margin={{ left: 4, right: 8 }}
+          >
+            <CartesianGrid vertical={false} />
+            <XAxis
+              dataKey="date"
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+              interval={4}
+              fontSize={11}
+            />
+            <YAxis
+              domain={[1, 5]}
+              ticks={[1, 2, 3, 4, 5]}
+              tickLine={false}
+              axisLine={false}
+              width={20}
+              fontSize={11}
+              padding={{ top: 12, bottom: 4 }}
+            />
+            <ChartTooltip
+              cursor={false}
+              content={({ active, payload }) => {
+                if (!active || !payload?.length) return null
+                const d = payload[0].payload as TrendPoint
+                if (
+                  d.expression === null &&
+                  d.subjective === null &&
+                  d.aiFatigue === null
+                )
+                  return null
+                return (
+                  <div className="rounded-lg border bg-background px-3 py-2 text-xs shadow-sm">
+                    <div className="mb-1 font-medium">{d.date}</div>
+                    <div className="grid gap-0.5">
+                      {d.aiFatigue !== null && (
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className="size-2 rounded-full"
+                            style={{ background: "var(--color-aiFatigue)" }}
+                          />
+                          <span>
+                            AI 疲労:
+                            <span className="font-medium tabular-nums">
+                              {d.aiFatigue}
+                            </span>
+                            ({d.rawAiFatigue})
+                          </span>
+                        </div>
+                      )}
+                      {d.expression !== null && (
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className="size-2 rounded-full"
+                            style={{ background: "var(--color-expression)" }}
+                          />
+                          <span>
+                            表情:
+                            <span className="font-medium tabular-nums">
+                              {d.expression}
+                            </span>
+                            ({d.rawExpression})
+                          </span>
+                        </div>
+                      )}
+                      {d.subjective !== null && (
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className="size-2 rounded-full"
+                            style={{ background: "var(--color-subjective)" }}
+                          />
+                          <span>
+                            主観疲労:
+                            <span className="font-medium tabular-nums">
+                              {d.subjective}
+                            </span>
+                            ({d.rawSubjective})
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              }}
+            />
+            <ChartLegend content={<ChartLegendContent />} />
+            <Line
+              dataKey="expression"
+              type="monotone"
+              stroke="var(--color-expression)"
+              strokeWidth={2}
+              dot={{ r: 3 }}
+              connectNulls
+            />
+            <Line
+              dataKey="subjective"
+              type="monotone"
+              stroke="var(--color-subjective)"
+              strokeWidth={2}
+              dot={{ r: 3 }}
+              connectNulls
+            />
+            <Line
+              dataKey="aiFatigue"
+              type="monotone"
+              stroke="var(--color-aiFatigue)"
+              strokeWidth={2}
+              dot={{ r: 3 }}
+              connectNulls
+            />
+          </LineChart>
+        </ChartContainer>
+      </ChartCard>
 
       <Card>
         <CardHeader>
