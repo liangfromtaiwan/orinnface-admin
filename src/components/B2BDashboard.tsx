@@ -61,10 +61,16 @@ function deltaVsLastWeek(
   return { value: today - lastWeek, label: "前週同曜日比" }
 }
 
+// 規格 1-3 章:Premium のみ AI 疲労判定を持つため、
+// スコアは Premium 利用者のみで集計。Premium が居なければ 0。
 function conditionScore(users: User[]): number {
-  if (users.length === 0) return 0
+  const scored = users.filter(
+    (u): u is User & { fatigueAi: Fatigue } => u.fatigueAi !== undefined
+  )
+  if (scored.length === 0) return 0
   return (
-    users.reduce((s, u) => s + FATIGUE_TO_SCORE[u.fatigueAi], 0) / users.length
+    scored.reduce((s, u) => s + FATIGUE_TO_SCORE[u.fatigueAi], 0) /
+    scored.length
   )
 }
 

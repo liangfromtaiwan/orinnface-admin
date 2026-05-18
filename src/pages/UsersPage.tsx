@@ -146,7 +146,9 @@ export default function UsersPage() {
                     <TableCell
                       className={flagged ? "text-muted-foreground" : undefined}
                     >
-                      {u.fatigueAi}
+                      {u.fatigueAi ?? (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="tabular-nums text-muted-foreground">
                       {formatDate(u.lastAnalysisAt)}

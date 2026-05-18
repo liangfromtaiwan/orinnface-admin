@@ -79,11 +79,13 @@ export type PlanChangeEvent = {
   toPlan: Plan
 }
 
+// 規格仕様:Guest / Member は表情のみ、Premium のみ fatigue 両方を持つ。
+// このため fatigueAi / subjectiveFatigue を optional 化。
 export type ActivityRecord = {
   analyzedAt: string
   expression: Expression
-  fatigueAi: Fatigue
-  subjectiveFatigue: SubjectiveFatigue
+  fatigueAi?: Fatigue
+  subjectiveFatigue?: SubjectiveFatigue
   subjectiveFocus?: SubjectiveFocus
   bodyPart?: BodyPart
   careVideoTitle?: string
@@ -96,8 +98,8 @@ export type User = {
   companyId: number
   plan: Plan
   expression: Expression
-  fatigueAi: Fatigue
-  subjectiveFatigue: SubjectiveFatigue
+  fatigueAi?: Fatigue
+  subjectiveFatigue?: SubjectiveFatigue
   subjectiveFocus: SubjectiveFocus
   bodyPart: BodyPart
   lastAnalysisAt: string
@@ -165,17 +167,23 @@ export function expressionLevel(e: Expression): number {
   return EXPRESSION_WELLNESS_SCORE[e]
 }
 
+// fatigue 両方を持つ Premium ユーザーのみ gap 評価可能。
+// Guest / Member は fatigueAi / subjectiveFatigue が undefined のため、
+// gap 概念は適用されない(falseを返す)。
 export function fatigueGap(user: User): number {
+  if (!user.fatigueAi || !user.subjectiveFatigue) return 0
   return Math.abs(
     fatigueLevel(user.fatigueAi) - subjectiveLevel(user.subjectiveFatigue)
   )
 }
 
 export function hasFatigueGap(user: User): boolean {
+  if (!user.fatigueAi || !user.subjectiveFatigue) return false
   return fatigueGap(user) >= 2
 }
 
 export function recordHasGap(r: ActivityRecord): boolean {
+  if (!r.fatigueAi || !r.subjectiveFatigue) return false
   return (
     Math.abs(fatigueLevel(r.fatigueAi) - subjectiveLevel(r.subjectiveFatigue)) >=
     2

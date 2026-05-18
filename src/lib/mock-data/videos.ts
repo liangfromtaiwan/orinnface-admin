@@ -16,40 +16,56 @@ function mulberry32(seed: number) {
   }
 }
 
-// 15 動画 = 5 カテゴリ × 3 尺(30s / 60s / 120s)
+// 規格仕様:動画總本數 12 本、尺度は 30 秒 / 60 秒 のみ。
+// 5 カテゴリ × (30s + 60s) = 10 本 + ストレッチ・瞑想に 1 本ずつ追加 = 12 本。
 export const videos: Video[] = [
   // ストレッチ
   { id: 1, title: "首肩クイックストレッチ", durationSeconds: 30, category: "stretch" },
   { id: 2, title: "肩こり解消ストレッチ", durationSeconds: 60, category: "stretch", recommendedFor: ["ややお疲れ", "蓄積しています"] },
-  { id: 3, title: "全身リフレッシュストレッチ", durationSeconds: 120, category: "stretch", recommendedFor: ["蓄積しています", "踏ん張りどき"] },
   // 瞑想
-  { id: 4, title: "30秒マインドリセット", durationSeconds: 30, category: "meditation" },
-  { id: 5, title: "1分集中呼吸瞑想", durationSeconds: 60, category: "meditation", recommendedFor: ["蓄積しています"] },
-  { id: 6, title: "深い疲労からの回復瞑想", durationSeconds: 120, category: "meditation", recommendedFor: ["蓄積しています", "踏ん張りどき"] },
+  { id: 3, title: "30秒マインドリセット", durationSeconds: 30, category: "meditation" },
+  { id: 4, title: "1分集中呼吸瞑想", durationSeconds: 60, category: "meditation", recommendedFor: ["蓄積しています"] },
   // ヨガ
-  { id: 7, title: "デスクサイドヨガ30秒", durationSeconds: 30, category: "yoga" },
-  { id: 8, title: "リラックスヨガフロー", durationSeconds: 60, category: "yoga", recommendedFor: ["ややお疲れ"] },
-  { id: 9, title: "ナイトリセットヨガ", durationSeconds: 120, category: "yoga", recommendedFor: ["蓄積しています", "踏ん張りどき"] },
+  { id: 5, title: "デスクサイドヨガ30秒", durationSeconds: 30, category: "yoga" },
+  { id: 6, title: "リラックスヨガフロー", durationSeconds: 60, category: "yoga", recommendedFor: ["ややお疲れ"] },
   // 呼吸
-  { id: 10, title: "深呼吸30秒", durationSeconds: 30, category: "breathing" },
-  { id: 11, title: "腹式呼吸エクササイズ", durationSeconds: 60, category: "breathing", recommendedFor: ["ややお疲れ"] },
-  { id: 12, title: "ストレス緩和呼吸法", durationSeconds: 120, category: "breathing", recommendedFor: ["蓄積しています"] },
+  { id: 7, title: "深呼吸30秒", durationSeconds: 30, category: "breathing" },
+  { id: 8, title: "腹式呼吸エクササイズ", durationSeconds: 60, category: "breathing", recommendedFor: ["ややお疲れ"] },
   // アイケア
-  { id: 13, title: "目の疲れ瞬間ケア", durationSeconds: 30, category: "eye-care", recommendedFor: ["ややお疲れ"] },
-  { id: 14, title: "PC疲労 目元ストレッチ", durationSeconds: 60, category: "eye-care", recommendedFor: ["ややお疲れ", "蓄積しています"] },
-  { id: 15, title: "視覚リフレッシュ集中ケア", durationSeconds: 120, category: "eye-care", recommendedFor: ["蓄積しています"] },
+  { id: 9, title: "目の疲れ瞬間ケア", durationSeconds: 30, category: "eye-care", recommendedFor: ["ややお疲れ"] },
+  { id: 10, title: "PC疲労 目元ストレッチ", durationSeconds: 60, category: "eye-care", recommendedFor: ["ややお疲れ", "蓄積しています"] },
+  // 追加 2 本(規格 12 本に合わせ)
+  { id: 11, title: "朝の目覚めストレッチ", durationSeconds: 30, category: "stretch" },
+  { id: 12, title: "夜のリラックス瞑想", durationSeconds: 60, category: "meditation", recommendedFor: ["蓄積しています", "踏ん張りどき"] },
 ]
 
 export function getVideoById(id: number): Video | undefined {
   return videos.find((v) => v.id === id)
 }
 
-// 視聴 mock 生成。各 user は 5-20 件の視聴記録を持つ。
-// 完遂率は尺に応じて低下:30s→90%, 60s→75%, 120s→55%
+// 視聴 mock 生成。プラン別ルール:
+//   Guest:   閲覧不可(0 件)
+//   Member:  30 秒のみ、月 10 回まで(5-10 件)
+//   Premium: 30 秒 + 60 秒、無制限(8-20 件)
+// 完遂率:30s → 90%、60s → 75%
 // 完遂した視聴のうち約 35% が 24h 内に再分析を行う(care → re-analysis の連動)
-function generateViewRecordsForUser(userId: number): VideoViewRecord[] {
+import type { Plan } from "./types"
+
+function generateViewRecordsForUser(
+  userId: number,
+  plan: Plan
+): VideoViewRecord[] {
+  if (plan === "Guest") return []
+
   const rng = mulberry32(userId * 1009 + 17)
-  const count = 5 + Math.floor(rng() * 16) // 5-20 件
+  const allowedVideos =
+    plan === "Member"
+      ? videos.filter((v) => v.durationSeconds <= 30)
+      : videos
+  const count =
+    plan === "Member"
+      ? 5 + Math.floor(rng() * 6) // 5-10 件(月 10 回上限)
+      : 8 + Math.floor(rng() * 13) // 8-20 件
 
   const records: VideoViewRecord[] = []
   for (let i = 0; i < count; i++) {
@@ -63,13 +79,8 @@ function generateViewRecordsForUser(userId: number): VideoViewRecord[] {
       minute * 60000
     const watchedAt = new Date(ms).toISOString().slice(0, 19)
 
-    const video = videos[Math.floor(rng() * videos.length)]
-    const baseCompletion =
-      video.durationSeconds <= 30
-        ? 0.9
-        : video.durationSeconds <= 60
-          ? 0.75
-          : 0.55
+    const video = allowedVideos[Math.floor(rng() * allowedVideos.length)]
+    const baseCompletion = video.durationSeconds <= 30 ? 0.9 : 0.75
     const completed = rng() < baseCompletion
     const reanalyzedWithin24h = completed && rng() < 0.35
 
@@ -86,7 +97,7 @@ function generateViewRecordsForUser(userId: number): VideoViewRecord[] {
 }
 
 export const allViewRecords: VideoViewRecord[] = users.flatMap((u) =>
-  generateViewRecordsForUser(u.id)
+  generateViewRecordsForUser(u.id, u.plan)
 )
 
 // ─────────────────────────────────────────────────────────────

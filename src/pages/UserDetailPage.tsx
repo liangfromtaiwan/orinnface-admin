@@ -70,6 +70,8 @@ type TrendPoint = {
 // 同日複数記録ある場合は最新(activityLog は新→旧 sort 済)を採用、
 // 該当日記録無しは null(Line は connectNulls で繋ぐ)。
 // subjective / aiFatigue は 6 - level で invert、全 line で「5 = 良好」に統一。
+// 規格 1-3 章:Premium のみ fatigue を持つため、Guest / Member ユーザーの
+// レコードでは subjective / aiFatigue が undefined → null として line 非描画。
 function buildTrendData(activityLog: ActivityRecord[]): TrendPoint[] {
   const result: TrendPoint[] = []
   for (let i = TREND_DAYS - 1; i >= 0; i--) {
@@ -82,8 +84,12 @@ function buildTrendData(activityLog: ActivityRecord[]): TrendPoint[] {
       result.push({
         date: mmdd,
         expression: expressionLevel(rec.expression),
-        subjective: 6 - subjectiveLevel(rec.subjectiveFatigue),
-        aiFatigue: 6 - fatigueLevel(rec.fatigueAi),
+        subjective:
+          rec.subjectiveFatigue !== undefined
+            ? 6 - subjectiveLevel(rec.subjectiveFatigue)
+            : null,
+        aiFatigue:
+          rec.fatigueAi !== undefined ? 6 - fatigueLevel(rec.fatigueAi) : null,
         rawExpression: rec.expression,
         rawSubjective: rec.subjectiveFatigue,
         rawAiFatigue: rec.fatigueAi,
@@ -164,6 +170,8 @@ export default function UserDetailPage() {
   const company = getCompany(user.companyId)
   const gappedCount = user.activityLog.filter((r) => recordHasGap(r)).length
   const trendData = buildTrendData(user.activityLog)
+  // 規格 1-3 章:Premium のみ fatigue 両方を持つ。
+  const isPremium = user.plan === "Premium"
 
   return (
     <div className="space-y-8">
@@ -198,19 +206,28 @@ export default function UserDetailPage() {
           <dl className="grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-4">
             <InfoField label="プラン" value={user.plan} />
             <InfoField label="最新表情" value={user.expression} />
-            <InfoField label="最新 AI 疲労" value={user.fatigueAi} />
+            <InfoField label="最新 AI 疲労" value={user.fatigueAi ?? "—"} />
             <InfoField
               label="最終分析"
               value={formatDate(user.lastAnalysisAt)}
               mono
             />
           </dl>
+          {!isPremium && (
+            <p className="mt-4 text-xs text-muted-foreground">
+              ※ {user.plan} プランは表情分析のみ対応。疲労判定は Premium 限定機能です。
+            </p>
+          )}
         </CardContent>
       </Card>
 
       <ChartCard
         title="コンディション推移"
-        description="過去 30 日間の表情・主観疲労・AI 判定疲労の重ね合わせ(5 = 良好、1 = 不調 のスケールに正規化)"
+        description={
+          isPremium
+            ? "過去 30 日間の表情・主観疲労・AI 判定疲労の重ね合わせ(5 = 良好、1 = 不調 のスケールに正規化)"
+            : "過去 30 日間の表情推移(5 = 良好、1 = 不調 のスケールに正規化)。主観疲労・AI 疲労判定は Premium プラン限定。"
+        }
       >
         <ChartContainer
           config={trendConfig}
@@ -375,13 +392,19 @@ export default function UserDetailPage() {
                       {formatDate(r.analyzedAt)}
                     </TableCell>
                     <TableCell>{r.expression}</TableCell>
-                    <TableCell>{r.fatigueAi}</TableCell>
+                    <TableCell>
+                      {r.fatigueAi ?? (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
                     <TableCell
                       className={
                         flagged ? "font-medium text-destructive" : undefined
                       }
                     >
-                      {r.subjectiveFatigue}
+                      {r.subjectiveFatigue ?? (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {r.subjectiveFocus ?? "—"}

@@ -1,4 +1,4 @@
-import type { ActivityRecord, User } from "./types"
+import type { ActivityRecord, Plan, User } from "./types"
 import {
   BODY_PARTS,
   EXPRESSIONS,
@@ -19,27 +19,54 @@ function mulberry32(seed: number) {
   }
 }
 
-const CARE_VIDEOS = [
-  "肩こり解消ストレッチ",
-  "首回り軽体操",
-  "全身リラックス瞑想",
-  "腰痛改善ヨガ",
-  "目の疲れケア",
-  "腹式呼吸エクササイズ",
+// 規格 12 本動画の title 一覧(plan 別 careVideo pool として使う)。
+// videos.ts と二重管理だが、users.ts → videos.ts は循環依存になるため別途定義。
+const CARE_VIDEOS_30S = [
+  "首肩クイックストレッチ",
+  "30秒マインドリセット",
+  "デスクサイドヨガ30秒",
+  "深呼吸30秒",
+  "目の疲れ瞬間ケア",
+  "朝の目覚めストレッチ",
 ]
+const CARE_VIDEOS_60S = [
+  "肩こり解消ストレッチ",
+  "1分集中呼吸瞑想",
+  "リラックスヨガフロー",
+  "腹式呼吸エクササイズ",
+  "PC疲労 目元ストレッチ",
+  "夜のリラックス瞑想",
+]
+
+// plan 別の動画閲覧プール
+//   Guest:   閲覧不可 → null
+//   Member:  30 秒のみ
+//   Premium: 30 秒 + 60 秒
+function carePoolForPlan(plan: Plan): string[] | null {
+  if (plan === "Guest") return null
+  if (plan === "Member") return CARE_VIDEOS_30S
+  return [...CARE_VIDEOS_30S, ...CARE_VIDEOS_60S]
+}
 
 function generateActivityLog(
   seed: number,
+  plan: Plan,
   latest: Omit<ActivityRecord, "careVideoTitle" | "careCompleted">
 ): ActivityRecord[] {
   const rng = mulberry32(seed)
   const count = 6 + Math.floor(rng() * 3) // 6-8 件
 
+  const carePool = carePoolForPlan(plan)
+  // Premium のみ fatigue 両方が記録される(規格仕様)
+  const hasFatigue = plan === "Premium"
+
   const records: ActivityRecord[] = [
     {
       ...latest,
-      careVideoTitle: CARE_VIDEOS[Math.floor(rng() * CARE_VIDEOS.length)],
-      careCompleted: rng() > 0.3,
+      careVideoTitle: carePool
+        ? carePool[Math.floor(rng() * carePool.length)]
+        : undefined,
+      careCompleted: carePool ? rng() > 0.3 : undefined,
     },
   ]
 
@@ -50,16 +77,23 @@ function generateActivityLog(
     const dt = new Date(cursorMs)
     dt.setUTCHours(8 + Math.floor(rng() * 12), Math.floor(rng() * 60), 0, 0)
 
-    const aiLevel = Math.floor(rng() * 5)
-    const ai = FATIGUES[aiLevel]
+    let ai: (typeof FATIGUES)[number] | undefined
+    let subj: (typeof SUBJECTIVE_FATIGUES)[number] | undefined
 
-    // 25% 強制落差(警告色テスト用)、それ以外は AI レベルに近い主観
-    let subj: (typeof SUBJECTIVE_FATIGUES)[number]
-    if (rng() < 0.25) {
-      subj = aiLevel < 2 ? SUBJECTIVE_FATIGUES[2] : SUBJECTIVE_FATIGUES[0]
+    if (hasFatigue) {
+      const aiLevel = Math.floor(rng() * 5)
+      ai = FATIGUES[aiLevel]
+      // 25% 強制落差(警告色テスト用)、それ以外は AI レベルに近い主観
+      if (rng() < 0.25) {
+        subj = aiLevel < 2 ? SUBJECTIVE_FATIGUES[2] : SUBJECTIVE_FATIGUES[0]
+      } else {
+        const subjIdx = aiLevel < 2 ? 0 : aiLevel < 4 ? 1 : 2
+        subj = SUBJECTIVE_FATIGUES[subjIdx]
+      }
     } else {
-      const subjIdx = aiLevel < 2 ? 0 : aiLevel < 4 ? 1 : 2
-      subj = SUBJECTIVE_FATIGUES[subjIdx]
+      // Member 抽選で rng() の seek を一致させるため空消費(掛け落差ロジック分の 2 回)
+      rng()
+      rng()
     }
 
     records.push({
@@ -71,10 +105,10 @@ function generateActivityLog(
         SUBJECTIVE_FOCUSES[Math.floor(rng() * SUBJECTIVE_FOCUSES.length)],
       bodyPart: BODY_PARTS[Math.floor(rng() * BODY_PARTS.length)],
       careVideoTitle:
-        rng() > 0.3
-          ? CARE_VIDEOS[Math.floor(rng() * CARE_VIDEOS.length)]
+        carePool && rng() > 0.3
+          ? carePool[Math.floor(rng() * carePool.length)]
           : undefined,
-      careCompleted: rng() > 0.35,
+      careCompleted: carePool ? rng() > 0.35 : undefined,
     })
   }
 
@@ -108,10 +142,12 @@ const baseUsers: Omit<User, "activityLog">[] = [
     lastAnalysisAt: "2026-05-13T08:30:00",
   },
   {
+    // Member→Premium に変更(Premium のみ fatigue 両方を持つため、
+    // 規格 3-1「主観 vs AI 落差」警告 demo は Premium ユーザーで実演)
     id: 3,
     name: "佐藤 一郎",
     companyId: 1,
-    plan: "Member",
+    plan: "Premium",
     expression: "ゆらぎ(強)",
     fatigueAi: "軽やか", // AI = 軽い
     subjectiveFatigue: "だいぶ疲れている", // 本人 = 強い疲労感(gap 4)
@@ -206,10 +242,11 @@ const baseUsers: Omit<User, "activityLog">[] = [
     lastAnalysisAt: "2026-05-12T22:30:00",
   },
   {
+    // Member→Premium に変更(同上、KOL B 配下の gap demo として保持)
     id: 11,
     name: "吉田 大輔",
     companyId: 2,
-    plan: "Member",
+    plan: "Premium",
     expression: "張り(強)",
     fatigueAi: "踏ん張りどき", // AI = 強い疲労
     subjectiveFatigue: "あまり疲れていない", // 本人 = 元気(gap 4)
@@ -451,17 +488,27 @@ const baseUsers: Omit<User, "activityLog">[] = [
   },
 ]
 
-export const users: User[] = baseUsers.map((u) => ({
-  ...u,
-  activityLog: generateActivityLog(u.id * 137 + 31, {
-    analyzedAt: u.lastAnalysisAt,
-    expression: u.expression,
-    fatigueAi: u.fatigueAi,
-    subjectiveFatigue: u.subjectiveFatigue,
-    subjectiveFocus: u.subjectiveFocus,
-    bodyPart: u.bodyPart,
-  }),
-}))
+// 規格 1-3 章:Premium のみ fatigue 両方を持つ。
+// baseUsers にはデモ用の fatigue 値が定義されているが、Guest / Member は
+// undefined に上書き(top-level User と activityLog の latest 両方に反映)。
+export const users: User[] = baseUsers.map((u) => {
+  const isPremium = u.plan === "Premium"
+  const fatigueAi = isPremium ? u.fatigueAi : undefined
+  const subjectiveFatigue = isPremium ? u.subjectiveFatigue : undefined
+  return {
+    ...u,
+    fatigueAi,
+    subjectiveFatigue,
+    activityLog: generateActivityLog(u.id * 137 + 31, u.plan, {
+      analyzedAt: u.lastAnalysisAt,
+      expression: u.expression,
+      fatigueAi,
+      subjectiveFatigue,
+      subjectiveFocus: u.subjectiveFocus,
+      bodyPart: u.bodyPart,
+    }),
+  }
+})
 
 export function getUsersByCompany(companyId: number): User[] {
   return users.filter((u) => u.companyId === companyId)
