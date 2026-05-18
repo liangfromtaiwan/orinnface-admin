@@ -1,4 +1,4 @@
-import type { ActivityRecord, Plan, User } from "./types"
+import type { ActivityRecord, Gender, Plan, User } from "./types"
 import {
   BODY_PARTS,
   EXPRESSIONS,
@@ -46,6 +46,51 @@ function carePoolForPlan(plan: Plan): string[] | null {
   if (plan === "Guest") return null
   if (plan === "Member") return CARE_VIDEOS_30S
   return [...CARE_VIDEOS_30S, ...CARE_VIDEOS_60S]
+}
+
+// 規格 v2 1-1:Member / Premium は登録時に gender / birthDate を入力。
+// Guest はアプリ未登録のため undefined。
+// 性別分布:女性 50% / 男性 45% / 回答しない 5%
+// 年齢分布:20-30 代 30% / 30-40 代 35% / 40-50 代 20% / 50-60 代 15%
+//   → 生年 1966-2006 の範囲(基準日 2026-05-18)
+function generateProfile(
+  seed: number,
+  plan: Plan
+): { gender?: Gender; birthDate?: string } {
+  if (plan === "Guest") return {}
+
+  const rng = mulberry32(seed)
+  const g = rng()
+  const gender: Gender =
+    g < 0.5 ? "女性" : g < 0.95 ? "男性" : "回答しない"
+
+  const a = rng()
+  let minBirthYear: number
+  let maxBirthYear: number
+  if (a < 0.3) {
+    // 20 代(20-29 歳)
+    minBirthYear = 1997
+    maxBirthYear = 2006
+  } else if (a < 0.65) {
+    // 30 代(30-39 歳)
+    minBirthYear = 1987
+    maxBirthYear = 1996
+  } else if (a < 0.85) {
+    // 40 代(40-49 歳)
+    minBirthYear = 1977
+    maxBirthYear = 1986
+  } else {
+    // 50 代(50-59 歳)
+    minBirthYear = 1967
+    maxBirthYear = 1976
+  }
+  const year =
+    minBirthYear + Math.floor(rng() * (maxBirthYear - minBirthYear + 1))
+  const month = 1 + Math.floor(rng() * 12)
+  const day = 1 + Math.floor(rng() * 28) // 安全に 28 日まで
+  const birthDate = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`
+
+  return { gender, birthDate }
 }
 
 function generateActivityLog(
@@ -495,10 +540,13 @@ export const users: User[] = baseUsers.map((u) => {
   const isPremium = u.plan === "Premium"
   const fatigueAi = isPremium ? u.fatigueAi : undefined
   const subjectiveFatigue = isPremium ? u.subjectiveFatigue : undefined
+  const profile = generateProfile(u.id * 211 + 13, u.plan)
   return {
     ...u,
     fatigueAi,
     subjectiveFatigue,
+    gender: profile.gender,
+    birthDate: profile.birthDate,
     activityLog: generateActivityLog(u.id * 137 + 31, u.plan, {
       analyzedAt: u.lastAnalysisAt,
       expression: u.expression,

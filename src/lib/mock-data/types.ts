@@ -92,11 +92,17 @@ export type ActivityRecord = {
   careCompleted?: boolean
 }
 
+export type Gender = "女性" | "男性" | "回答しない"
+
 export type User = {
   id: number
   name: string
   companyId: number
   plan: Plan
+  // 規格 v2 1-1 取得項目:Guest は未登録のため undefined、
+  // Member / Premium は登録時に必須入力。
+  gender?: Gender
+  birthDate?: string // YYYY-MM-DD
   expression: Expression
   fatigueAi?: Fatigue
   subjectiveFatigue?: SubjectiveFatigue
