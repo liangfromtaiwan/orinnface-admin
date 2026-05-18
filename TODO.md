@@ -48,7 +48,7 @@
 | 4 | Guest activityLog から動画記録削除 | ✅ 完了 `b4065c1` | `mock-data/users.ts` |
 | 5 | Member 動画記録 30s / 月 10 回上限 | ✅ 完了 `b4065c1` | `mock-data/users.ts`, `videos.ts` |
 | 6 | 価格表示確認(¥980 → ¥780、または非表示) | ⚠️ 雇主確認待ち | grep 結果 0 件、現在は非表示 |
-| 7 | `ContentPage.tsx:92` description 文案修正 | ❌ 未対応 | `「3 尺(30/60/120秒)」` → `「2 尺(30/60秒)」` |
+| 7 | `ContentPage.tsx:92` description 文案修正 | ✅ 完了 2026-05-18 | `「3 尺(30/60/120秒)」` → `「2 尺(30/60秒)」` |
 
 ## 未確認 ⚠️(`SPEC_REVIEW.md` の残課題)
 

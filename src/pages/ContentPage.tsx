@@ -89,7 +89,7 @@ export default function ContentPage() {
     {
       title: "動画本数",
       value: `${totalVideos} 本`,
-      description: "5 カテゴリ × 3 尺(30/60/120秒)",
+      description: "5 カテゴリ × 2 尺(30/60秒)",
     },
     {
       title: "累計視聴回数",
