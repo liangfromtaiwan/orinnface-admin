@@ -29,3 +29,11 @@ export {
   type PlanTimeSeriesRow,
   type ChangeKind,
 } from "./plan-history"
+export {
+  allCTAEvents,
+  getCTAEventsForScope,
+  getCTAEventsByCompany,
+  getCTAStats,
+  getCTAStatsByTiming,
+  type CTAStats,
+} from "./cta-events"
