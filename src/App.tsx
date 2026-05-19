@@ -8,6 +8,7 @@ import UsersPage from "./pages/UsersPage"
 import UserDetailPage from "./pages/UserDetailPage"
 import ContentPage from "./pages/ContentPage"
 import StatusPage from "./pages/StatusPage"
+import CTAAnalysisPage from "./pages/CTAAnalysisPage"
 import SettingsPage from "./pages/SettingsPage"
 
 export default function App() {
@@ -22,6 +23,7 @@ export default function App() {
             <Route path="/users/:id" element={<UserDetailPage />} />
             <Route path="/content" element={<ContentPage />} />
             <Route path="/status" element={<StatusPage />} />
+            <Route path="/cta-analysis" element={<CTAAnalysisPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Route>

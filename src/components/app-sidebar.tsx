@@ -4,6 +4,7 @@ import * as React from "react"
 import {
   ActivityIcon,
   LayoutDashboardIcon,
+  MousePointerClickIcon,
   Settings2Icon,
   UsersIcon,
   VideoIcon,
@@ -36,6 +37,13 @@ const navItems: NavItem[] = [
     title: "ステータス",
     url: "/status",
     icon: <ActivityIcon />,
+    hiddenFor: ["b2b"],
+  },
+  // b2b は個別 CTA 効果(コンバージョン履歴)を見られない
+  {
+    title: "CTA 分析",
+    url: "/cta-analysis",
+    icon: <MousePointerClickIcon />,
     hiddenFor: ["b2b"],
   },
   { title: "設定", url: "/settings", icon: <Settings2Icon /> },
