@@ -37,6 +37,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { calculateAge } from "@/lib/utils"
 import { getCompany } from "@/lib/mock-data/companies"
 import {
   expressionLevel,
@@ -193,6 +194,16 @@ export default function UserDetailPage() {
             </h1>
             <p className="mt-0.5 text-sm text-muted-foreground">
               {company?.name ?? "—"} ・ {user.plan}
+              {/* 規格 v2 1-1:性別 + 年齢。BtoB は L140 で redirect 済だが
+                  defensive に type ガード。Guest / 未入力は非表示。 */}
+              {type !== "b2b" && user.gender && user.birthDate && (
+                <>
+                  {" ・ "}
+                  {user.gender}
+                  {" ・ "}
+                  {calculateAge(user.birthDate)} 歳
+                </>
+              )}
             </p>
           </div>
         </div>
