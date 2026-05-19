@@ -278,13 +278,14 @@ export function getDurationBucket(seconds: number): DurationBucket {
 export type CTAType = "guest_to_member" | "free_to_premium"
 
 // G-* = Guest → Member 訴求、M-* = Member → Premium 訴求
+// M-1(第 7→8 回時)は M-2(第 7-10 回 毎回)の第一発火と重複するため、
+// 2026-05-19 に video_care_7_to_10 として統合(M-1 削除)
 export type CTATiming =
-  | "after_survey" // G-1: アンケート結束後
+  | "after_survey" // G-1: アンケート終了後
   | "before_care" // G-2: ケア開始前
-  | "daily_limit" // G-3: 日上限阻擋
-  | "video_7_to_8" // M-1: 第 7→8 回時
-  | "video_7_to_10_each" // M-2: 第 7-10 回 每次
-  | "monthly_limit" // M-3: 月上限阻擋(強制)
+  | "daily_limit" // G-3: 1日上限到達
+  | "video_care_7_to_10" // M-1+M-2: ケア動画 7-10 回 毎回
+  | "monthly_limit" // M-3: 月上限到達(強制)
   | "day_30" // M-4: Day30 累積
 
 export type CTAEvent = {
@@ -302,19 +303,17 @@ export const CTA_TIMINGS: CTATiming[] = [
   "after_survey",
   "before_care",
   "daily_limit",
-  "video_7_to_8",
-  "video_7_to_10_each",
+  "video_care_7_to_10",
   "monthly_limit",
   "day_30",
 ]
 
 export const CTA_TIMING_LABEL: Record<CTATiming, string> = {
-  after_survey: "アンケート結束後",
+  after_survey: "アンケート終了後",
   before_care: "ケア開始前",
-  daily_limit: "日上限阻擋",
-  video_7_to_8: "第7→8回時",
-  video_7_to_10_each: "第7-10回 毎回",
-  monthly_limit: "月上限阻擋(強制)",
+  daily_limit: "1日上限到達",
+  video_care_7_to_10: "ケア動画 7-10 回 毎回",
+  monthly_limit: "月上限到達(強制)",
   day_30: "Day30 累積",
 }
 
@@ -322,13 +321,12 @@ export const CTA_TIMING_TO_TYPE: Record<CTATiming, CTAType> = {
   after_survey: "guest_to_member",
   before_care: "guest_to_member",
   daily_limit: "guest_to_member",
-  video_7_to_8: "free_to_premium",
-  video_7_to_10_each: "free_to_premium",
+  video_care_7_to_10: "free_to_premium",
   monthly_limit: "free_to_premium",
   day_30: "free_to_premium",
 }
 
 export const CTA_TYPE_LABEL: Record<CTAType, string> = {
   guest_to_member: "無料登録",
-  free_to_premium: "Premium 升級",
+  free_to_premium: "Premium 課金",
 }

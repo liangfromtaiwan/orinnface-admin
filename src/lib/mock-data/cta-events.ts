@@ -29,8 +29,8 @@ const TIMING_RATES: Record<
   after_survey: { click: 0.32, convertIfClick: 0.35 },
   before_care: { click: 0.38, convertIfClick: 0.4 },
   daily_limit: { click: 0.65, convertIfClick: 0.5 },
-  video_7_to_8: { click: 0.35, convertIfClick: 0.35 },
-  video_7_to_10_each: { click: 0.3, convertIfClick: 0.3 },
+  // 旧 M-1(第7→8時)と M-2(第7-10毎回)を統合。M-2 のレートを継承
+  video_care_7_to_10: { click: 0.3, convertIfClick: 0.3 },
   monthly_limit: { click: 0.92, convertIfClick: 0.6 },
   day_30: { click: 0.38, convertIfClick: 0.4 },
 }
@@ -48,21 +48,19 @@ const GUEST_TIMING_POOL: CTATiming[] = [
   "daily_limit",
 ]
 const MEMBER_TIMING_POOL: CTATiming[] = [
-  "video_7_to_8",
-  "video_7_to_10_each",
-  "video_7_to_10_each",
-  "video_7_to_10_each",
-  "video_7_to_10_each",
-  "video_7_to_10_each",
+  "video_care_7_to_10",
+  "video_care_7_to_10",
+  "video_care_7_to_10",
+  "video_care_7_to_10",
+  "video_care_7_to_10",
   "monthly_limit",
   "day_30",
 ]
 // Premium ユーザーは過去 30 日に M-* を踏んで convert したストーリー
 const PREMIUM_TIMING_POOL: CTATiming[] = [
-  "video_7_to_8",
-  "video_7_to_10_each",
-  "video_7_to_10_each",
-  "video_7_to_10_each",
+  "video_care_7_to_10",
+  "video_care_7_to_10",
+  "video_care_7_to_10",
   "monthly_limit",
   "day_30",
 ]
