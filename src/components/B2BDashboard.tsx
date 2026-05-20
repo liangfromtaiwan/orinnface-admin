@@ -100,8 +100,6 @@ export function B2BDashboard() {
 
   const series = getAnalytics(companyId)
   const today = series[series.length - 1]
-  const last7 = series.slice(-7)
-  const prior7 = series.slice(-14, -7)
   const companyUsers = getUsersByCompany(companyId)
 
   const last30 = series.slice(-30)
