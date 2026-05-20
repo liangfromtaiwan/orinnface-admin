@@ -109,6 +109,14 @@ export default function StatusPage() {
     eventsByKind[classifyChange(e)]++
   }
 
+  // 漏斗別カウント(規格 v1 2-5 プラン転換数)
+  const guestToMemberCount = scopedEvents.filter(
+    (e) => e.fromPlan === "Guest" && e.toPlan === "Member"
+  ).length
+  const memberToPremiumCount = scopedEvents.filter(
+    (e) => e.fromPlan === "Member" && e.toPlan === "Premium"
+  ).length
+
   const subtitle =
     type === "admin"
       ? "全提供先の会員ステータス履歴とプラン変更ログ"
@@ -121,6 +129,16 @@ export default function StatusPage() {
       description: `Guest ${today.Guest} / Member ${today.Member}(合計 ${
         today.Guest + today.Member + today.Premium
       } 名)`,
+    },
+    {
+      title: "G→M 件数(30 日)",
+      value: `${guestToMemberCount} 件`,
+      description: "Guest から無料登録(Member)した件数",
+    },
+    {
+      title: "M→P 件数(30 日)",
+      value: `${memberToPremiumCount} 件`,
+      description: "Member から Premium 課金へ移行した件数",
     },
     {
       title: "Premium 純増(30 日)",
@@ -168,7 +186,7 @@ export default function StatusPage() {
         <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
       </div>
 
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {stats.map((s) => (
           <StatCard key={s.title} {...s} />
         ))}

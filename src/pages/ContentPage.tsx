@@ -1,4 +1,13 @@
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Label,
+  Pie,
+  PieChart,
+  XAxis,
+  YAxis,
+} from "recharts"
 import { useSearchParams } from "react-router-dom"
 
 import { ChartCard } from "@/components/ChartCard"
@@ -13,7 +22,10 @@ import {
 } from "@/components/ui/card"
 import {
   ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
   ChartTooltip,
+  ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart"
 import {
@@ -85,6 +97,23 @@ export default function ContentPage() {
     }
   })
 
+  // 動画尺の選択比率 Pie 用データ(viewCount を割合表示)
+  const bucketRatioData = bucketStats.map((b, i) => ({
+    label: b.bucket.label,
+    viewCount: b.viewCount,
+    fill: `var(--chart-${i + 1})`,
+  }))
+  const bucketRatioConfig: ChartConfig = Object.fromEntries(
+    bucketStats.map((b, i) => [
+      b.bucket.label,
+      { label: b.bucket.label, color: `var(--chart-${i + 1})` },
+    ])
+  )
+  const bucketRatioTotal = bucketRatioData.reduce(
+    (s, d) => s + d.viewCount,
+    0
+  )
+
   const stats = [
     {
       title: "動画本数",
@@ -135,6 +164,7 @@ export default function ContentPage() {
         ))}
       </section>
 
+      <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <ChartCard
         title="動画尺別 完遂率"
         description="動画の長さによる完遂率の傾向。catalog に該当尺の動画がある bucket のみ表示。"
@@ -210,6 +240,62 @@ export default function ContentPage() {
           </BarChart>
         </ChartContainer>
       </ChartCard>
+
+      <ChartCard
+        title="動画尺の選択比率"
+        description="視聴された動画の長さ別構成比(catalog に該当尺の動画がある bucket のみ)"
+      >
+        <ChartContainer
+          config={bucketRatioConfig}
+          className="mx-auto aspect-square h-[280px]"
+        >
+          <PieChart>
+            <ChartTooltip
+              cursor={false}
+              content={<ChartTooltipContent hideLabel nameKey="label" />}
+            />
+            <Pie
+              data={bucketRatioData}
+              dataKey="viewCount"
+              nameKey="label"
+              innerRadius={60}
+              strokeWidth={5}
+            >
+              <Label
+                content={({ viewBox }) => {
+                  if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                    return (
+                      <text
+                        x={viewBox.cx}
+                        y={viewBox.cy}
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                      >
+                        <tspan
+                          x={viewBox.cx}
+                          y={viewBox.cy}
+                          className="fill-foreground text-2xl font-semibold"
+                        >
+                          {bucketRatioTotal}
+                        </tspan>
+                        <tspan
+                          x={viewBox.cx}
+                          y={(viewBox.cy || 0) + 22}
+                          className="fill-muted-foreground text-xs"
+                        >
+                          視聴件数
+                        </tspan>
+                      </text>
+                    )
+                  }
+                }}
+              />
+            </Pie>
+            <ChartLegend content={<ChartLegendContent nameKey="label" />} />
+          </PieChart>
+        </ChartContainer>
+      </ChartCard>
+      </section>
 
       <Card>
         <CardHeader>

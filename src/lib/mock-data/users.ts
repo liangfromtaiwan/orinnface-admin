@@ -565,3 +565,31 @@ export function getUsersByCompany(companyId: number): User[] {
 export function getUserById(id: number): User | undefined {
   return users.find((u) => u.id === id)
 }
+
+// ─────────────────────────────────────────────────────────────
+// 分析実行数 / 1 user 平均分析回数(規格 v1 2-1)
+// ─────────────────────────────────────────────────────────────
+
+const ANALYSIS_END_DATE_MS = new Date("2026-05-13T23:59:59Z").getTime()
+
+export type AnalysisStats = {
+  total: number // 期間内の分析実行件数(activityLog エントリ数)
+  perUser: number // 1 user 平均分析回数(total / 対象ユーザー数)
+}
+
+// activityLog の analyzedAt が「過去 N 日内」のエントリを scope ユーザーで集計。
+// scope が空の場合は perUser = 0 を返す。
+export function getAnalysisStats(
+  scopedUsers: User[],
+  daysBack: number = 30
+): AnalysisStats {
+  const cutoffMs = ANALYSIS_END_DATE_MS - daysBack * 86400000
+  let total = 0
+  for (const u of scopedUsers) {
+    for (const r of u.activityLog) {
+      if (new Date(r.analyzedAt + "Z").getTime() >= cutoffMs) total++
+    }
+  }
+  const perUser = scopedUsers.length === 0 ? 0 : total / scopedUsers.length
+  return { total, perUser }
+}

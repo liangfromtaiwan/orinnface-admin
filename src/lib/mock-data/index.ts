@@ -1,7 +1,19 @@
 export * from "./types"
 export { companies, getCompany } from "./companies"
-export { users, getUsersByCompany, getUserById } from "./users"
-export { analyticsByCompany, globalAnalytics, getAnalytics } from "./analytics"
+export {
+  users,
+  getUsersByCompany,
+  getUserById,
+  getAnalysisStats,
+  type AnalysisStats,
+} from "./users"
+export {
+  analyticsByCompany,
+  globalAnalytics,
+  getAnalytics,
+  getActiveUserStats,
+  type ActiveUserStats,
+} from "./analytics"
 export { plansByCompany, globalPlans, getPlanStats } from "./plans"
 export {
   videos,

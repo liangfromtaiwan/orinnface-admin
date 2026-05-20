@@ -165,3 +165,36 @@ export function getAnalytics(companyId: number): DailyAnalytics[] {
   if (companyId === 0) return globalAnalytics
   return analyticsByCompany[companyId] ?? []
 }
+
+// ─────────────────────────────────────────────────────────────
+// アクティブユーザー指標(DAU / WAU / MAU)
+// ─────────────────────────────────────────────────────────────
+
+export type ActiveUserStats = {
+  dau: number // 本日のアクティブユーザー数
+  wau: number // 過去 7 日のユニークアクティブユーザー(近似)
+  mau: number // 過去 30 日のユニークアクティブユーザー(近似)
+}
+
+// mock では per-user の active timestamp を持たないため、平均 DAU から
+// オーバーラップ係数で「ユニーク数」を近似する。
+// 真實 backend では analytics_events.distinct(user_id) で正確算出すべき。
+//   WAU 係数 1.2:1 日の平均 DAU の 1.2 倍が週次ユニーク
+//   MAU 係数 1.4:1 日の平均 DAU の 1.4 倍が月次ユニーク
+// 注:COMPANY_BASE_DAU はリアル感を出すため 30 名 mock より大きい
+// アグリゲートを模擬しているため、user mock 数で cap しない。
+export function getActiveUserStats(
+  series: DailyAnalytics[]
+): ActiveUserStats {
+  if (series.length === 0) return { dau: 0, wau: 0, mau: 0 }
+  const today = series[series.length - 1].dau
+  const last7 = series.slice(-7)
+  const last30 = series.slice(-30)
+  const avg7 = last7.reduce((s, r) => s + r.dau, 0) / Math.max(1, last7.length)
+  const avg30 = last30.reduce((s, r) => s + r.dau, 0) / Math.max(1, last30.length)
+  return {
+    dau: today,
+    wau: Math.round(avg7 * 1.2),
+    mau: Math.round(avg30 * 1.4),
+  }
+}

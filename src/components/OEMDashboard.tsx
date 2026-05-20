@@ -28,7 +28,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart"
-import { getAnalytics } from "@/lib/mock-data/analytics"
+import { getActiveUserStats, getAnalytics } from "@/lib/mock-data/analytics"
 import { getCompany } from "@/lib/mock-data/companies"
 import { getPlanStats } from "@/lib/mock-data/plans"
 import type {
@@ -43,7 +43,7 @@ import {
   PLANS,
   hasFatigueGap,
 } from "@/lib/mock-data/types"
-import { getUsersByCompany } from "@/lib/mock-data/users"
+import { getAnalysisStats, getUsersByCompany } from "@/lib/mock-data/users"
 
 const DEFAULT_OEM_COMPANY_ID = 1
 
@@ -87,6 +87,9 @@ function buildStats(analytics: DailyAnalytics[], oemUsers: User[]) {
   const concordanceRate =
     oemUsers.length === 0 ? 0 : concordanceCount / oemUsers.length
 
+  const improvementThisWeek = weightedAvg(last7, "improvementRate")
+  const improvementPriorWeek = weightedAvg(prior7, "improvementRate")
+
   return [
     {
       title: "今日の再分析率",
@@ -110,6 +113,14 @@ function buildStats(analytics: DailyAnalytics[], oemUsers: User[]) {
       title: "主観とAI一致率",
       value: pct(concordanceRate),
       description: `自社ユーザー ${oemUsers.length} 名のうち、落差 < 2 段階 = ${concordanceCount} 名`,
+    },
+    {
+      title: "平均改善率(7日)",
+      value: pct(improvementThisWeek),
+      delta: {
+        value: improvementThisWeek - improvementPriorWeek,
+        label: "前週比",
+      },
     },
   ] as const
 }
@@ -233,6 +244,8 @@ export function OEMDashboard() {
   const planPieData = buildPlanPieData(plans)
   const planTrendData = buildPlanTrendData(plans)
   const totalUsers = planPieData.reduce((s, d) => s + d.count, 0)
+  const activeStats = getActiveUserStats(analytics)
+  const analysisStats = getAnalysisStats(oemUsers, 30)
 
   return (
     <div className="flex flex-1 flex-col gap-8">
@@ -249,7 +262,38 @@ export function OEMDashboard() {
         </p>
       </div>
 
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <StatCard
+          title="DAU"
+          value={`${activeStats.dau} 名`}
+          description="本日アクティブだった自社ユーザー"
+        />
+        <StatCard
+          title="WAU"
+          value={`${activeStats.wau} 名`}
+          description="過去 7 日間のユニークアクティブ"
+        />
+        <StatCard
+          title="MAU"
+          value={`${activeStats.mau} 名`}
+          description="過去 30 日間のユニークアクティブ"
+        />
+      </section>
+
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <StatCard
+          title="分析実行数(30日)"
+          value={`${analysisStats.total} 件`}
+          description="自社ユーザーの活動ログから集計"
+        />
+        <StatCard
+          title="1 ユーザー平均分析回数(30日)"
+          value={`${analysisStats.perUser.toFixed(1)} 回`}
+          description={`総件数 ${analysisStats.total} 件 ÷ 自社 ${oemUsers.length} 名`}
+        />
+      </section>
+
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
         {stats.map((s) => (
           <StatCard key={s.title} {...s} />
         ))}
