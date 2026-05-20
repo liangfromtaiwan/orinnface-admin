@@ -158,5 +158,116 @@ mapping:
 
 ---
 
+## CTA 効果分析:新ページ + 2 漏斗 KPI 構造
+
+### 規格
+規格 v2 6 章 + Figma に CTA 7 トリガー定義あり(無料登録 / Premium 課金 2 種類のコンバージョン軸)。
+
+### 設計判斷:独立ページ `/cta-analysis` + 2 漏斗 KPI
+
+**配置**:
+- 当初 TODO.md では ContentPage 内に追加予定だった
+- 実装時(2026-05-19)に独立ページ `/cta-analysis` に変更
+
+**理由**:
+- CTA は「コンテンツ利用」とは別の商業指標(コンバージョン軸)
+- ContentPage に同居させると見出しが混雑、視覚的に重複
+- Sidebar から直接アクセスできた方が雇主のデモ時に見せやすい
+
+**構造**:
+- 2 KPI Card(上段、横並び):
+  - 無料登録 CVR(Guest → Member)
+  - Premium 課金 CVR(Free → Premium)
+- 2 Timing 別 Table(CTA Type ごとに section 分け):
+  - 列:タイミング / トリガー / クリック / クリック率 / 転換 / CVR
+
+**三套画面の出し分け**:
+- 運営(admin):全社 CTA event 集計
+- OEM:自社 user の CTA event のみ(`getCTAEventsByCompany(companyId)`)
+- BtoB:**非表示**(/cta-analysis にアクセスしても /dashboard に redirect、Sidebar 項目も非表示)
+
+### 雇主確認(2026-05-18)
+- 「CTA 効果分析を管理画面に含める」+「細節は設計師決定」を明示授權
+
+### 工程師接手注意事項
+- mock data 実裝位置:`src/lib/mock-data/cta-events.ts`
+- KPI helper:`getCTAStats(events, ctaType)` / `getCTAStatsByTiming(events)`
+- BtoB 視点に対する backend 権限チェック必須(`/api/cta-events` 403)
+- API endpoint は `API_CONTRACT.md` で確定要(未起草)
+- 真實環境では `triggeredAt / clicked / converted / convertedAt` を event-sourced で記録すべき
+
+---
+
+## CTA Timing:規格 7 個 → 実裝 6 個(M-1 + M-2 統合)
+
+### 規格
+規格 v2 6 章 + Figma に CTA 7 トリガー:
+- G-1:アンケート終了後
+- G-2:ケア開始前
+- G-3:1 日上限到達
+- M-1:第 7→8 回時
+- M-2:第 7-10 回 毎回
+- M-3:月上限到達(強制)
+- M-4:Day30 累積
+
+### 設計判斷:M-1 + M-2 を「ケア動画 7-10 回 毎回」に統合(6 個に削減)
+
+**統合キー**:`video_care_7_to_10`、ラベル:「ケア動画 7-10 回 毎回」
+
+**理由**:
+- M-1(第 7→8 回時)= 第 7 回動画視聴完了の直後に発火
+- M-2(第 7-10 回 毎回)= 第 7・8・9・10 回 毎回発火
+- M-2 の「第 7 回発火」は M-1 と本質的に同一時点・同一文脈
+- 別 event として記録するとトリガー数が重複カウントされ KPI が歪む
+- 統合により「ケア動画閲覧時の Premium 訴求」という単一概念に集約
+
+### 雇主確認状態
+- 統合判断は「規格逸脱」ではなく「規格の冗長排除」と解釋
+- 設計師細節決定の範囲内(2026-05-18 授權)
+- 真實 backend 実裝時、雇主に再確認要(M-1/M-2 を分けて見たい場合は sub_type フィールドで分岐可能)
+
+### 工程師接手注意事項
+- `CTATiming` 型は 6 個(`src/lib/mock-data/types.ts`):
+  `after_survey` / `before_care` / `daily_limit` / **`video_care_7_to_10`** / `monthly_limit` / `day_30`
+- 個別 KPI が必要になった場合、event に `sub_type: 'first_unlock' | 'repeated_prompt'` を追加して同一 timing 内で分岐可能
+- 統合判断のロールバックは types.ts + cta-events.ts 2 ファイル変更で済む
+
+---
+
+## 性別 / 生年月日 表示策略(年齢のみ表示)
+
+### 規格
+規格 v2 1-1「取得項目」4 項:
+- 性別
+- 生年月日
+- 疲れやすさ
+- 表情のこわばり度合い
+
+### 設計判斷:UI には「性別 + 年齢(計算値)」のみ表示
+
+**雇主同意済(2026-05-18)**:性別 / 生年月日の 2 項を `UserDetailPage` に追加
+
+**設計師細節決定**:
+- 生年月日そのもの(YYYY-MM-DD)は**表示しない**
+- かわりに「年齢(33 歳)」を計算して表示
+- 表示位置:`UserDetailPage` 頂部の使用者情報区(Avatar の隣)
+- BtoB 視点では性別 / 年齢どちらも**完全非表示**(規格 3-2 準拠)
+- Guest user(規格上未登録、undefined)→ sub-info 全体を非レンダリング
+
+**理由**:
+- 完全な生年月日は個人特定情報、管理画面の常時表示には過剰
+- 「年齢」だけで「Premium 層の年齢分布」「ケア提案の文脈把握」には十分
+- 誕生日キャンペーン等の特殊用途が出てきたら別画面で個別取得する方が privacy 安全
+- 規格 0 章「三套画面差異」と整合(BtoB に個資なし)
+
+### 工程師接手注意事項
+- 年齢計算 helper の実裝位置:`UserDetailPage.tsx` 内の local function(規模小、共通化不要)
+- 真實 DB は `birthDate` を保持するが、frontend に渡すのは `age:number` のみにする選択肢あり(個資最小化)
+- BtoB 視点の API が誤って `birthDate` / `gender` フィールドを返さないよう backend で fields filtering 必須
+- 性別の選択肢は「女性 / 男性 / 回答しない」3 値(規格通り、`Gender` type)
+- 生年月日 → 年齢計算は時点依存(基準日が必要)、frontend 計算は現在時刻ベース
+
+---
+
 > 持續更新中。每加入新的設計判斷時更新本文件。
 > 未來工程師接手時,優先閱讀此文件理解「**為什麼**」,而不只是「**做了什麼**」。

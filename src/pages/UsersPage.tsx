@@ -42,10 +42,11 @@ export default function UsersPage() {
     ? users.filter((u) => u.companyId === companyId)
     : users
 
-  const filtered = query.trim()
-    ? scopedUsers.filter((u) =>
-        u.name.toLowerCase().includes(query.trim().toLowerCase())
-      )
+  // 「山田 太郎」と「山田太郎」どちらでもヒットするよう半角・全角空白を除去して比較
+  const normalizeName = (s: string) => s.replace(/\s+/g, "").toLowerCase()
+  const normalizedQuery = normalizeName(query)
+  const filtered = normalizedQuery
+    ? scopedUsers.filter((u) => normalizeName(u.name).includes(normalizedQuery))
     : scopedUsers
 
   const attentionCount = filtered.filter((u) => hasFatigueGap(u)).length
