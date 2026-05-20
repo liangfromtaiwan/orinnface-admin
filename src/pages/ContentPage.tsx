@@ -2,6 +2,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   Label,
   Pie,
   PieChart,
@@ -86,7 +87,13 @@ export default function ContentPage() {
   const bucketStats = groupVideosByDurationBucket(records).filter(
     (b) => b.videoCount > 0
   )
-  const bucketChartData = bucketStats.map((b) => {
+  // 30 秒以下 = オレンジ系、30 秒〜1 分 = グリーン系で固定
+  // BarChart「動画尺別 完遂率」と Pie「動画尺の選択比率」で同じ色を共有
+  const BUCKET_COLOR_MAP: Record<string, string> = {
+    "0-30s": "oklch(0.646 0.222 41.116)",
+    "30-60s": "oklch(0.6 0.118 184.704)",
+  }
+  const bucketChartData = bucketStats.map((b, i) => {
     const completedCount = Math.round(b.viewCount * b.completionRate)
     return {
       label: b.bucket.label,
@@ -94,6 +101,7 @@ export default function ContentPage() {
       viewCount: b.viewCount,
       completedCount,
       videoCount: b.videoCount,
+      fill: BUCKET_COLOR_MAP[b.bucket.key] ?? `var(--chart-${i + 1})`,
     }
   })
 
@@ -101,12 +109,15 @@ export default function ContentPage() {
   const bucketRatioData = bucketStats.map((b, i) => ({
     label: b.bucket.label,
     viewCount: b.viewCount,
-    fill: `var(--chart-${i + 1})`,
+    fill: BUCKET_COLOR_MAP[b.bucket.key] ?? `var(--chart-${i + 1})`,
   }))
   const bucketRatioConfig: ChartConfig = Object.fromEntries(
     bucketStats.map((b, i) => [
       b.bucket.label,
-      { label: b.bucket.label, color: `var(--chart-${i + 1})` },
+      {
+        label: b.bucket.label,
+        color: BUCKET_COLOR_MAP[b.bucket.key] ?? `var(--chart-${i + 1})`,
+      },
     ])
   )
   const bucketRatioTotal = bucketRatioData.reduce(
@@ -232,11 +243,11 @@ export default function ContentPage() {
                 )
               }}
             />
-            <Bar
-              dataKey="completionRate"
-              fill="var(--color-completionRate)"
-              radius={4}
-            />
+            <Bar dataKey="completionRate" radius={4}>
+              {bucketChartData.map((entry) => (
+                <Cell key={entry.label} fill={entry.fill} />
+              ))}
+            </Bar>
           </BarChart>
         </ChartContainer>
       </ChartCard>

@@ -255,8 +255,8 @@ export type DurationBucket = {
 }
 
 export const DURATION_BUCKETS: DurationBucket[] = [
-  { key: "0-30s", label: "30秒以下", minSeconds: 0, maxSeconds: 30 },
-  { key: "30-60s", label: "30秒〜1分", minSeconds: 31, maxSeconds: 60 },
+  { key: "0-30s", label: "30秒", minSeconds: 0, maxSeconds: 30 },
+  { key: "30-60s", label: "60秒", minSeconds: 31, maxSeconds: 60 },
   { key: "1-2min", label: "1〜2分", minSeconds: 61, maxSeconds: 120 },
   { key: "2-3min", label: "2〜3分", minSeconds: 121, maxSeconds: 180 },
   { key: "3-5min", label: "3〜5分", minSeconds: 181, maxSeconds: 300 },

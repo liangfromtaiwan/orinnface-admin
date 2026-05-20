@@ -12,7 +12,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart"
-import { getActiveUserStats, getAnalytics } from "@/lib/mock-data/analytics"
+import { getAnalytics } from "@/lib/mock-data/analytics"
 import { getCompany } from "@/lib/mock-data/companies"
 import type {
   BodyPart,
@@ -30,7 +30,7 @@ import {
   SUBJECTIVE_FATIGUES,
   SUBJECTIVE_FOCUSES,
 } from "@/lib/mock-data/types"
-import { getAnalysisStats, getUsersByCompany } from "@/lib/mock-data/users"
+import { getUsersByCompany } from "@/lib/mock-data/users"
 
 const DEFAULT_B2B_COMPANY_ID = 3
 
@@ -103,9 +103,8 @@ export function B2BDashboard() {
   const last7 = series.slice(-7)
   const prior7 = series.slice(-14, -7)
   const companyUsers = getUsersByCompany(companyId)
-  const activeStats = getActiveUserStats(series)
-  const analysisStats = getAnalysisStats(companyUsers, 30)
 
+  const last30 = series.slice(-30)
   const stats = [
     {
       title: "利用人数",
@@ -123,14 +122,9 @@ export function B2BDashboard() {
       delta: deltaVsLastWeek(series, "careExecutionRate"),
     },
     {
-      title: "平均改善率(7日)",
-      value: pct(weightedAvg(last7, "improvementRate")),
-      delta: {
-        value:
-          weightedAvg(last7, "improvementRate") -
-          weightedAvg(prior7, "improvementRate"),
-        label: "前週比",
-      },
+      title: "継続率月次(30日)",
+      value: pct(weightedAvg(last30, "retentionRate")),
+      description: "過去 30 日間の平均継続率(DAU 加重)",
     },
   ] as const
 
@@ -176,37 +170,6 @@ export function B2BDashboard() {
           本画面は集計データのみを表示します。個人を特定できる情報は含まれません。
         </AlertDescription>
       </Alert>
-
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <StatCard
-          title="DAU"
-          value={`${activeStats.dau} 名`}
-          description="本日アクティブだった自社ユーザー"
-        />
-        <StatCard
-          title="WAU"
-          value={`${activeStats.wau} 名`}
-          description="過去 7 日間のユニークアクティブ"
-        />
-        <StatCard
-          title="MAU"
-          value={`${activeStats.mau} 名`}
-          description="過去 30 日間のユニークアクティブ"
-        />
-      </section>
-
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <StatCard
-          title="分析実行数(30日)"
-          value={`${analysisStats.total} 件`}
-          description="自社ユーザーの活動ログから集計"
-        />
-        <StatCard
-          title="1 ユーザー平均分析回数(30日)"
-          value={`${analysisStats.perUser.toFixed(1)} 回`}
-          description={`総件数 ${analysisStats.total} 件 ÷ 自社 ${companyUsers.length} 名`}
-        />
-      </section>
 
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         {stats.map((s) => (

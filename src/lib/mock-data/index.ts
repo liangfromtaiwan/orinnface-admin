@@ -5,7 +5,9 @@ export {
   getUsersByCompany,
   getUserById,
   getAnalysisStats,
+  getOnboardingConversionStats,
   type AnalysisStats,
+  type OnboardingStats,
 } from "./users"
 export {
   analyticsByCompany,

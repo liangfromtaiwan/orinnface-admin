@@ -110,13 +110,46 @@
 **規格の文言**:
 > 初回 → 2 回目転換率
 
-**現状実装**:**0**(onboarding funnel データが mock には無い)
+**現状実装**:**mock 近似で実装済**(deterministic な擬似値表示、backend 接手後に置換要)
 
-**対応方針**:
-- backend で `users.signup_date` と `users.second_analysis_date` を保持
-- 「signup から N 日内に 2 回目分析を実行したユーザー / signup 総数」を計算
-- N の値は雇主と相談(7 日?30 日?)
-- frontend は KPI Card 1 つ追加するだけ
+**配置仕様(設計者決定、2026-05-20)**:
+- **ページ**:`/dashboard`(AdminDashboard / OEMDashboard / B2BDashboard 3 視点共通)
+- **位置**:上部 KPI セクション Row 2(分析実行数 + 1 ユーザー平均 と同じ行、3 番目の Card)
+- **Card 仕様**:
+  - title:`"初回ユーザーの定着(30日)"`(UI 表記。規格上は「初回→2回目転換率」と同義)
+  - value:`"{X.X}%"`(現 mock 例:admin 66.7% / 店舗A 75.0% / Yumi 66.7% / 企業X 62.5%)
+  - description:`"新規 N 名のうち、2 回目分析まで到達 M 名(mock 近似)"`
+
+**現状の mock 近似**:
+- `getOnboardingConversionStats(scopedUsers)` in `src/lib/mock-data/users.ts`
+- ロジック:`scopedUsers.filter(u => u.id % 3 !== 0).length / scopedUsers.length`
+- deterministic に約 60-75% 範囲の値を返す。**真の onboarding funnel ではない**
+
+**Backend 計算式(真實実装で置換)**:
+```
+分子 = COUNT(DISTINCT user_id) FROM analyses
+       WHERE user_id IN (signup_date BETWEEN now()-30d AND now())
+       AND この user の analyses 件数 >= 2
+
+分母 = COUNT(DISTINCT user_id) FROM users
+       WHERE signup_date BETWEEN now()-30d AND now()
+```
+
+**Frontend 移行手順(工程師用)**:
+1. `getOnboardingConversionStats()` を fetch 呼び出しに置換
+   (例:`GET /analytics/onboarding-funnel?company_id=N&days=30`)
+2. レスポンス形を `OnboardingStats` 型に合わせる(signedUp / returned / rate)
+3. 既存 Card は変更不要(value / description は実装済)
+4. b2b 視点はそのまま表示(集計のみで個人情報不要)
+5. mock helper `getOnboardingConversionStats` は削除可
+
+**N の値**:雇主と相談(7 日 / 14 日 / 30 日?)。現状 "30 日" でハードコード(title / description 内)。
+
+**実装ファイル**:
+- `src/lib/mock-data/users.ts`(`getOnboardingConversionStats` helper)
+- `src/components/AdminDashboard.tsx`(Card 配置 + 呼び出し)
+- `src/components/OEMDashboard.tsx`(同上)
+- `src/components/B2BDashboard.tsx`(同上)
 
 ---
 

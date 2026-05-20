@@ -593,3 +593,31 @@ export function getAnalysisStats(
   const perUser = scopedUsers.length === 0 ? 0 : total / scopedUsers.length
   return { total, perUser }
 }
+
+// ─────────────────────────────────────────────────────────────
+// 初回 → 2 回目 転換率(規格 v1 2-1)
+// ─────────────────────────────────────────────────────────────
+
+export type OnboardingStats = {
+  signedUp: number // 期間内に新規登録した user 数(mock では scopedUsers.length とみなす)
+  returned: number // うち 2 回目分析まで到達した user 数
+  rate: number // returned / signedUp(0-1)
+}
+
+// Mock 近似:user.id ベースで deterministic に「2 回目到達」を判定。
+// 真實 backend では:
+//   分子 = COUNT(DISTINCT user_id) WHERE signup_date >= now()-30d AND analyses_count >= 2
+//   分母 = COUNT(DISTINCT user_id) WHERE signup_date >= now()-30d
+// 規格 v1 2-1「初回→2回目転換率」対応、KNOWN_ISSUES.md C-2 で詳細記述。
+export function getOnboardingConversionStats(
+  scopedUsers: User[]
+): OnboardingStats {
+  const signedUp = scopedUsers.length
+  // user.id % 3 !== 0 を「2 回目到達」とみなす(mock 上 約 2/3 が return)
+  const returned = scopedUsers.filter((u) => u.id % 3 !== 0).length
+  return {
+    signedUp,
+    returned,
+    rate: signedUp === 0 ? 0 : returned / signedUp,
+  }
+}

@@ -132,18 +132,30 @@ export default function StatusPage() {
     },
     {
       title: "G→M 件数(30 日)",
-      value: `${guestToMemberCount} 件`,
-      description: "Guest から無料登録(Member)した件数",
+      value: `${guestToMemberCount} 件 (${
+        initial.Guest === 0
+          ? "—"
+          : `${((guestToMemberCount / initial.Guest) * 100).toFixed(1)}%`
+      })`,
+      description: `期初 Guest ${initial.Guest} 名のうち ${guestToMemberCount} 名が無料登録(Member)へ`,
     },
     {
       title: "M→P 件数(30 日)",
-      value: `${memberToPremiumCount} 件`,
-      description: "Member から Premium 課金へ移行した件数",
+      value: `${memberToPremiumCount} 件 (${
+        initial.Member === 0
+          ? "—"
+          : `${((memberToPremiumCount / initial.Member) * 100).toFixed(1)}%`
+      })`,
+      description: `期初 Member ${initial.Member} 名のうち ${memberToPremiumCount} 名が Premium 課金へ`,
     },
     {
       title: "Premium 純増(30 日)",
-      value: `${netPremium >= 0 ? "+" : ""}${netPremium} 件`,
-      description: `期初 ${initial.Premium} → 今日 ${today.Premium} 名`,
+      value: `${netPremium >= 0 ? "+" : ""}${netPremium} 件 (${
+        initial.Premium === 0
+          ? "—"
+          : `${((netPremium / initial.Premium) * 100).toFixed(1)}%`
+      })`,
+      description: `期初 ${initial.Premium} → 本日 ${today.Premium} 名`,
     },
     {
       title: "チャーン率(30 日)",

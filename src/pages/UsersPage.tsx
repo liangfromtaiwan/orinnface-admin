@@ -61,7 +61,7 @@ export default function UsersPage() {
           {attentionCount > 0 && (
             <span className="text-destructive">
               {" "}
-              (うち要注目 {attentionCount} 名)
+              (うち要注意 {attentionCount} 名)
             </span>
           )}
         </p>
@@ -158,7 +158,7 @@ export default function UsersPage() {
                       {flagged && (
                         <Badge variant="destructive" className="gap-1">
                           <AlertTriangleIcon className="size-3" />
-                          要注目
+                          要注意
                         </Badge>
                       )}
                     </TableCell>

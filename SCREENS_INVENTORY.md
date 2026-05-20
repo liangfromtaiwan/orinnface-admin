@@ -62,7 +62,12 @@
   - `getPlanStats(companyId)` / `globalPlans`
   - `companies` / `getCompany(id)`
   - `getUsersByCompany(id)` / `users`
+  - `getActiveUserStats(series)`(DAU/WAU/MAU)
+  - `getAnalysisStats(users, days)`(分析実行数 + 1 ユーザー平均)
 - **使用 UI component**:`StatCard` / `ChartCard` / `Card` / `Badge` / `Alert`(b2b のみ) / shadcn Table
+- **Placeholder Card**:
+  - 上部 KPI Row 2 に「初回→2回目 転換率(30日)」が value=`—` で配置済
+  - backend 接手後に実装予定(規格 v1 2-1 / KNOWN_ISSUES.md C-2 参照)
 
 ---
 

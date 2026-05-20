@@ -439,7 +439,7 @@ export default function UserDetailPage() {
                       {flagged && (
                         <Badge variant="destructive" className="gap-1">
                           <AlertTriangleIcon className="size-3" />
-                          要注目
+                          要注意
                         </Badge>
                       )}
                     </TableCell>

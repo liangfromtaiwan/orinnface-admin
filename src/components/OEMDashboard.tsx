@@ -9,8 +9,6 @@ import {
   BarChart,
   CartesianGrid,
   Label,
-  Line,
-  LineChart,
   Pie,
   PieChart,
   XAxis,
@@ -43,7 +41,7 @@ import {
   PLANS,
   hasFatigueGap,
 } from "@/lib/mock-data/types"
-import { getAnalysisStats, getUsersByCompany } from "@/lib/mock-data/users"
+import { getUsersByCompany } from "@/lib/mock-data/users"
 
 const DEFAULT_OEM_COMPANY_ID = 1
 
@@ -87,12 +85,12 @@ function buildStats(analytics: DailyAnalytics[], oemUsers: User[]) {
   const concordanceRate =
     oemUsers.length === 0 ? 0 : concordanceCount / oemUsers.length
 
-  const improvementThisWeek = weightedAvg(last7, "improvementRate")
-  const improvementPriorWeek = weightedAvg(prior7, "improvementRate")
+  const last30 = analytics.slice(-30)
+  const retentionMonth = weightedAvg(last30, "retentionRate")
 
   return [
     {
-      title: "今日の再分析率",
+      title: "本日の再分析率",
       value: pct(today.reanalysisRate),
       delta: deltaVsLastWeek(analytics, "reanalysisRate"),
     },
@@ -105,7 +103,12 @@ function buildStats(analytics: DailyAnalytics[], oemUsers: User[]) {
       },
     },
     {
-      title: "今日のケア実行率",
+      title: "継続率月次(30日)",
+      value: pct(retentionMonth),
+      description: "過去 30 日間の平均継続率(DAU 加重)",
+    },
+    {
+      title: "本日のケア実行率",
       value: pct(today.careExecutionRate),
       delta: deltaVsLastWeek(analytics, "careExecutionRate"),
     },
@@ -113,14 +116,6 @@ function buildStats(analytics: DailyAnalytics[], oemUsers: User[]) {
       title: "主観とAI一致率",
       value: pct(concordanceRate),
       description: `自社ユーザー ${oemUsers.length} 名のうち、落差 < 2 段階 = ${concordanceCount} 名`,
-    },
-    {
-      title: "平均改善率(7日)",
-      value: pct(improvementThisWeek),
-      delta: {
-        value: improvementThisWeek - improvementPriorWeek,
-        label: "前週比",
-      },
     },
   ] as const
 }
@@ -163,39 +158,12 @@ const planPieConfig: ChartConfig = {
   Premium: { label: "Premium", color: "var(--chart-3)" },
 }
 
-const planTrendConfig: ChartConfig = {
-  newPremium: { label: "Premium 新規", color: "var(--chart-2)" },
-  lostPremium: { label: "Premium 離脱", color: "var(--destructive)" },
-  premiumCount: { label: "Premium 会員数", color: "var(--chart-1)" },
-}
-
 function buildPlanPieData(plans: PlanStats) {
   return PLANS.map((plan) => ({
     plan,
     count: plans.current[plan],
     fill: `var(--color-${plan})`,
   }))
-}
-
-// Premium 会員数の推移は flow(newPremium / lostPremium)とは独立に生成。
-// 終点は plans.current.Premium と一致させる。
-function buildPlanTrendData(plans: PlanStats) {
-  const todayCount = plans.current.Premium
-  const N = plans.daily.length
-  const startCount = Math.max(1, todayCount - 3)
-
-  return plans.daily.map((d, i) => {
-    const progress = i / Math.max(1, N - 1)
-    const ideal = startCount + (todayCount - startCount) * progress
-    const jitter = Math.sin(i * 0.8) * 0.3
-    const premiumCount =
-      i === N - 1 ? todayCount : Math.max(0, Math.round(ideal + jitter))
-    return {
-      ...d,
-      date: d.date.slice(5),
-      premiumCount,
-    }
-  })
 }
 
 function stackedBars(keys: string[]) {
@@ -242,10 +210,8 @@ export function OEMDashboard() {
   const stats = buildStats(analytics, oemUsers)
   const distributionData = buildDistributionData(analytics)
   const planPieData = buildPlanPieData(plans)
-  const planTrendData = buildPlanTrendData(plans)
   const totalUsers = planPieData.reduce((s, d) => s + d.count, 0)
   const activeStats = getActiveUserStats(analytics)
-  const analysisStats = getAnalysisStats(oemUsers, 30)
 
   return (
     <div className="flex flex-1 flex-col gap-8">
@@ -277,19 +243,6 @@ export function OEMDashboard() {
           title="MAU"
           value={`${activeStats.mau} 名`}
           description="過去 30 日間のユニークアクティブ"
-        />
-      </section>
-
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <StatCard
-          title="分析実行数(30日)"
-          value={`${analysisStats.total} 件`}
-          description="自社ユーザーの活動ログから集計"
-        />
-        <StatCard
-          title="1 ユーザー平均分析回数(30日)"
-          value={`${analysisStats.perUser.toFixed(1)} 回`}
-          description={`総件数 ${analysisStats.total} 件 ÷ 自社 ${oemUsers.length} 名`}
         />
       </section>
 
@@ -400,51 +353,6 @@ export function OEMDashboard() {
           </ChartContainer>
         </ChartCard>
 
-        <ChartCard
-          title="営収シグナル(Premium 推移)"
-          description="自社の Premium 新規 vs 離脱(過去 30 日)"
-        >
-          <div className="mb-3 flex items-baseline gap-2">
-            <span className="text-sm text-muted-foreground">
-              現在 Premium 会員数
-            </span>
-            <span className="text-2xl font-semibold tabular-nums">
-              {plans.current.Premium}
-            </span>
-            <span className="text-sm text-muted-foreground">名</span>
-          </div>
-          <ChartContainer
-            config={planTrendConfig}
-            className="aspect-auto h-[260px] w-full"
-          >
-            <LineChart
-              accessibilityLayer
-              data={planTrendData}
-              margin={{ left: 12, right: 12 }}
-            >
-              <CartesianGrid vertical={false} />
-              <XAxis
-                dataKey="date"
-                tickLine={false}
-                axisLine={false}
-                tickMargin={8}
-                interval={4}
-              />
-              <ChartTooltip content={<ChartTooltipContent />} />
-              <ChartLegend content={<ChartLegendContent />} />
-              {Object.keys(planTrendConfig).map((key) => (
-                <Line
-                  key={key}
-                  dataKey={key}
-                  type="monotone"
-                  stroke={`var(--color-${key})`}
-                  strokeWidth={key === "premiumCount" ? 2.5 : 2}
-                  dot={false}
-                />
-              ))}
-            </LineChart>
-          </ChartContainer>
-        </ChartCard>
       </section>
     </div>
   )
