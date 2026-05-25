@@ -9,11 +9,11 @@ import {
   UsersIcon,
   VideoIcon,
 } from "lucide-react"
-import { useSearchParams } from "react-router-dom"
+import { useNavigate, useSearchParams } from "react-router-dom"
 
 import { CompanySwitcher } from "@/components/CompanySwitcher"
 import { NavMain, type NavItem } from "@/components/nav-main"
-import { NavUser } from "@/components/nav-user"
+import { NavUser, type NavUserData } from "@/components/nav-user"
 import {
   Sidebar,
   SidebarContent,
@@ -21,6 +21,7 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar"
+import { getCompany } from "@/lib/mock-data/companies"
 
 const navItems: NavItem[] = [
   { title: "ダッシュボード", url: "/dashboard", icon: <LayoutDashboardIcon /> },
@@ -49,18 +50,49 @@ const navItems: NavItem[] = [
   { title: "設定", url: "/settings", icon: <Settings2Icon /> },
 ]
 
-const adminUser = {
-  name: "管理者",
-  email: "admin@orinnme.jp",
-  avatar: "",
+// 視点 + company_id から sidebar footer に表示する管理者情報を組み立てる。
+// mock 値で UI 確認用、真實実装では JWT claim から取得する。
+function buildNavUser(type: string, companyId: number): NavUserData {
+  if (type === "oem") {
+    const c = getCompany(companyId)
+    const isKol = c?.subType === "influencer"
+    return {
+      name: c ? `${c.name} 管理者` : "OEM 管理者",
+      role: isKol ? "OEM(KOL)" : "OEM(店舗)",
+      initial: isKol ? "K" : "店",
+    }
+  }
+  if (type === "b2b") {
+    const c = getCompany(companyId)
+    return {
+      name: c ? `${c.name} HR` : "BtoB HR",
+      role: "BtoB クライアント",
+      initial: "企",
+    }
+  }
+  // admin
+  return {
+    name: "OrinnME 田中",
+    role: "OrinnME 運営",
+    initial: "田",
+  }
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
   const type = searchParams.get("type") ?? "admin"
+  const companyId = Number(searchParams.get("company_id") ?? 0)
+
   const visibleNavItems = navItems.filter(
     (item) => !item.hiddenFor?.includes(type)
   )
+  const navUser = buildNavUser(type, companyId)
+
+  function handleAccountClick() {
+    const qs = searchParams.toString()
+    navigate(qs ? `/settings?${qs}` : "/settings")
+  }
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -71,7 +103,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavMain items={visibleNavItems} />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={adminUser} />
+        <NavUser user={navUser} onAccountClick={handleAccountClick} />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
