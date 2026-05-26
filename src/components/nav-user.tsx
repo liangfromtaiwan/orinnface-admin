@@ -1,5 +1,16 @@
+import { useState } from "react"
 import { ChevronsUpDownIcon, LogOutIcon, UserIcon } from "lucide-react"
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import {
   Avatar,
   AvatarFallback,
@@ -30,11 +41,14 @@ export type NavUserData = {
 export function NavUser({
   user,
   onAccountClick,
+  onLogoutClick,
 }: {
   user: NavUserData
   onAccountClick: () => void
+  onLogoutClick: () => void
 }) {
   const { isMobile } = useSidebar()
+  const [logoutOpen, setLogoutOpen] = useState(false)
 
   return (
     <SidebarMenu>
@@ -71,6 +85,9 @@ export function NavUser({
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <Avatar className="h-8 w-8 rounded-lg">
+                  {user.avatarUrl && (
+                    <AvatarImage src={user.avatarUrl} alt={user.name} />
+                  )}
                   <AvatarFallback className="rounded-lg">
                     {user.initial}
                   </AvatarFallback>
@@ -89,13 +106,40 @@ export function NavUser({
               アカウント
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem disabled>
+            <DropdownMenuItem
+              onClick={() => setLogoutOpen(true)}
+              className="text-destructive focus:text-destructive"
+            >
               <LogOutIcon />
               ログアウト
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>
+
+      {/* ログアウト確認 AlertDialog */}
+      <AlertDialog open={logoutOpen} onOpenChange={setLogoutOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>ログアウトしますか?</AlertDialogTitle>
+            <AlertDialogDescription>
+              ログアウトすると再度ログインが必要になります。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>キャンセル</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                setLogoutOpen(false)
+                onLogoutClick()
+              }}
+            >
+              ログアウト
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </SidebarMenu>
   )
 }

@@ -12,6 +12,7 @@ import ContentPage from "./pages/ContentPage"
 import StatusPage from "./pages/StatusPage"
 import CTAAnalysisPage from "./pages/CTAAnalysisPage"
 import SettingsPage from "./pages/SettingsPage"
+import LoginPage from "./pages/LoginPage"
 
 export default function App() {
   return (
@@ -20,6 +21,8 @@ export default function App() {
       <TooltipProvider>
         <BrowserRouter>
           <Routes>
+            {/* /login は Layout(Sidebar)外で表示 */}
+            <Route path="/login" element={<LoginPage />} />
             <Route element={<Layout />}>
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<DashboardPage />} />

@@ -10,6 +10,7 @@ import {
   VideoIcon,
 } from "lucide-react"
 import { useNavigate, useSearchParams } from "react-router-dom"
+import { toast } from "sonner"
 
 import { CompanySwitcher } from "@/components/CompanySwitcher"
 import { NavMain, type NavItem } from "@/components/nav-main"
@@ -99,6 +100,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     navigate(qs ? `/settings?${qs}` : "/settings")
   }
 
+  function handleLogoutClick() {
+    // 実認証は v2 で実装。ここでは toast + /login へ遷移するのみ。
+    toast.success("ログアウトしました")
+    navigate("/login")
+  }
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
@@ -108,7 +115,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavMain items={visibleNavItems} />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={navUser} onAccountClick={handleAccountClick} />
+        <NavUser
+          user={navUser}
+          onAccountClick={handleAccountClick}
+          onLogoutClick={handleLogoutClick}
+        />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
