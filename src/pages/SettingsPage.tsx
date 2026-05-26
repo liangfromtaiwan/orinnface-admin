@@ -1,8 +1,4 @@
 import { useState } from "react"
-import {
-  VideoIcon,
-  type LucideIcon,
-} from "lucide-react"
 import { useSearchParams } from "react-router-dom"
 import { toast } from "sonner"
 
@@ -11,12 +7,12 @@ import { MembersCard } from "@/components/MembersCard"
 import { NotificationCard } from "@/components/NotificationCard"
 import { PlanCard } from "@/components/PlanCard"
 import { ProvidersCard } from "@/components/ProvidersCard"
+import { VideoCatalogCard } from "@/components/VideoCatalogCard"
 import {
   Avatar,
   AvatarFallback,
   AvatarImage,
 } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -470,33 +466,6 @@ function PasswordCard() {
 }
 
 // ─────────────────────────────────────────────────────────────
-// その他 placeholder section(v2 で実装予定)
-// ─────────────────────────────────────────────────────────────
-
-type SettingsSection = {
-  icon: LucideIcon
-  title: string
-  description: string
-}
-
-const ADMIN_PLACEHOLDERS: SettingsSection[] = [
-  {
-    icon: VideoIcon,
-    title: "動画 catalog",
-    description: "動画の追加・編集・カテゴリ管理",
-  },
-]
-
-const OEM_PLACEHOLDERS: SettingsSection[] = []
-const B2B_PLACEHOLDERS: SettingsSection[] = []
-
-function placeholdersForType(type: string): SettingsSection[] {
-  if (type === "oem") return OEM_PLACEHOLDERS
-  if (type === "b2b") return B2B_PLACEHOLDERS
-  return ADMIN_PLACEHOLDERS
-}
-
-// ─────────────────────────────────────────────────────────────
 // SettingsPage
 // ─────────────────────────────────────────────────────────────
 
@@ -505,7 +474,6 @@ export default function SettingsPage() {
   const type = searchParams.get("type") ?? "admin"
   const companyId = Number(searchParams.get("company_id") ?? 0)
   const initial = initialAccountFor(type, companyId)
-  const placeholders = placeholdersForType(type)
 
   return (
     <div className="space-y-10">
@@ -548,6 +516,14 @@ export default function SettingsPage() {
         </section>
       )}
 
+      {/* 動画 catalog section(admin のみ表示) */}
+      {type === "admin" && (
+        <section className="space-y-4">
+          <h2 className="text-lg font-medium">動画 catalog</h2>
+          <VideoCatalogCard />
+        </section>
+      )}
+
       {/* 通知設定 section(全 3 視角、内容が異なる) */}
       <section className="space-y-4">
         <h2 className="text-lg font-medium">通知設定</h2>
@@ -562,45 +538,6 @@ export default function SettingsPage() {
         </section>
       )}
 
-      {/* その他 placeholder(残項目があるときのみ表示) */}
-      {placeholders.length > 0 && (
-      <section className="space-y-4">
-        <h2 className="text-lg font-medium text-muted-foreground">
-          その他の設定
-        </h2>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {placeholders.map((s) => {
-            const Icon = s.icon
-            return (
-              <Card
-                key={s.title}
-                aria-disabled
-                className="cursor-not-allowed opacity-70"
-              >
-                <CardHeader>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3">
-                      <div className="rounded-md bg-muted p-2">
-                        <Icon className="size-5 text-muted-foreground" />
-                      </div>
-                      <div className="space-y-1">
-                        <CardTitle className="text-base">
-                          {s.title}
-                        </CardTitle>
-                        <CardDescription>{s.description}</CardDescription>
-                      </div>
-                    </div>
-                    <Badge variant="outline" className="shrink-0">
-                      v2 で実装予定
-                    </Badge>
-                  </div>
-                </CardHeader>
-              </Card>
-            )
-          })}
-        </div>
-      </section>
-      )}
     </div>
   )
 }
