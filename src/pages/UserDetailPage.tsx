@@ -38,7 +38,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { calculateAge } from "@/lib/utils"
-import { getCompany } from "@/lib/mock-data/companies"
+import { useCompanies } from "@/contexts/CompaniesContext"
 import {
   expressionLevel,
   fatigueLevel,
@@ -135,6 +135,7 @@ function InfoField({
 export default function UserDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [searchParams] = useSearchParams()
+  const { getCompany } = useCompanies()
   const type = searchParams.get("type") ?? "admin"
 
   // b2b はユーザー詳細を見られない(個人情報非開示)

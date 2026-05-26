@@ -38,7 +38,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { getAnalytics, globalAnalytics } from "@/lib/mock-data/analytics"
-import { companies } from "@/lib/mock-data/companies"
+import { useCompanies } from "@/contexts/CompaniesContext"
 import { globalPlans } from "@/lib/mock-data/plans"
 import type { Company, DailyAnalytics } from "@/lib/mock-data/types"
 import {
@@ -199,8 +199,8 @@ type ProviderRow = {
   careExecutionRate: number
 }
 
-function buildProviderRows(): ProviderRow[] {
-  return companies
+function buildProviderRows(allCompanies: Company[]): ProviderRow[] {
+  return allCompanies
     .filter((c) => c.id !== 0)
     .map((c) => {
       const series = getAnalytics(c.id)
@@ -246,7 +246,8 @@ export function AdminDashboard() {
   const planPieData = buildPlanPieData()
   const planTrendData = buildPlanTrendData()
   const totalUsers = planPieData.reduce((s, d) => s + d.count, 0)
-  const providerRows = buildProviderRows()
+  const { companies } = useCompanies()
+  const providerRows = buildProviderRows(companies)
   const [searchParams, setSearchParams] = useSearchParams()
 
   function switchTo(company: Company) {

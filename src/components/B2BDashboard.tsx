@@ -13,7 +13,7 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart"
 import { getAnalytics } from "@/lib/mock-data/analytics"
-import { getCompany } from "@/lib/mock-data/companies"
+import { useCompanies } from "@/contexts/CompaniesContext"
 import type {
   BodyPart,
   DailyAnalytics,
@@ -87,6 +87,7 @@ const distributionConfig: ChartConfig = {
 
 export function B2BDashboard() {
   const [searchParams] = useSearchParams()
+  const { getCompany } = useCompanies()
   const companyIdRaw = searchParams.get("company_id")
   let companyId =
     companyIdRaw != null ? Number(companyIdRaw) : DEFAULT_B2B_COMPANY_ID

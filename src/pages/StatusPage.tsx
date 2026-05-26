@@ -27,7 +27,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { getCompany } from "@/lib/mock-data/companies"
+import { useCompanies } from "@/contexts/CompaniesContext"
 import {
   CHANGE_KIND_LABEL,
   allPlanChangeEvents,
@@ -66,6 +66,7 @@ function formatDate(iso: string): string {
 
 export default function StatusPage() {
   const [searchParams] = useSearchParams()
+  const { getCompany } = useCompanies()
   const type = searchParams.get("type") ?? "admin"
 
   // b2b はプラン変更履歴 = 個別社員の課金状態であり、商業意義が無く規格にも記載無いため非表示

@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { getCompany } from "@/lib/mock-data/companies"
+import { useCompanies } from "@/contexts/CompaniesContext"
 import { hasFatigueGap } from "@/lib/mock-data/types"
 import { users } from "@/lib/mock-data/users"
 
@@ -25,6 +25,7 @@ function formatDate(iso: string): string {
 export default function UsersPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  const { getCompany } = useCompanies()
   const type = searchParams.get("type") ?? "admin"
   const companyIdRaw = searchParams.get("company_id")
   const [query, setQuery] = useState("")

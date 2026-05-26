@@ -21,7 +21,8 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar"
-import { getCompany } from "@/lib/mock-data/companies"
+import { useCompanies } from "@/contexts/CompaniesContext"
+import type { Company } from "@/lib/mock-data/types"
 
 const navItems: NavItem[] = [
   { title: "ダッシュボード", url: "/dashboard", icon: <LayoutDashboardIcon /> },
@@ -52,20 +53,21 @@ const navItems: NavItem[] = [
 
 // 視点 + company_id から sidebar footer に表示する管理者情報を組み立てる。
 // mock 値で UI 確認用、真實実装では JWT claim から取得する。
-function buildNavUser(type: string, companyId: number): NavUserData {
+function buildNavUser(
+  type: string,
+  company: Company | undefined
+): NavUserData {
   if (type === "oem") {
-    const c = getCompany(companyId)
-    const isKol = c?.subType === "influencer"
+    const isKol = company?.subType === "influencer"
     return {
-      name: c ? `${c.name} 管理者` : "OEM 管理者",
+      name: company ? `${company.name} 管理者` : "OEM 管理者",
       role: isKol ? "OEM(KOL)" : "OEM(店舗)",
       initial: isKol ? "K" : "店",
     }
   }
   if (type === "b2b") {
-    const c = getCompany(companyId)
     return {
-      name: c ? `${c.name} HR` : "BtoB HR",
+      name: company ? `${company.name} HR` : "BtoB HR",
       role: "BtoB クライアント",
       initial: "企",
     }
@@ -81,13 +83,14 @@ function buildNavUser(type: string, companyId: number): NavUserData {
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  const { getCompany } = useCompanies()
   const type = searchParams.get("type") ?? "admin"
   const companyId = Number(searchParams.get("company_id") ?? 0)
 
   const visibleNavItems = navItems.filter(
     (item) => !item.hiddenFor?.includes(type)
   )
-  const navUser = buildNavUser(type, companyId)
+  const navUser = buildNavUser(type, getCompany(companyId))
 
   function handleAccountClick() {
     const qs = searchParams.toString()

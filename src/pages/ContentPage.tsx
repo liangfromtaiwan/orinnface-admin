@@ -37,7 +37,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { getCompany } from "@/lib/mock-data/companies"
+import { useCompanies } from "@/contexts/CompaniesContext"
 import { VIDEO_CATEGORY_LABEL } from "@/lib/mock-data/types"
 import {
   allViewRecords,
@@ -57,6 +57,7 @@ const durationChartConfig: ChartConfig = {
 
 export default function ContentPage() {
   const [searchParams] = useSearchParams()
+  const { getCompany } = useCompanies()
   const type = searchParams.get("type") ?? "admin"
   const companyIdRaw = searchParams.get("company_id")
   const companyId = companyIdRaw != null ? Number(companyIdRaw) : 0

@@ -27,7 +27,7 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart"
 import { getActiveUserStats, getAnalytics } from "@/lib/mock-data/analytics"
-import { getCompany } from "@/lib/mock-data/companies"
+import { useCompanies } from "@/contexts/CompaniesContext"
 import { getPlanStats } from "@/lib/mock-data/plans"
 import type {
   CompanySubType,
@@ -192,6 +192,7 @@ function stackedBars(keys: string[]) {
 
 export function OEMDashboard() {
   const [searchParams] = useSearchParams()
+  const { getCompany } = useCompanies()
   const companyIdRaw = searchParams.get("company_id")
   let companyId =
     companyIdRaw != null ? Number(companyIdRaw) : DEFAULT_OEM_COMPANY_ID

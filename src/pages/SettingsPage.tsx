@@ -2,15 +2,14 @@ import { useState } from "react"
 import {
   BellIcon,
   Building2Icon,
-  BuildingIcon,
   CreditCardIcon,
-  StoreIcon,
   VideoIcon,
   type LucideIcon,
 } from "lucide-react"
 import { useSearchParams } from "react-router-dom"
 import { toast } from "sonner"
 
+import { CompanyProfileCard } from "@/components/CompanyProfileCard"
 import { MembersCard } from "@/components/MembersCard"
 import {
   Avatar,
@@ -90,24 +89,20 @@ function initialAccountFor(type: string, companyId: number): AccountInitial {
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024 // 2 MB
 
 function ProfileCard({ initial }: { initial: AccountInitial }) {
-  // 現在保存されている値(セッション内 mock 更新)
+  // 「保存済」値(button の dirty 判定基準)
+  const [savedName, setSavedName] = useState(initial.name)
+  const [savedDisplayName, setSavedDisplayName] = useState(initial.displayName)
+  const [savedAvatarUrl, setSavedAvatarUrl] = useState<string>("")
+
+  // 現在編集中の値
   const [name, setName] = useState(initial.name)
   const [displayName, setDisplayName] = useState(initial.displayName)
   const [avatarUrl, setAvatarUrl] = useState<string>("")
 
-  // Dialog 内の編集ドラフト
-  const [open, setOpen] = useState(false)
-  const [draftName, setDraftName] = useState(initial.name)
-  const [draftDisplay, setDraftDisplay] = useState(initial.displayName)
-  const [draftAvatar, setDraftAvatar] = useState<string>("")
-
-  function openDialog() {
-    // 現在保存値を drafts に再同期してから開く
-    setDraftName(name)
-    setDraftDisplay(displayName)
-    setDraftAvatar(avatarUrl)
-    setOpen(true)
-  }
+  const isDirty =
+    name !== savedName ||
+    displayName !== savedDisplayName ||
+    avatarUrl !== savedAvatarUrl
 
   function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -124,7 +119,7 @@ function ProfileCard({ initial }: { initial: AccountInitial }) {
     }
     const reader = new FileReader()
     reader.onload = () => {
-      setDraftAvatar(reader.result as string)
+      setAvatarUrl(reader.result as string)
     }
     reader.onerror = () => {
       toast.error("画像の読み込みに失敗しました")
@@ -132,24 +127,26 @@ function ProfileCard({ initial }: { initial: AccountInitial }) {
     reader.readAsDataURL(file)
   }
 
-  function handleSubmit() {
-    if (!draftName.trim()) {
+  function handleSave() {
+    const trimmedName = name.trim()
+    const trimmedDisplay = displayName.trim()
+    if (!trimmedName) {
       toast.error("姓名を入力してください")
       return
     }
-    if (!draftDisplay.trim()) {
+    if (!trimmedDisplay) {
       toast.error("表示名を入力してください")
       return
     }
-    setName(draftName.trim())
-    setDisplayName(draftDisplay.trim())
-    setAvatarUrl(draftAvatar)
+    setName(trimmedName)
+    setDisplayName(trimmedDisplay)
+    setSavedName(trimmedName)
+    setSavedDisplayName(trimmedDisplay)
+    setSavedAvatarUrl(avatarUrl)
     toast.success("保存しました")
-    setOpen(false)
   }
 
   const fallbackChar = displayName.slice(0, 1) || "?"
-  const draftFallback = draftDisplay.slice(0, 1) || "?"
 
   return (
     <Card>
@@ -160,121 +157,74 @@ function ProfileCard({ initial }: { initial: AccountInitial }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex items-center gap-4">
-          <Avatar className="size-16">
-            {avatarUrl && <AvatarImage src={avatarUrl} alt={name} />}
-            <AvatarFallback className="text-lg">
-              {fallbackChar}
-            </AvatarFallback>
-          </Avatar>
-          <div className="text-sm text-muted-foreground">アバター画像</div>
-        </div>
+        {/* アバター */}
         <div className="grid gap-2">
-          <label className="text-sm font-medium">姓名</label>
-          <Input value={name} disabled readOnly />
-        </div>
-        <div className="grid gap-2">
-          <label className="text-sm font-medium">表示名</label>
-          <Input value={displayName} disabled readOnly />
-        </div>
-        <div className="flex justify-end">
-          <Dialog
-            open={open}
-            onOpenChange={(o) => {
-              if (o) openDialog()
-              else setOpen(false)
-            }}
-          >
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm">
-                変更
+          <label className="text-sm font-medium">アバター画像</label>
+          <div className="flex items-center gap-4">
+            <Avatar className="size-16">
+              {avatarUrl && <AvatarImage src={avatarUrl} alt={name} />}
+              <AvatarFallback className="text-lg">
+                {fallbackChar}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild variant="outline" size="sm">
+                <label className="cursor-pointer">
+                  画像を選択
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleAvatarChange}
+                  />
+                </label>
               </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>プロフィール変更</DialogTitle>
-                <DialogDescription>
-                  管理画面に表示される基本情報を変更します。
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-2">
-                <div className="grid gap-2">
-                  <label className="text-sm font-medium">
-                    アバター画像
-                  </label>
-                  <div className="flex items-center gap-4">
-                    <Avatar className="size-16">
-                      {draftAvatar && (
-                        <AvatarImage src={draftAvatar} alt="preview" />
-                      )}
-                      <AvatarFallback className="text-lg">
-                        {draftFallback}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex flex-wrap gap-2">
-                      <Button asChild variant="outline" size="sm">
-                        <label className="cursor-pointer">
-                          画像を選択
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={handleAvatarChange}
-                          />
-                        </label>
-                      </Button>
-                      {draftAvatar && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setDraftAvatar("")}
-                        >
-                          削除
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    PNG / JPEG、最大 2MB
-                  </p>
-                </div>
-                <div className="grid gap-2">
-                  <label
-                    htmlFor="profile-name"
-                    className="text-sm font-medium"
-                  >
-                    姓名
-                  </label>
-                  <Input
-                    id="profile-name"
-                    value={draftName}
-                    onChange={(e) => setDraftName(e.target.value)}
-                    placeholder="姓 名"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <label
-                    htmlFor="profile-display"
-                    className="text-sm font-medium"
-                  >
-                    表示名
-                  </label>
-                  <Input
-                    id="profile-display"
-                    value={draftDisplay}
-                    onChange={(e) => setDraftDisplay(e.target.value)}
-                    placeholder="サイドバー等に表示される名前"
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setOpen(false)}>
-                  キャンセル
+              {avatarUrl && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setAvatarUrl("")}
+                >
+                  削除
                 </Button>
-                <Button onClick={handleSubmit}>保存</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+              )}
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            PNG / JPEG、最大 2MB
+          </p>
+        </div>
+
+        {/* 姓名 */}
+        <div className="grid gap-2">
+          <label htmlFor="profile-name" className="text-sm font-medium">
+            姓名
+          </label>
+          <Input
+            id="profile-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="姓 名"
+          />
+        </div>
+
+        {/* 表示名 */}
+        <div className="grid gap-2">
+          <label htmlFor="profile-display" className="text-sm font-medium">
+            表示名
+          </label>
+          <Input
+            id="profile-display"
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            placeholder="サイドバー等に表示される名前"
+          />
+        </div>
+
+        <div className="flex justify-end border-t pt-4">
+          <Button onClick={handleSave} size="sm" disabled={!isDirty}>
+            保存
+          </Button>
         </div>
       </CardContent>
     </Card>
@@ -549,11 +499,6 @@ const ADMIN_PLACEHOLDERS: SettingsSection[] = [
 
 const OEM_PLACEHOLDERS: SettingsSection[] = [
   {
-    icon: StoreIcon,
-    title: "自社プロフィール",
-    description: "店舗名 / ロゴ / 業態などの基本情報",
-  },
-  {
     icon: BellIcon,
     title: "通知設定",
     description: "自社ユーザーが要注意状態になった時の通知",
@@ -566,11 +511,6 @@ const OEM_PLACEHOLDERS: SettingsSection[] = [
 ]
 
 const B2B_PLACEHOLDERS: SettingsSection[] = [
-  {
-    icon: BuildingIcon,
-    title: "自社プロフィール",
-    description: "企業名 / ロゴ / 業態などの基本情報",
-  },
   {
     icon: BellIcon,
     title: "通知設定",
@@ -624,6 +564,14 @@ export default function SettingsPage() {
         <h2 className="text-lg font-medium">メンバー管理</h2>
         <MembersCard type={type} companyId={companyId} />
       </section>
+
+      {/* 自社プロフィール section(OEM / BtoB のみ表示。admin は規格上不要) */}
+      {(type === "oem" || type === "b2b") && (
+        <section className="space-y-4">
+          <h2 className="text-lg font-medium">自社プロフィール</h2>
+          <CompanyProfileCard type={type} companyId={companyId} />
+        </section>
+      )}
 
       {/* その他 placeholder */}
       <section className="space-y-4">

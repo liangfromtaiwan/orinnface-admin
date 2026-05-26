@@ -24,7 +24,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { companies, getCompany } from "@/lib/mock-data/companies"
+import { useCompanies } from "@/contexts/CompaniesContext"
 import type {
   Company,
   CompanySubType,
@@ -48,6 +48,7 @@ export function CompanySwitcher() {
   const { isMobile } = useSidebar()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  const { companies, getCompany } = useCompanies()
 
   const companyIdRaw = searchParams.get("company_id")
   const companyId = companyIdRaw != null ? Number(companyIdRaw) : 0
