@@ -4,6 +4,7 @@ import { Layout } from "@/components/Layout"
 import { Toaster } from "@/components/ui/sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { CompaniesProvider } from "@/contexts/CompaniesContext"
+import { UserProfilesProvider } from "@/contexts/UserProfilesContext"
 import DashboardPage from "./pages/DashboardPage"
 import UsersPage from "./pages/UsersPage"
 import UserDetailPage from "./pages/UserDetailPage"
@@ -15,6 +16,7 @@ import SettingsPage from "./pages/SettingsPage"
 export default function App() {
   return (
     <CompaniesProvider>
+      <UserProfilesProvider>
       <TooltipProvider>
         <BrowserRouter>
           <Routes>
@@ -33,6 +35,7 @@ export default function App() {
         </BrowserRouter>
         <Toaster />
       </TooltipProvider>
+      </UserProfilesProvider>
     </CompaniesProvider>
   )
 }

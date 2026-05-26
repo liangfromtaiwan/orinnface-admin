@@ -25,20 +25,6 @@ const MAX_LOGO_BYTES = 2 * 1024 * 1024 // 2 MB
 const OEM_INDUSTRIES = ["美容", "フィットネス", "飲食", "KOL", "その他"] as const
 const B2B_INDUSTRIES = ["IT", "製造", "金融", "サービス", "その他"] as const
 
-// 視点 + companyId に応じた業態の初期値(mock)
-function initialIndustryFor(
-  type: string,
-  companyId: number,
-  subType: string | undefined
-): string {
-  if (type === "oem") {
-    if (subType === "influencer") return "KOL"
-    return "美容"
-  }
-  // b2b — mock 用に company_id ごとに業種を変える
-  return companyId === 4 ? "サービス" : "IT"
-}
-
 export function CompanyProfileCard({
   type,
   companyId,
@@ -46,29 +32,21 @@ export function CompanyProfileCard({
   type: "oem" | "b2b"
   companyId: number
 }) {
-  const { getCompany, updateCompany } = useCompanies()
-  const initialCompany = getCompany(companyId)
-  const initialName = initialCompany?.name ?? ""
-  const initialIndustry = initialIndustryFor(
-    type,
-    companyId,
-    initialCompany?.subType
-  )
+  const { getCompany, updateCompany, getCompanyExtra, updateCompanyExtra } =
+    useCompanies()
+  const company = getCompany(companyId)
+  const savedExtra = getCompanyExtra(companyId)
+  const savedName = company?.name ?? ""
 
-  // 「保存済」値(button の dirty 判定基準)
-  const [savedName, setSavedName] = useState(initialName)
-  const [savedIndustry, setSavedIndustry] = useState(initialIndustry)
-  const [savedLogoUrl, setSavedLogoUrl] = useState<string>("")
-
-  // 現在編集中の値
-  const [name, setName] = useState(initialName)
-  const [industry, setIndustry] = useState(initialIndustry)
-  const [logoUrl, setLogoUrl] = useState<string>("")
+  // 現在編集中の値(saved は Context 由来、保存後に自動更新 → isDirty が false に)
+  const [name, setName] = useState(savedName)
+  const [industry, setIndustry] = useState(savedExtra.industry)
+  const [logoUrl, setLogoUrl] = useState<string>(savedExtra.logoUrl)
 
   const isDirty =
     name !== savedName ||
-    industry !== savedIndustry ||
-    logoUrl !== savedLogoUrl
+    industry !== savedExtra.industry ||
+    logoUrl !== savedExtra.logoUrl
 
   const industries = type === "oem" ? OEM_INDUSTRIES : B2B_INDUSTRIES
   const nameLabel = type === "oem" ? "店舗名 / KOL 名" : "企業名"
@@ -110,10 +88,8 @@ export function CompanyProfileCard({
     }
     // Context 経由で更新 → Dashboard / Sidebar 等の他画面にも反映
     updateCompany(companyId, { name: trimmed })
+    updateCompanyExtra(companyId, { industry, logoUrl })
     setName(trimmed)
-    setSavedName(trimmed)
-    setSavedIndustry(industry)
-    setSavedLogoUrl(logoUrl)
     toast.success("保存しました")
   }
 

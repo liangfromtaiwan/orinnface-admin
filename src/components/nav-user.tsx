@@ -1,6 +1,10 @@
 import { ChevronsUpDownIcon, LogOutIcon, UserIcon } from "lucide-react"
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui/avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +24,7 @@ export type NavUserData = {
   name: string
   role: string // 視点を示す副題(例:OEM 管理者 / BtoB HR)
   initial: string // Avatar fallback 用の 1 文字
+  avatarUrl?: string // 設定で uploaded されたアバター画像(data URL)
 }
 
 export function NavUser({
@@ -41,6 +46,9 @@ export function NavUser({
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
               <Avatar className="h-8 w-8 rounded-lg">
+                {user.avatarUrl && (
+                  <AvatarImage src={user.avatarUrl} alt={user.name} />
+                )}
                 <AvatarFallback className="rounded-lg">
                   {user.initial}
                 </AvatarFallback>

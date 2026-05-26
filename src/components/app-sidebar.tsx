@@ -22,6 +22,10 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 import { useCompanies } from "@/contexts/CompaniesContext"
+import {
+  useUserProfiles,
+  type UserProfile,
+} from "@/contexts/UserProfilesContext"
 import type { Company } from "@/lib/mock-data/types"
 
 const navItems: NavItem[] = [
@@ -51,32 +55,25 @@ const navItems: NavItem[] = [
   { title: "設定", url: "/settings", icon: <Settings2Icon /> },
 ]
 
-// 視点 + company_id から sidebar footer に表示する管理者情報を組み立てる。
-// mock 値で UI 確認用、真實実装では JWT claim から取得する。
+// 視点 + company_id + profile から sidebar footer に表示する情報を組み立てる。
+// name / avatar は UserProfilesContext から(=設定の「プロフィール」と連動)
+// role は type + company から決定(ユーザー編集不可)
 function buildNavUser(
   type: string,
-  company: Company | undefined
+  company: Company | undefined,
+  profile: UserProfile
 ): NavUserData {
+  let role = "OrinnME 運営"
   if (type === "oem") {
-    const isKol = company?.subType === "influencer"
-    return {
-      name: company ? `${company.name} 管理者` : "OEM 管理者",
-      role: isKol ? "OEM(KOL)" : "OEM(店舗)",
-      initial: isKol ? "K" : "店",
-    }
+    role = company?.subType === "influencer" ? "OEM(KOL)" : "OEM(店舗)"
+  } else if (type === "b2b") {
+    role = "BtoB クライアント"
   }
-  if (type === "b2b") {
-    return {
-      name: company ? `${company.name} HR` : "BtoB HR",
-      role: "BtoB クライアント",
-      initial: "企",
-    }
-  }
-  // admin
   return {
-    name: "OrinnME 田中",
-    role: "OrinnME 運営",
-    initial: "田",
+    name: profile.displayName || profile.name || "ユーザー",
+    role,
+    initial: (profile.displayName || profile.name || "?").slice(0, 1),
+    avatarUrl: profile.avatarUrl || undefined,
   }
 }
 
@@ -84,13 +81,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const { getCompany } = useCompanies()
+  const { getProfile } = useUserProfiles()
   const type = searchParams.get("type") ?? "admin"
   const companyId = Number(searchParams.get("company_id") ?? 0)
 
   const visibleNavItems = navItems.filter(
     (item) => !item.hiddenFor?.includes(type)
   )
-  const navUser = buildNavUser(type, getCompany(companyId))
+  const navUser = buildNavUser(
+    type,
+    getCompany(companyId),
+    getProfile(`${type}:${companyId}`)
+  )
 
   function handleAccountClick() {
     const qs = searchParams.toString()

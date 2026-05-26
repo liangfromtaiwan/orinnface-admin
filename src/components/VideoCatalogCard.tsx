@@ -561,7 +561,7 @@ export function VideoCatalogCard() {
                     size="sm"
                     onClick={() => setEditNewFileName("")}
                   >
-                    取消
+                    クリア
                   </Button>
                 )}
               </div>

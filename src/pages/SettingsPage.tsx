@@ -31,52 +31,10 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { useUserProfiles } from "@/contexts/UserProfilesContext"
 
-// ─────────────────────────────────────────────────────────────
-// 視点別 mock データ(真實実装では JWT claim から取得)
-// ─────────────────────────────────────────────────────────────
-
-type AccountInitial = {
-  name: string
-  displayName: string
-  email: string
-}
-
-function initialAccountFor(type: string, companyId: number): AccountInitial {
-  if (type === "oem") {
-    if (companyId === 2) {
-      return {
-        name: "Yumi",
-        displayName: "Yumi",
-        email: "yumi@orinnme-partner.jp",
-      }
-    }
-    return {
-      name: "山田 健太",
-      displayName: "山田",
-      email: "kenta@shop-a.jp",
-    }
-  }
-  if (type === "b2b") {
-    if (companyId === 4) {
-      return {
-        name: "佐藤 美穂",
-        displayName: "佐藤",
-        email: "miho.sato@kigyo-y.jp",
-      }
-    }
-    return {
-      name: "鈴木 一郎",
-      displayName: "鈴木",
-      email: "ichiro.suzuki@kigyo-x.jp",
-    }
-  }
-  return {
-    name: "田中 太郎",
-    displayName: "田中",
-    email: "tanaka@orinnme.jp",
-  }
-}
+// プロフィール / メール初期値は UserProfilesContext で管理。
+// SettingsPage は profileKey(`${type}:${companyId}`)を子に渡すのみ。
 
 // ─────────────────────────────────────────────────────────────
 // プロフィール Card
@@ -84,21 +42,19 @@ function initialAccountFor(type: string, companyId: number): AccountInitial {
 
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024 // 2 MB
 
-function ProfileCard({ initial }: { initial: AccountInitial }) {
-  // 「保存済」値(button の dirty 判定基準)
-  const [savedName, setSavedName] = useState(initial.name)
-  const [savedDisplayName, setSavedDisplayName] = useState(initial.displayName)
-  const [savedAvatarUrl, setSavedAvatarUrl] = useState<string>("")
+function ProfileCard({ profileKey }: { profileKey: string }) {
+  const { getProfile, updateProfile } = useUserProfiles()
+  const saved = getProfile(profileKey)
 
-  // 現在編集中の値
-  const [name, setName] = useState(initial.name)
-  const [displayName, setDisplayName] = useState(initial.displayName)
-  const [avatarUrl, setAvatarUrl] = useState<string>("")
+  // 現在編集中の値(saved は Context 由来、保存後に自動更新 → isDirty が false に)
+  const [name, setName] = useState(saved.name)
+  const [displayName, setDisplayName] = useState(saved.displayName)
+  const [avatarUrl, setAvatarUrl] = useState<string>(saved.avatarUrl)
 
   const isDirty =
-    name !== savedName ||
-    displayName !== savedDisplayName ||
-    avatarUrl !== savedAvatarUrl
+    name !== saved.name ||
+    displayName !== saved.displayName ||
+    avatarUrl !== saved.avatarUrl
 
   function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -136,9 +92,12 @@ function ProfileCard({ initial }: { initial: AccountInitial }) {
     }
     setName(trimmedName)
     setDisplayName(trimmedDisplay)
-    setSavedName(trimmedName)
-    setSavedDisplayName(trimmedDisplay)
-    setSavedAvatarUrl(avatarUrl)
+    // Context 経由で更新 → Sidebar 等の他画面にも反映、saved も自動更新
+    updateProfile(profileKey, {
+      name: trimmedName,
+      displayName: trimmedDisplay,
+      avatarUrl,
+    })
     toast.success("保存しました")
   }
 
@@ -231,7 +190,9 @@ function ProfileCard({ initial }: { initial: AccountInitial }) {
 // メール変更 Card + Dialog
 // ─────────────────────────────────────────────────────────────
 
-function EmailCard({ initial }: { initial: AccountInitial }) {
+function EmailCard({ profileKey }: { profileKey: string }) {
+  const { getProfile } = useUserProfiles()
+  const saved = getProfile(profileKey)
   const [open, setOpen] = useState(false)
   const [newEmail, setNewEmail] = useState("")
   const [confirmEmail, setConfirmEmail] = useState("")
@@ -260,7 +221,7 @@ function EmailCard({ initial }: { initial: AccountInitial }) {
       <CardContent className="space-y-4">
         <div className="grid gap-2">
           <label className="text-sm font-medium">現在のメール</label>
-          <Input value={initial.email} disabled readOnly />
+          <Input value={saved.email} disabled readOnly />
         </div>
         <div className="flex justify-end">
           <Dialog open={open} onOpenChange={setOpen}>
@@ -473,7 +434,7 @@ export default function SettingsPage() {
   const [searchParams] = useSearchParams()
   const type = searchParams.get("type") ?? "admin"
   const companyId = Number(searchParams.get("company_id") ?? 0)
-  const initial = initialAccountFor(type, companyId)
+  const profileKey = `${type}:${companyId}`
 
   return (
     <div className="space-y-10">
@@ -485,11 +446,12 @@ export default function SettingsPage() {
       </div>
 
       {/* アカウント section(全 3 視角共通の実装) */}
+      {/* key={profileKey} で視点切替時に確実に remount → 編集中の draft を捨てる */}
       <section className="space-y-4">
         <h2 className="text-lg font-medium">アカウント</h2>
         <div className="grid grid-cols-1 gap-4">
-          <ProfileCard initial={initial} />
-          <EmailCard initial={initial} />
+          <ProfileCard key={`profile-${profileKey}`} profileKey={profileKey} />
+          <EmailCard key={`email-${profileKey}`} profileKey={profileKey} />
           <PasswordCard />
         </div>
       </section>
@@ -504,7 +466,11 @@ export default function SettingsPage() {
       {(type === "oem" || type === "b2b") && (
         <section className="space-y-4">
           <h2 className="text-lg font-medium">自社プロフィール</h2>
-          <CompanyProfileCard type={type} companyId={companyId} />
+          <CompanyProfileCard
+            key={`company-${profileKey}`}
+            type={type}
+            companyId={companyId}
+          />
         </section>
       )}
 
