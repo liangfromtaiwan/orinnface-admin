@@ -5,13 +5,13 @@ import {
   BuildingIcon,
   CreditCardIcon,
   StoreIcon,
-  UsersIcon,
   VideoIcon,
   type LucideIcon,
 } from "lucide-react"
 import { useSearchParams } from "react-router-dom"
 import { toast } from "sonner"
 
+import { MembersCard } from "@/components/MembersCard"
 import {
   Avatar,
   AvatarFallback,
@@ -531,11 +531,6 @@ type SettingsSection = {
 
 const ADMIN_PLACEHOLDERS: SettingsSection[] = [
   {
-    icon: UsersIcon,
-    title: "メンバー管理",
-    description: "社内メンバー(Owner / Admin / Viewer)の招待・権限管理",
-  },
-  {
     icon: Building2Icon,
     title: "提供先管理",
     description: "OEM / BtoB クライアントの追加・停止・プラン変更",
@@ -554,11 +549,6 @@ const ADMIN_PLACEHOLDERS: SettingsSection[] = [
 
 const OEM_PLACEHOLDERS: SettingsSection[] = [
   {
-    icon: UsersIcon,
-    title: "メンバー管理",
-    description: "店舗 / KOL スタッフ(管理者 / メンバー)の招待・権限管理",
-  },
-  {
     icon: StoreIcon,
     title: "自社プロフィール",
     description: "店舗名 / ロゴ / 業態などの基本情報",
@@ -576,11 +566,6 @@ const OEM_PLACEHOLDERS: SettingsSection[] = [
 ]
 
 const B2B_PLACEHOLDERS: SettingsSection[] = [
-  {
-    icon: UsersIcon,
-    title: "メンバー管理",
-    description: "HR チーム(管理者 / メンバー)の招待・権限管理",
-  },
   {
     icon: BuildingIcon,
     title: "自社プロフィール",
@@ -632,6 +617,12 @@ export default function SettingsPage() {
           <EmailCard initial={initial} />
           <PasswordCard />
         </div>
+      </section>
+
+      {/* メンバー管理 section(視点別の Role 階層) */}
+      <section className="space-y-4">
+        <h2 className="text-lg font-medium">メンバー管理</h2>
+        <MembersCard type={type} companyId={companyId} />
       </section>
 
       {/* その他 placeholder */}
