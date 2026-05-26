@@ -1,8 +1,6 @@
 import { useState } from "react"
 import {
-  BellIcon,
   Building2Icon,
-  CreditCardIcon,
   VideoIcon,
   type LucideIcon,
 } from "lucide-react"
@@ -11,6 +9,8 @@ import { toast } from "sonner"
 
 import { CompanyProfileCard } from "@/components/CompanyProfileCard"
 import { MembersCard } from "@/components/MembersCard"
+import { NotificationCard } from "@/components/NotificationCard"
+import { PlanCard } from "@/components/PlanCard"
 import {
   Avatar,
   AvatarFallback,
@@ -490,38 +490,10 @@ const ADMIN_PLACEHOLDERS: SettingsSection[] = [
     title: "動画 catalog",
     description: "動画の追加・編集・カテゴリ管理",
   },
-  {
-    icon: BellIcon,
-    title: "通知設定",
-    description: "システム event 別の通知 ON / OFF",
-  },
 ]
 
-const OEM_PLACEHOLDERS: SettingsSection[] = [
-  {
-    icon: BellIcon,
-    title: "通知設定",
-    description: "自社ユーザーが要注意状態になった時の通知",
-  },
-  {
-    icon: CreditCardIcon,
-    title: "プラン / 請求",
-    description: "契約プランの確認・変更、請求履歴",
-  },
-]
-
-const B2B_PLACEHOLDERS: SettingsSection[] = [
-  {
-    icon: BellIcon,
-    title: "通知設定",
-    description: "集計値が閾値を超えた時のみ通知(個人特定情報は含まない)",
-  },
-  {
-    icon: CreditCardIcon,
-    title: "プラン / 請求",
-    description: "契約プランの確認・変更、請求履歴",
-  },
-]
+const OEM_PLACEHOLDERS: SettingsSection[] = []
+const B2B_PLACEHOLDERS: SettingsSection[] = []
 
 function placeholdersForType(type: string): SettingsSection[] {
   if (type === "oem") return OEM_PLACEHOLDERS
@@ -573,7 +545,22 @@ export default function SettingsPage() {
         </section>
       )}
 
-      {/* その他 placeholder */}
+      {/* 通知設定 section(全 3 視角、内容が異なる) */}
+      <section className="space-y-4">
+        <h2 className="text-lg font-medium">通知設定</h2>
+        <NotificationCard type={type} />
+      </section>
+
+      {/* プラン / 請求 section(OEM / BtoB のみ。admin は規格上不要) */}
+      {(type === "oem" || type === "b2b") && (
+        <section className="space-y-4">
+          <h2 className="text-lg font-medium">プラン / 請求</h2>
+          <PlanCard type={type} />
+        </section>
+      )}
+
+      {/* その他 placeholder(残項目があるときのみ表示) */}
+      {placeholders.length > 0 && (
       <section className="space-y-4">
         <h2 className="text-lg font-medium text-muted-foreground">
           その他の設定
@@ -610,6 +597,7 @@ export default function SettingsPage() {
           })}
         </div>
       </section>
+      )}
     </div>
   )
 }
