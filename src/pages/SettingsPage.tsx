@@ -1,6 +1,5 @@
 import { useState } from "react"
 import {
-  Building2Icon,
   VideoIcon,
   type LucideIcon,
 } from "lucide-react"
@@ -11,6 +10,7 @@ import { CompanyProfileCard } from "@/components/CompanyProfileCard"
 import { MembersCard } from "@/components/MembersCard"
 import { NotificationCard } from "@/components/NotificationCard"
 import { PlanCard } from "@/components/PlanCard"
+import { ProvidersCard } from "@/components/ProvidersCard"
 import {
   Avatar,
   AvatarFallback,
@@ -481,11 +481,6 @@ type SettingsSection = {
 
 const ADMIN_PLACEHOLDERS: SettingsSection[] = [
   {
-    icon: Building2Icon,
-    title: "提供先管理",
-    description: "OEM / BtoB クライアントの追加・停止・プラン変更",
-  },
-  {
     icon: VideoIcon,
     title: "動画 catalog",
     description: "動画の追加・編集・カテゴリ管理",
@@ -542,6 +537,14 @@ export default function SettingsPage() {
         <section className="space-y-4">
           <h2 className="text-lg font-medium">自社プロフィール</h2>
           <CompanyProfileCard type={type} companyId={companyId} />
+        </section>
+      )}
+
+      {/* 提供先管理 section(admin のみ表示) */}
+      {type === "admin" && (
+        <section className="space-y-4">
+          <h2 className="text-lg font-medium">提供先管理</h2>
+          <ProvidersCard />
         </section>
       )}
 
