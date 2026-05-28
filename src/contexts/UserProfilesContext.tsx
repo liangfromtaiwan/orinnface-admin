@@ -18,6 +18,9 @@ export type UserProfile = {
   displayName: string
   email: string
   avatarUrl: string
+  // メンバー管理上の Role(admin: Owner / Admin / Viewer、OEM/B2B: 管理者 / メンバー)
+  // 自分の Role は読み取り専用、変更は別管理者が行う(本番は backend で制御)
+  role: string
 }
 
 type UserProfilesContextValue = {
@@ -37,6 +40,7 @@ export function defaultProfileFor(key: string): UserProfile {
         displayName: "Yumi",
         email: "yumi@orinnme-partner.jp",
         avatarUrl: "",
+        role: "管理者",
       }
     }
     return {
@@ -44,6 +48,7 @@ export function defaultProfileFor(key: string): UserProfile {
       displayName: "山田",
       email: "kenta@shop-a.jp",
       avatarUrl: "",
+      role: "管理者",
     }
   }
   if (type === "b2b") {
@@ -53,6 +58,7 @@ export function defaultProfileFor(key: string): UserProfile {
         displayName: "佐藤",
         email: "miho.sato@kigyo-y.jp",
         avatarUrl: "",
+        role: "管理者",
       }
     }
     return {
@@ -60,6 +66,7 @@ export function defaultProfileFor(key: string): UserProfile {
       displayName: "鈴木",
       email: "ichiro.suzuki@kigyo-x.jp",
       avatarUrl: "",
+      role: "管理者",
     }
   }
   return {
@@ -67,6 +74,7 @@ export function defaultProfileFor(key: string): UserProfile {
     displayName: "田中",
     email: "tanaka@orinnme.jp",
     avatarUrl: "",
+    role: "Owner",
   }
 }
 

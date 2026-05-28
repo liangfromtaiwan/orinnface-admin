@@ -13,6 +13,7 @@ import StatusPage from "./pages/StatusPage"
 import CTAAnalysisPage from "./pages/CTAAnalysisPage"
 import SettingsPage from "./pages/SettingsPage"
 import LoginPage from "./pages/LoginPage"
+import AccountPage from "./pages/AccountPage"
 
 export default function App() {
   return (
@@ -32,6 +33,7 @@ export default function App() {
               <Route path="/status" element={<StatusPage />} />
               <Route path="/cta-analysis" element={<CTAAnalysisPage />} />
               <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/account" element={<AccountPage />} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Route>
           </Routes>
