@@ -18,25 +18,26 @@ function mulberry32(seed: number) {
 
 // 規格仕様:動画總本數 12 本、尺度は 30 秒 / 60 秒 のみ。
 // 5 カテゴリ × (30s + 60s) = 10 本 + ストレッチ・瞑想に 1 本ずつ追加 = 12 本。
+// 動画タイトルは 30-1〜30-6 / 60-1〜60-6 のシリアル番号方式(mock 段階の識別子)
 export const videos: Video[] = [
   // ストレッチ
-  { id: 1, title: "首肩クイックストレッチ", durationSeconds: 30, category: "stretch" },
-  { id: 2, title: "肩こり解消ストレッチ", durationSeconds: 60, category: "stretch", recommendedFor: ["ややお疲れ", "蓄積しています"] },
+  { id: 1, title: "30-1", durationSeconds: 30, category: "stretch" },
+  { id: 2, title: "60-1", durationSeconds: 60, category: "stretch", recommendedFor: ["ややお疲れ", "蓄積しています"] },
   // 瞑想
-  { id: 3, title: "30秒マインドリセット", durationSeconds: 30, category: "meditation" },
-  { id: 4, title: "1分集中呼吸瞑想", durationSeconds: 60, category: "meditation", recommendedFor: ["蓄積しています"] },
+  { id: 3, title: "30-2", durationSeconds: 30, category: "meditation" },
+  { id: 4, title: "60-2", durationSeconds: 60, category: "meditation", recommendedFor: ["蓄積しています"] },
   // ヨガ
-  { id: 5, title: "デスクサイドヨガ30秒", durationSeconds: 30, category: "yoga" },
-  { id: 6, title: "リラックスヨガフロー", durationSeconds: 60, category: "yoga", recommendedFor: ["ややお疲れ"] },
+  { id: 5, title: "30-3", durationSeconds: 30, category: "yoga" },
+  { id: 6, title: "60-3", durationSeconds: 60, category: "yoga", recommendedFor: ["ややお疲れ"] },
   // 呼吸
-  { id: 7, title: "深呼吸30秒", durationSeconds: 30, category: "breathing" },
-  { id: 8, title: "腹式呼吸エクササイズ", durationSeconds: 60, category: "breathing", recommendedFor: ["ややお疲れ"] },
+  { id: 7, title: "30-4", durationSeconds: 30, category: "breathing" },
+  { id: 8, title: "60-4", durationSeconds: 60, category: "breathing", recommendedFor: ["ややお疲れ"] },
   // アイケア
-  { id: 9, title: "目の疲れ瞬間ケア", durationSeconds: 30, category: "eye-care", recommendedFor: ["ややお疲れ"] },
-  { id: 10, title: "PC疲労 目元ストレッチ", durationSeconds: 60, category: "eye-care", recommendedFor: ["ややお疲れ", "蓄積しています"] },
+  { id: 9, title: "30-5", durationSeconds: 30, category: "eye-care", recommendedFor: ["ややお疲れ"] },
+  { id: 10, title: "60-5", durationSeconds: 60, category: "eye-care", recommendedFor: ["ややお疲れ", "蓄積しています"] },
   // 追加 2 本(規格 12 本に合わせ)
-  { id: 11, title: "朝の目覚めストレッチ", durationSeconds: 30, category: "stretch" },
-  { id: 12, title: "夜のリラックス瞑想", durationSeconds: 60, category: "meditation", recommendedFor: ["蓄積しています", "踏ん張りどき"] },
+  { id: 11, title: "30-6", durationSeconds: 30, category: "stretch" },
+  { id: 12, title: "60-6", durationSeconds: 60, category: "meditation", recommendedFor: ["蓄積しています", "踏ん張りどき"] },
 ]
 
 export function getVideoById(id: number): Video | undefined {
