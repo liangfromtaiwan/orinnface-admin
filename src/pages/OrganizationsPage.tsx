@@ -21,6 +21,13 @@ import {
 } from "@/components/ui/collapsible"
 import { Input } from "@/components/ui/input"
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
   Table,
   TableBody,
   TableCell,
@@ -44,6 +51,7 @@ type StoreStats = { customers: number; eligible: number }
 export default function OrganizationsPage() {
   const { companies, stores, storeDataLinks, analysisSessions } = useSession()
   const [query, setQuery] = useState("")
+  const [contract, setContract] = useState<Company["contractStatus"] | "all">("all")
   const [manuallyOpen, setManuallyOpen] = useState<Set<string>>(new Set())
 
   const statsByStore = useMemo(() => {
@@ -74,6 +82,13 @@ export default function OrganizationsPage() {
     return map
   }, [])
 
+  /** filter の選択肢に件数を出すため、検索前の母数で数える。 */
+  const contractCounts = useMemo(() => {
+    const map = new Map<Company["contractStatus"], number>()
+    for (const c of companies) map.set(c.contractStatus, (map.get(c.contractStatus) ?? 0) + 1)
+    return map
+  }, [companies])
+
   const q = query.trim().toLowerCase()
 
   /** 会社名の一致、または配下店舗名の一致で絞り込む。 */
@@ -85,8 +100,9 @@ export default function OrganizationsPage() {
         const hitStores = own.filter((s) => s.name.toLowerCase().includes(q))
         return { company, own, companyHit, hitStores }
       })
+      .filter((r) => contract === "all" || r.company.contractStatus === contract)
       .filter((r) => !q || r.companyHit || r.hitStores.length > 0)
-  }, [companies, stores, q])
+  }, [companies, stores, q, contract])
 
   const visibleStoreCount = rows.reduce((n, r) => n + r.own.length, 0)
 
@@ -105,22 +121,45 @@ export default function OrganizationsPage() {
         title="会社・店舗"
         description={`${rows.length} 社 / ${visibleStoreCount} 店舗。契約作成は V1 では手動運用です。`}
         actions={
-          <div className="relative">
-            <SearchIcon className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="会社名・店舗名"
-              className="h-9 w-64 pl-8"
-            />
-          </div>
+          <>
+            <div className="relative">
+              <SearchIcon className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="会社名・店舗名"
+                className="h-9 w-64 pl-8"
+              />
+            </div>
+            <Select
+              value={contract}
+              onValueChange={(v) => setContract(v as Company["contractStatus"] | "all")}
+            >
+              <SelectTrigger className="h-9 w-40">
+                <SelectValue placeholder="契約状態" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">
+                  すべての契約状態 ({companies.length})
+                </SelectItem>
+                {(
+                  Object.keys(CONTRACT_LABEL) as Company["contractStatus"][]
+                ).map((status) => (
+                  <SelectItem key={status} value={status}>
+                    {CONTRACT_LABEL[status]} ({contractCounts.get(status) ?? 0})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </>
         }
       />
 
       {rows.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            「{query}」に一致する会社・店舗はありません
+            {q ? `「${query}」に一致する会社・店舗はありません` : "該当する会社はありません"}
+            {contract !== "all" ? `(契約状態: ${CONTRACT_LABEL[contract]})` : ""}
           </CardContent>
         </Card>
       ) : null}
