@@ -10,7 +10,7 @@ import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from "rec
 
 import { AggregateStat } from "@/components/AggregateStat"
 import { ChartCard } from "@/components/ChartCard"
-import { PageHeader, SpecNote } from "@/components/PageHeader"
+import { PageHeader, PeriodBanner, SpecNote } from "@/components/PageHeader"
 import {
   ChartContainer,
   ChartTooltip,
@@ -154,6 +154,15 @@ export default function DashboardPage() {
               </SelectContent>
             </Select>
           </>
+        }
+      />
+
+      <PeriodBanner
+        period={period}
+        note={
+          storeId === "all"
+            ? "すべての店舗"
+            : stores.find((s) => s.id === storeId)?.name
         }
       />
 

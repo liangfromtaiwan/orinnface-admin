@@ -285,9 +285,17 @@ customers.forEach((c, i) => {
   const link = storeDataLinks.find((l) => l.dataSubjectId === c.dataSubjectId)
   const sessionCount = c.unregistered ? 1 : 1 + Math.floor(rand() * 5)
 
+  // 約 3 割を「離脱した顧客」にし、残りは直近まで継続しているものとする。
+  // 全員の履歴が古いと今月の KPI が 0 になり、逆に全員が直近だと
+  // 保持期限の deletion_queued / deleted が再現できないため、両方を混ぜる。
+  const churned = i % 10 >= 7
+  const recencyOffset = churned
+    ? 130 + Math.floor(rand() * 90)
+    : Math.floor(rand() * 40)
+
   for (let s = 0; s < sessionCount; s++) {
-    const daysBack = 210 - s * 30 - Math.floor(rand() * 10)
-    if (daysBack < 0) continue
+    // s = 0 が最も古い。最終回が recencyOffset 日前になる。
+    const daysBack = recencyOffset + (sessionCount - 1 - s) * 30
 
     // 一部を failed / 再解析にして状態表示を確認できるようにする。
     const failed = !c.unregistered && i % 17 === 5 && s === sessionCount - 1

@@ -4,6 +4,10 @@
  * 🔴 平均値・中央値・改善率は母数・期間・対象条件・欠測数・使用 version を
  *    必ず表示する。少数母数を隠さない。
  *    → この component を通すことで、画面ごとの表示漏れを防ぐ。
+ *
+ * 期間だけはカードに出さない。同一画面の全カードが同じ期間になり冗長なため、
+ * 画面上部の <PeriodBanner> で一度だけ表示する。
+ * 🔴 AggregateStat を使う画面には必ず PeriodBanner を置くこと(§6 の期間表示要件)。
  */
 
 import { AlertTriangleIcon } from "lucide-react"
@@ -34,8 +38,7 @@ export function AggregateStat({
   provisional,
   className,
 }: Props) {
-  const { value, numerator, denominator, missing, period, conditionLabel, version } =
-    aggregate
+  const { value, numerator, denominator, missing, conditionLabel, version } = aggregate
 
   const noData = denominator === 0
   const smallSample = denominator > 0 && denominator < SMALL_SAMPLE_THRESHOLD
@@ -86,10 +89,6 @@ export function AggregateStat({
           <div className="flex gap-1">
             <dt>欠測</dt>
             <dd className="tabular-nums">{missing.toLocaleString("ja-JP")}</dd>
-          </div>
-          <div className="flex gap-1">
-            <dt>期間</dt>
-            <dd>{period.label}</dd>
           </div>
           {version ? (
             <div className="flex gap-1">
