@@ -12,6 +12,7 @@ import { useMemo, useState } from "react"
 import { Link, useParams } from "react-router-dom"
 import { AlertTriangleIcon, ArrowLeftIcon } from "lucide-react"
 
+import { InfoHint } from "@/components/InfoHint"
 import { PageHeader, SpecNote } from "@/components/PageHeader"
 import { RawImagePlaceholder, RawImageViewButton } from "@/components/RawImageAccess"
 import { Badge } from "@/components/ui/badge"
@@ -217,10 +218,13 @@ export default function CustomerDetailPage() {
         <TabsContent value="care" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">プラン別の見え方</CardTitle>
-              <CardDescription className="text-xs">
-                実際の判定は Backend entitlement が正です。ここは説明表示です。
-              </CardDescription>
+              <CardTitle className="flex items-center gap-1.5 text-base">
+                プラン別の見え方
+                <InfoHint label="プラン別の見え方について">
+                  実際の判定は Backend entitlement が正です。ここは「その顧客に何が
+                  見えているはずか」を説明するための表示です。
+                </InfoHint>
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-1 text-sm">
               <div>
@@ -437,10 +441,13 @@ function SessionDetail({ session }: { session: AnalysisSession }) {
       {run ? (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">推奨(Backend 正式 run)</CardTitle>
-            <CardDescription className="text-xs">
-              AI /v1/recommend の値は本番画面・保存に使いません。
-            </CardDescription>
+            <CardTitle className="flex items-center gap-1.5 text-base">
+              推奨(Backend 正式 run)
+              <InfoHint label="推奨の出どころ">
+                正式推奨は Backend だけが生成します。AI /v1/recommend の値は
+                本番画面・保存に使いません。
+              </InfoHint>
+            </CardTitle>
           </CardHeader>
           <CardContent className="px-0 pb-0">
             <Table>
@@ -527,8 +534,12 @@ function MetricGroupCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">{METRIC_GROUP_LABEL[group]}</CardTitle>
-        {note ? <CardDescription className="text-xs">{note}</CardDescription> : null}
+        <CardTitle className="flex items-center gap-1.5 text-base">
+          {METRIC_GROUP_LABEL[group]}
+          {note ? (
+            <InfoHint label={`${METRIC_GROUP_LABEL[group]} について`}>{note}</InfoHint>
+          ) : null}
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-1">
         {defs.map((def) => {
@@ -606,10 +617,13 @@ function ComparePanel({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">{title}</CardTitle>
-        <CardDescription className="text-xs">
-          左 = 古い日 / 右 = 新しい日。同一 metric_code の全項目を当時の version のまま表示します。
-        </CardDescription>
+        <CardTitle className="flex items-center gap-1.5 text-base">
+          {title}
+          <InfoHint label="比較の見かた">
+            左 = 古い日 / 右 = 新しい日。同一 analysis_type / metric_code の全項目を
+            当時の version のまま表示します。画像を削除したあとも数値履歴は残ります。
+          </InfoHint>
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">

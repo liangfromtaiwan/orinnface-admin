@@ -60,7 +60,7 @@
 - [ ] `menubar`
 - [ ] `navigation-menu`
 - [ ] `pagination`
-- [ ] `popover`
+- [x] `popover` ✅ 2026-08-30(InfoHint 用)
 - [x] `sonner` ✅ Day 1
 
 ### 日期 & 時間
@@ -88,13 +88,18 @@
 - [x] `app-sidebar` ✅ Day 2 - 主 Sidebar 組裝(來自 sidebar-07 客製)
 - [x] `nav-main` ✅ Day 2 - 主導航,接 React Router NavLink + 動態 active
 - [x] `nav-user` ✅ Day 2 - Sidebar Footer 使用者選單(日文化)
-- [x] `CompanySwitcher` ✅ Day 2 - 視角切換,URL 同步 `?company_id=X&type=Y`
-- [x] `StatCard` ✅ Day 3 - KPI 卡(title + big number + delta arrow + description)
-- [x] `ChartCard` ✅ Day 3 - 圖表卡片包裝(title + description + content)
-- [x] `AdminDashboard` ✅ Day 3 - ① 運営視角 dashboard 組合
-- [x] `B2BDashboard` ✅ Day 4 - ③ BtoB 集計專用 dashboard(隱私 banner + 集計圖)
-- [ ] `PageHeader` - 頁面標題列
+- [x] `ChartCard` ✅ Day 3 - 圖表卡片包裝(title + i アイコンで説明 + content)
+- [x] `PageHeader` / `SpecNote` / `PeriodBanner` ✅ 2026-08-30 - 頁面標題列・仕様注記・集計期間
+- [x] `AggregateStat` ✅ 2026-08-30 - KPI 卡。母数・欠測・version を必ず出す(§6)
+- [x] `InfoHint` ✅ 2026-08-30 - タイトル横の i アイコン。集計条件を popover で開く
+- [x] `RawImagePlaceholder` / `RawImageViewButton` ✅ 2026-08-30 - 生画像は非表示 + 理由入力付き一時閲覧
+- [x] `ViewerSwitcher` ✅ 2026-08-30 - ログインアカウント切替(membership から role を解決)
+- [x] `RequireScreen` ✅ 2026-08-30 - スコープ外画面へのアクセスを弾く(表示制御)
 - [ ] `EmptyState` - 空狀態顯示
+
+> ⚠️ v1.0 対応で削除: `CompanySwitcher` / `AdminDashboard` / `B2BDashboard` / `OEMDashboard`
+> / `StatCard`(→ AggregateStat) / `MembersCard` / `PlanCard` / `ProvidersCard`
+> / `VideoCatalogCard` / `NotificationCard` / `CompanyProfileCard`
 
 ## 維護指引
 

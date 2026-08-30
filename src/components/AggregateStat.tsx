@@ -12,6 +12,7 @@
 
 import { AlertTriangleIcon } from "lucide-react"
 
+import { InfoHint } from "@/components/InfoHint"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { Aggregate } from "@/lib/domain/kpi"
 import { cn } from "@/lib/utils"
@@ -38,7 +39,8 @@ export function AggregateStat({
   provisional,
   className,
 }: Props) {
-  const { value, numerator, denominator, missing, conditionLabel, version } = aggregate
+  const { value, numerator, denominator, missing, period, conditionLabel, version } =
+    aggregate
 
   const noData = denominator === 0
   const smallSample = denominator > 0 && denominator < SMALL_SAMPLE_THRESHOLD
@@ -46,8 +48,24 @@ export function AggregateStat({
   return (
     <Card className={cn(className)}>
       <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+        <CardTitle className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
           {title}
+          <InfoHint label={`${title} の集計条件`}>
+            <p className="font-medium text-foreground">{title}</p>
+            <p className="mt-1">{conditionLabel}</p>
+            <dl className="mt-2 space-y-0.5 border-t pt-2 text-muted-foreground">
+              <div className="flex gap-1">
+                <dt>期間</dt>
+                <dd className="tabular-nums">{period.label}</dd>
+              </div>
+              {version ? (
+                <div className="flex gap-1">
+                  <dt>version</dt>
+                  <dd className="font-mono">{version}</dd>
+                </div>
+              ) : null}
+            </dl>
+          </InfoHint>
           {provisional ? (
             <span className="rounded-sm border border-amber-300 bg-amber-50 px-1 text-[10px] font-normal text-amber-700">
               暫定
@@ -97,10 +115,6 @@ export function AggregateStat({
             </div>
           ) : null}
         </dl>
-
-        <p className="text-[11px] leading-snug text-muted-foreground">
-          {conditionLabel}
-        </p>
 
         {smallSample ? (
           <p className="flex items-start gap-1 text-[11px] leading-snug text-amber-700">

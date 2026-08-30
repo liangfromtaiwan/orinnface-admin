@@ -10,10 +10,11 @@
 import { useMemo } from "react"
 import { toast } from "sonner"
 
+import { InfoHint } from "@/components/InfoHint"
 import { PageHeader, SpecNote } from "@/components/PageHeader"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Table,
   TableBody,
@@ -130,10 +131,14 @@ export default function CareVideosPage() {
 
       <Card className="py-0">
         <CardHeader className="pt-6">
-          <CardTitle className="text-base">差し替え申請</CardTitle>
-          <CardDescription className="text-xs">
-            本部承認前の asset は顧客へ公開できません。重複する有効期間は publish 前に拒否します。
-          </CardDescription>
+          <CardTitle className="flex items-center gap-1.5 text-base">
+            差し替え申請
+            <InfoHint label="差し替え申請について">
+              本部承認前の asset は顧客へ公開できません。重複する有効期間は publish 前に
+              拒否します。差し替えは care_asset_id だけを切り替え、video_code と pose_code は
+              変更しません。
+            </InfoHint>
+          </CardTitle>
         </CardHeader>
         <div className="overflow-x-auto">
           <Table>
