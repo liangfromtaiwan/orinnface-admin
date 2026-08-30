@@ -4,7 +4,7 @@ OrinnFACE 管理画面(`orinnface-admin-frontend`)。
 本部・契約企業管理者・店舗管理者・店舗スタッフ向けの管理 UI。
 
 - 正本規格: **orinnFACE 管理画面仕様書 v1.0**(2026-08-18 / FitWayWorld株式会社)
-  → 全文抽出 `docs/ADMIN_SPEC_v1.0.md` / 實作指引 `CLAUDE.md`
+  → 正本 PDF `docs/spec/orinnFACE_管理画面仕様書_v1.0.pdf` / 全文抽出 `docs/ADMIN_SPEC_v1.0.md` / 實作指引 `CLAUDE.md`
 - 使用者向け Figma 正本: file key `4NiQEpytzfygBpGhhpcXDa` の `node-id=13-2` と `node-id=99-2` のみ
   (`node-id=0-1` はテスト用。**完全に除外**)
 

@@ -4,8 +4,9 @@
 - 前版: v0.9.3(2026-08-10)
 - 用途: 実装・レビュー・運用で日常参照する正本
 
-> 本檔是原始 `.docx.pdf` 的**文字抽出版**(供 grep / diff 用),排版與表格線已遺失。
-> 有疑義時以吉田提供的原始文件為準。實作指引摘要見 repo 根目錄 `CLAUDE.md`。
+> **正本 PDF**: [`docs/spec/orinnFACE_管理画面仕様書_v1.0.pdf`](spec/orinnFACE_管理画面仕様書_v1.0.pdf)
+> 本檔是該 PDF 的**文字抽出版**(供 grep / diff 用),排版與表格線已遺失。有疑義時以 PDF 為準。
+> 實作指引摘要見 repo 根目錄 `CLAUDE.md`。
 
 ```text
 orinnFACE

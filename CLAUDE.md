@@ -1,7 +1,8 @@
 # OrinnFACE 管理画面 — 實作指引
 
 > 正本規格:**orinnFACE 管理画面仕様書 v1.0**(2026-08-18 發行 / FitWayWorld株式会社 / 前版 v0.9.3)
-> 本檔是給 Claude Code 的實作指引,**規格判斷一律以 v1.0 正本為準**,repo 內摘要見 `docs/ADMIN_SPEC_v1.0.md`。
+> 本檔是給 Claude Code 的實作指引,**規格判斷一律以 v1.0 正本為準**。
+> 正本 PDF: `docs/spec/orinnFACE_管理画面仕様書_v1.0.pdf` / 文字抽出版(grep 用): `docs/ADMIN_SPEC_v1.0.md`
 
 ## 🔴 每個任務開始前必做
 
