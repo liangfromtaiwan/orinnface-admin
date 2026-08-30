@@ -139,9 +139,7 @@ export default function OrganizationsPage() {
                 <SelectValue placeholder="契約状態" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">
-                  すべての契約状態 ({companies.length})
-                </SelectItem>
+                <SelectItem value="all">すべて ({companies.length})</SelectItem>
                 {(
                   Object.keys(CONTRACT_LABEL) as Company["contractStatus"][]
                 ).map((status) => (
