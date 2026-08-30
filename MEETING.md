@@ -11,7 +11,7 @@
 
 - [ ] `npm run dev` をローカルで起動(production 落ちた時の fallback)
 - [ ] ブラウザに 2 タブ:
-  - https://orinnme-admin.vercel.app
+  - https://orinnface-admin.vercel.app
   - http://localhost:5173
 - [ ] **DEMO.md を別タブで開く**(議論時に参照)
 - [ ] GitHub repo も開いておく(commit 歴を見せる場合に)
@@ -27,7 +27,7 @@
 **URL**:`/dashboard`(初期表示)
 
 **話す**:
-- 「OrinnME 全体の俯瞰用 dashboard」
+- 「OrinnFACE 全体の俯瞰用 dashboard」
 - 4 KPI:再分析率 / 継続率 / ケア実行率 / 主観 vs AI 一致率
 - 表情・疲労分布の stacked bar(過去 7 日)
 - プラン推移:「**Premium が唯一の課金プランという理解で実装**」← 確認

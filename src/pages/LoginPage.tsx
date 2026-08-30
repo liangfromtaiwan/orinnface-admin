@@ -108,7 +108,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md space-y-6">
         {/* タイトル */}
         <div className="text-center">
-          <p className="text-base font-medium tracking-wide">OrinnME</p>
+          <p className="text-base font-medium tracking-wide">OrinnFACE</p>
           <h1 className="mt-1 text-2xl font-semibold">ログイン</h1>
         </div>
 

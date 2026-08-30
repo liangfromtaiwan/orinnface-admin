@@ -1,10 +1,10 @@
-# OrinnME 管理画面 — 画面一覧
+# OrinnFACE 管理画面 — 画面一覧
 
 > 工程師接手時の「画面マップ」として参照してください。
 > 各画面の URL、3 視点での表示差異、使用 component、依存する mock data を網羅。
 >
 > **起草日**:2026-05-20
-> **対象**:`/Users/liang/Documents/orinnme-admin/`
+> **対象**:`/Users/liang/Documents/orinnface-admin/`
 > **routing 定義**:`src/App.tsx`
 > **関連ドキュメント**:`API_CONTRACT.md` / `DESIGN_DECISIONS.md` / `SPEC_REVIEW.md`
 

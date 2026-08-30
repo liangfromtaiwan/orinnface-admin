@@ -12,7 +12,7 @@
 | v1 仕様書 | 管理画面の構成と KPI(2026/3 最終更新) |
 | v2 仕様書 | サービス全体の更新(管理画面への影響あり、2026/3 最終更新) |
 | 文言管理機能(規格 3-2 / 4-3) | 雇主指示により全削除 ✅ |
-| Production URL | https://orinnme-admin.vercel.app |
+| Production URL | https://orinnface-admin.vercel.app |
 
 **凡例**:
 - ✅ 規格通り実装済み

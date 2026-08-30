@@ -1,4 +1,4 @@
-# OrinnME 管理画面 - 6 日プロジェクト進度追蹤
+# OrinnFACE 管理画面 - 6 日プロジェクト進度追蹤
 
 > 起始日:Day 1 已完成
 > 目標:下週一交付可點擊原型給雇主
@@ -37,7 +37,7 @@
 - [x] React Router v7
 - [x] Noto Sans JP 字體(已安裝未 @import)
 - [x] React Hook Form + Zod + @hookform/resolvers
-- [x] CLAUDE.md(OrinnME 強化版,含 self-check)
+- [x] CLAUDE.md(OrinnFACE 強化版,含 self-check)
 - [x] .claude/ 規範資料夾(mcp-usage、shadcn-usage、design-tokens、
   components-installed、patterns/{data-table,form-page,settings-page})
 - [x] .mcp.json(shadcn MCP 設定)
@@ -146,7 +146,7 @@
 - [x] 設計決策已記錄於上方 設計決策 段落(Premium 為唯一課金 tier)
 
 #### 3-4. 提供先別利用狀況 ✅
-- [x] Card + Table 列出 4 家提供先(id=0 OrinnME運営本身排除)
+- [x] Card + Table 列出 4 家提供先(id=0 OrinnFACE運営本身排除)
 - [x] 欄位:提供先 / 区分(OEM/BtoB Badge)/ DAU(7日平均)/ 継続率(7日)/ ケア実行率(本日)
 - [x] 點擊列 → setSearchParams(`?company_id=X&type=Y`),sidebar CompanySwitcher 即時同步
 - [x] Day 4 加 type 條件渲染後完成切換動線
@@ -162,7 +162,7 @@
 ### Day 3 結束時你應該有
 - 第一個視覺完整、功能完整的頁面
 - 4 種圖表類型都跑起來(stat、bar、pie、line)
-- 切換到「OrinnME運営」視角時顯示這個 Dashboard
+- 切換到「OrinnFACE運営」視角時顯示這個 Dashboard
 
 ---
 
@@ -201,7 +201,7 @@
 
 #### 4-6. 收尾 ✅
 - [x] 切「企業X」→ b2b 版本(Alert + 4 stats + 5 charts)
-- [x] 切「OrinnME運営」→ admin 版本(原 Day 3 dashboard)
+- [x] 切「OrinnFACE運営」→ admin 版本(原 Day 3 dashboard)
 - [x] 視覺差異明顯:b2b 有醒目 Alert + 「BtoB 集計画面」badge
 - [x] components-installed.md / PROGRESS.md 更新
 - [x] Git commit:"Day 4 完了: BtoB Dashboard + 視覺差異化"
@@ -319,7 +319,7 @@
 **6-1B deploy(使用者執行)**:
 - [x] `npx vercel login`(GitHub OAuth)
 - [x] `npx vercel`(框架自動偵測 Vite)
-- [x] **本番 URL: https://orinnme-admin.vercel.app**
+- [x] **本番 URL: https://orinnface-admin.vercel.app**
 - [x] SPA 子路由刷新驗證:`/users`、`/users/3` 都 HTTP 200
 - [x] `.vercel/` + `.claude/worktrees/` 加入 `.gitignore`
 
@@ -428,7 +428,7 @@
 進度:**100% (6/6) 🎉**
 
 成果:
-- Production URL: https://orinnme-admin.vercel.app
+- Production URL: https://orinnface-admin.vercel.app
 - DEMO.md(雇主向):視角切替方法 + 機能對照 + 5 個 open 質問
 - MEETING.md(自分用):開會前後 checklist + Demo 8-10 分流程
 
@@ -481,7 +481,7 @@ v1.0 範圍將於下週一 demo 後與雇主對齊。詳細選項清單參見 [N
 
 #### GitHub auto-deploy 已啟用 (Day 7)
 
-- Repo:`liangfromtaiwan/orinnme-admin`(Private)
+- Repo:`liangfromtaiwan/orinnface-admin`(Private)
 - Vercel git connect 完了、push to main → 自動 production deploy
 - 以後 `git push` 即發布、不需要手動 `npx vercel --prod`
 
@@ -533,7 +533,7 @@ git push                              # 13 秒で Ready ✓
 完成度:Day 7-8 追加功能(Content + Status + GitHub auto-deploy)100%
 進度:**規格 1-3 章全実装、4-4 將来対応の 3 項目は NEXT_STEPS.md で議題化**
 
-下週一 demo 用 production URL: https://orinnme-admin.vercel.app(現バンドル = 最新コード)
+下週一 demo 用 production URL: https://orinnface-admin.vercel.app(現バンドル = 最新コード)
 
 ---
 

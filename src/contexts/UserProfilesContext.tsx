@@ -38,7 +38,7 @@ export function defaultProfileFor(key: string): UserProfile {
       return {
         name: "Yumi",
         displayName: "Yumi",
-        email: "yumi@orinnme-partner.jp",
+        email: "yumi@orinnface-partner.jp",
         avatarUrl: "",
         role: "管理者",
       }
@@ -70,9 +70,9 @@ export function defaultProfileFor(key: string): UserProfile {
     }
   }
   return {
-    name: "OrinnME 田中",
+    name: "OrinnFACE 田中",
     displayName: "田中",
-    email: "tanaka@orinnme.jp",
+    email: "tanaka@orinnface.jp",
     avatarUrl: "",
     role: "Owner",
   }

@@ -102,7 +102,7 @@ const INITIAL_PROVIDERS: Provider[] = [
     userCount: 6,
     status: "active",
     contactName: "Yumi",
-    contactEmail: "yumi@orinnme-partner.jp",
+    contactEmail: "yumi@orinnface-partner.jp",
   },
   {
     id: "p3",

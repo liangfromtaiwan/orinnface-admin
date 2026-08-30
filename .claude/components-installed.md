@@ -1,4 +1,4 @@
-# 已安裝的 shadcn 元件 (OrinnME 專案)
+# 已安裝的 shadcn 元件 (OrinnFACE 專案)
 
 > **重要**:每次執行 `npx shadcn@latest add [name]` 之後,
 > 請手動或請 Claude Code 更新這份清單。

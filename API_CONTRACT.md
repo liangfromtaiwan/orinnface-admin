@@ -1,18 +1,18 @@
-# OrinnME 管理画面 API 契約書(初版)
+# OrinnFACE 管理画面 API 契約書(初版)
 
 > **位置づけ**:現行 frontend が `src/lib/mock-data/` から直接読み込んでいる
 > データを「将来 backend が提供すべき形」として整理したドキュメント。
 > 真實 backend 構築時の reference / contract として使用してください。
 >
 > **起草日**:2026-05-20
-> **対象**:管理画面 frontend(`/Users/liang/Documents/orinnme-admin/`)
+> **対象**:管理画面 frontend(`/Users/liang/Documents/orinnface-admin/`)
 > **規格根拠**:`SPEC_REVIEW.md` / `DESIGN_DECISIONS.md`
 
 ---
 
 ## 0. 概要
 
-OrinnME 管理画面は 3 種類の視点(admin / oem / b2b)を 1 つのコードベースで提供します。
+OrinnFACE 管理画面は 3 種類の視点(admin / oem / b2b)を 1 つのコードベースで提供します。
 現在は frontend で mock data を直接 import していますが、本番では下記の REST endpoint
 群を backend が提供する想定です。
 
@@ -20,14 +20,14 @@ OrinnME 管理画面は 3 種類の視点(admin / oem / b2b)を 1 つのコー�
 
 | type | 想定ユーザー | 見える範囲 | 個人情報 |
 |------|------------|----------|---------|
-| `admin` | OrinnME 運営 | 全 company × 全 user | フル取得可 |
+| `admin` | OrinnFACE 運営 | 全 company × 全 user | フル取得可 |
 | `oem` | OEM 店舗・KOL | 自社 company のみ | 自社 user のフル取得可 |
 | `b2b` | 企業 HR | 自社 company のみ | **個人情報一切なし、集計のみ** |
 
 ### Base URL(想定)
 
 ```
-GET https://api.orinnme.jp/admin/v1/...
+GET https://api.orinnface.jp/admin/v1/...
 ```
 
 ### 認証(想定)

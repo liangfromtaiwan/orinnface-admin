@@ -3,7 +3,7 @@ import type { Company } from "./types"
 export const companies: Company[] = [
   {
     id: 0,
-    name: "OrinnME運営",
+    name: "OrinnFACE運営",
     type: "admin",
     subType: "operator",
     createdAt: "2024-01-15",

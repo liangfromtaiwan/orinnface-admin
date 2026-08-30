@@ -1,4 +1,4 @@
-# OrinnME 管理画面 — API Contract
+# OrinnFACE 管理画面 — API Contract
 
 > Mock data から real backend への移行ガイド。
 > 全 mock function に対応する API endpoint 提案、認証 / 権限 / マルチテナント / BtoB 個資保護を含む。
@@ -25,7 +25,7 @@
 
 ## 前提与命名規約
 
-- **Base URL**:`https://api.orinnme.com/v1`(本番)/ `http://localhost:3001/v1`(開発)
+- **Base URL**:`https://api.orinnface.com/v1`(本番)/ `http://localhost:3001/v1`(開発)
 - **Content-Type**:すべて `application/json`
 - **日付**:ISO 8601、UTC(`2026-05-13T09:12:00Z`)
 - **ID**:数値 ID 推奨(現 mock は number、UUID への移行も可)
@@ -46,7 +46,7 @@
   ```typescript
   {
     sub: string,           // user id
-    company_id: number,    // 所属企業 id(0 = OrinnME 運営)
+    company_id: number,    // 所属企業 id(0 = OrinnFACE 運営)
     role: "admin" | "oem" | "b2b",   // CompanyType と一致
     scopes: string[],      // "read:users" 等
     iat: number, exp: number
@@ -57,7 +57,7 @@
 
 | role | 説明 | 例 |
 |------|------|-----|
-| **admin** | OrinnME 運営内部、全テナント横断アクセス可 | OrinnME 社員 |
+| **admin** | OrinnFACE 運営内部、全テナント横断アクセス可 | OrinnFACE 社員 |
 | **oem** | OEM 提供先(店舗・KOL 等)、自社データのみ | 店舗A 担当者 |
 | **b2b** | BtoB 企業 HR、自社集計のみ(個人情報非開示) | 企業X 人事 |
 
@@ -476,7 +476,7 @@ mock では URL `?company_id=X&type=Y` だけで切替可能(認証無し)。
 **Authentication**:必須、`read:videos` scope
 **権限**:全 role、catalog は共有
 
-**注意**:catalog は OrinnME 中央管理、tenant 別ではない。
+**注意**:catalog は OrinnFACE 中央管理、tenant 別ではない。
 
 ---
 
@@ -637,7 +637,7 @@ mock では URL `?company_id=X&type=Y` だけで切替可能(認証無し)。
 
 ### E. CORS
 
-- 本番:`https://orinnme-admin.vercel.app`(production)、`http://localhost:5173`(dev)
+- 本番:`https://orinnface-admin.vercel.app`(production)、`http://localhost:5173`(dev)
 - credentials: include(JWT cookie 採用時)
 
 ### F. CSRF

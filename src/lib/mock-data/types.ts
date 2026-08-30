@@ -1,6 +1,6 @@
 export type CompanyType = "admin" | "oem" | "b2b"
 
-// operator   = OrinnME運営
+// operator   = OrinnFACE運営
 // shop       = 店家(美容サロン等)
 // influencer = 網紅(KOL)
 // company    = 企業(BtoB クライアント)

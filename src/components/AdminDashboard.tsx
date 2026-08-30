@@ -262,7 +262,7 @@ export function AdminDashboard() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">ダッシュボード</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          OrinnME 全体の主要指標と推移
+          OrinnFACE 全体の主要指標と推移
         </p>
       </div>
 

@@ -1,4 +1,4 @@
-# OrinnME 実装 TODO
+# OrinnFACE 実装 TODO
 
 > 雇主確認済かつ未実装の項目を優先順に整理。
 > 全体の規格落地状況は `SPEC_REVIEW.md` を参照。

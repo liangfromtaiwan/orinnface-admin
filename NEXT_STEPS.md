@@ -1,4 +1,4 @@
-# OrinnME 管理画面 — Next Steps
+# OrinnFACE 管理画面 — Next Steps
 
 > 下週一 demo 後與雇主對齊使用。
 > 此檔記錄 v0.1 後的待辦項目,demo 議題可從這裡抓。
@@ -10,7 +10,7 @@
 雇主下週一可決定以下三項是否納入 v1.0:
 
 #### A. 店舗專用 URL
-- 工程師範圍:URL routing 配置(`orinnme/c/xxx` 自動帶 company_id)
+- 工程師範圍:URL routing 配置(`orinnface/c/xxx` 自動帶 company_id)
 - 預估:2-3 天
 - 商業價值:OEM 客戶上線快速整合,客戶不需手動帶 query
 

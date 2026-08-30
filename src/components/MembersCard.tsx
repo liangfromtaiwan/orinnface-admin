@@ -70,11 +70,11 @@ const ADMIN_ROLES = ["Owner", "Admin", "Viewer"] as const
 const COMPANY_ROLES = ["管理者", "メンバー"] as const
 
 const ADMIN_MEMBERS: Member[] = [
-  { id: "a1", name: "田中 太郎", email: "tanaka@orinnme.jp", role: "Owner", lastLoginAt: "2026-05-26 09:14" },
-  { id: "a2", name: "佐々木 健", email: "sasaki@orinnme.jp", role: "Admin", lastLoginAt: "2026-05-25 18:42" },
-  { id: "a3", name: "中島 美咲", email: "nakajima@orinnme.jp", role: "Admin", lastLoginAt: "2026-05-25 11:30" },
-  { id: "a4", name: "井上 翔", email: "inoue@orinnme.jp", role: "Viewer", lastLoginAt: "2026-05-23 16:05" },
-  { id: "a5", name: "藤井 葵", email: "fujii@orinnme.jp", role: "Viewer", lastLoginAt: "2026-05-22 10:20" },
+  { id: "a1", name: "田中 太郎", email: "tanaka@orinnface.jp", role: "Owner", lastLoginAt: "2026-05-26 09:14" },
+  { id: "a2", name: "佐々木 健", email: "sasaki@orinnface.jp", role: "Admin", lastLoginAt: "2026-05-25 18:42" },
+  { id: "a3", name: "中島 美咲", email: "nakajima@orinnface.jp", role: "Admin", lastLoginAt: "2026-05-25 11:30" },
+  { id: "a4", name: "井上 翔", email: "inoue@orinnface.jp", role: "Viewer", lastLoginAt: "2026-05-23 16:05" },
+  { id: "a5", name: "藤井 葵", email: "fujii@orinnface.jp", role: "Viewer", lastLoginAt: "2026-05-22 10:20" },
 ]
 
 const SHOP_A_MEMBERS: Member[] = [
@@ -84,7 +84,7 @@ const SHOP_A_MEMBERS: Member[] = [
 ]
 
 const YUMI_MEMBERS: Member[] = [
-  { id: "k1", name: "Yumi", email: "yumi@orinnme-partner.jp", role: "管理者", lastLoginAt: "2026-05-26 10:05" },
+  { id: "k1", name: "Yumi", email: "yumi@orinnface-partner.jp", role: "管理者", lastLoginAt: "2026-05-26 10:05" },
   { id: "k2", name: "PR マネージャー", email: "manager@yumi-pr.jp", role: "メンバー", lastLoginAt: "2026-05-25 19:20" },
 ]
 

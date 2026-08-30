@@ -1,17 +1,17 @@
-# OrinnME 管理画面 — デモ版
+# OrinnFACE 管理画面 — デモ版
 
 > v0.1 プロトタイプ・規格書ベースの実装
 > 最終更新:2026-05-14
 
 ## 概要
 
-OrinnME(AI 表情分析+疲労ケア)管理画面の **3 つの視点** に対応する Web アプリ。Mock データで動作確認可能。本番 API・DB 接続は次フェーズ予定。
+OrinnFACE(AI 表情分析+疲労ケア)管理画面の **3 つの視点** に対応する Web アプリ。Mock データで動作確認可能。本番 API・DB 接続は次フェーズ予定。
 
 ---
 
 ## 🔗 本番 URL
 
-**https://orinnme-admin.vercel.app**
+**https://orinnface-admin.vercel.app**
 
 - PC / スマートフォン / タブレット いずれもブラウザで直接アクセス可能
 - ログイン不要(現フェーズは認証未実装)
@@ -21,11 +21,11 @@ OrinnME(AI 表情分析+疲労ケア)管理画面の **3 つの視点** に対�
 
 ## 📋 3 つの管理画面の切替方法
 
-ヘッダ左のサイドバー上部「OrinnME運営」と表示されているプルダウンから、視点を切り替えてください。URL のクエリパラメータ `?company_id=X&type=Y` で直接アクセスも可能。
+ヘッダ左のサイドバー上部「OrinnFACE運営」と表示されているプルダウンから、視点を切り替えてください。URL のクエリパラメータ `?company_id=X&type=Y` で直接アクセスも可能。
 
 | 視点 | サイドバー選択 | URL 例 |
 |------|---------------|--------|
-| **① 運営管理(弊社内部用)** | OrinnME運営 | `/dashboard?type=admin` |
+| **① 運営管理(弊社内部用)** | OrinnFACE運営 | `/dashboard?type=admin` |
 | **② OEM 管理(店舗・KOL)** | 店舗A 美容サロン / Yumi(美容 KOL) | `/dashboard?company_id=1&type=oem` |
 | **③ BtoB 企業管理(企業 HR)** | 企業X 株式会社 / 企業Y 株式会社 | `/dashboard?company_id=3&type=b2b` |
 
