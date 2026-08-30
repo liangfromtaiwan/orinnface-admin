@@ -34,11 +34,22 @@ npm run build
 npm run lint
 ```
 
-## ⚠️ 現況
+## 検証
 
-本 repo は `orinnme-admin` から複製した骨組みで、**`src/` 配下はまだ OrinnME の旧ドメインモデル**
-(疲労度、主観 vs AI、admin/oem/b2b の3視点、自由な動画カタログ)が残っている。
-仕様書 v1.0 のロール・画面・指標・固定13枠とは互換性がない。
+```bash
+npm run check         # build + lint + smoke + smoke:render
+npm run smoke         # 仕様不変条件(スコープ判定・固定13枠・KPI 母数)
+npm run smoke:render  # 全ページを SSR して実行時エラーを検出
+```
 
-新規実装時は旧 mock-data の列挙値・型をそのまま流用せず、`CLAUDE.md` §16 の置換表を参照すること。
-旧 OrinnME 時代のドキュメントは `docs/legacy-orinnme/` に退避してある(履歴目的のみ、**現行仕様ではない**)。
+`npm run lint` は継承した shadcn の `ui/*` と `hooks/use-mobile.ts` で 5 件エラーが出る
+(複製時点から存在)。
+
+## 現況
+
+ドメイン層・画面ともに仕様書 v1.0 に沿って再構築済み。データは `src/lib/mock/seed.ts` の
+決定的モックで、実 API 接続・実認証・差し替え申請の永続化は未実装。
+実装マップと仕様ガードは `CLAUDE.md` §16 を参照。
+
+旧 OrinnME 時代のドキュメントは `docs/legacy-orinnme/` に退避してある(履歴目的のみ、
+**現行仕様ではない**)。

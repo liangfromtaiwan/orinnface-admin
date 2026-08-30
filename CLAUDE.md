@@ -266,19 +266,44 @@ Vite + React 19 + TypeScript / Tailwind CSS v4 / shadcn/ui v3(Nova preset, Geist
 UI 文字**用日文**,從規格書 copy-paste。不確定的留 `{/* TODO: 日本語確認必要 */}`。
 字型:西文 Inter / 日文 Noto Sans JP。
 
-## 16. 🔴 本 repo 現況(重要)
+## 16. 実装マップ(v1.0 に沿って再構築済み)
 
-本 repo 由 `orinnme-admin` 複製而來,**`src/` 底下仍是 OrinnME 的舊領域模型**,與本書 v1.0 不相容:
+旧 orinnme-admin のドメイン層(疲労度・主観 vs AI・admin/oem/b2b 3視点・自由動画カタログ)は
+**削除済み**。以下が現在の構成:
 
-| 現有實作 | v1.0 應為 |
-|---|---|
-| `type=admin/oem/b2b` 三套視角 | `operator` / `company_admin` / `store_admin` / `store_staff` 四 role + scope |
-| 疲労度・主観 vs AI 落差警告 | neutral 6指標 / 5動作可動域 / 姿勢(B2Bのみ) |
-| `張り(強)`〜`ゆらぎ(弱)`、`軽やか`〜`踏ん張りどき` 等列舉 | **不存在於 v1.0**,要全部換掉 |
-| `videos.ts` 自由動画目錄 | 固定 13 枠 slot / asset / assignment |
-| `/users`, `/content`, `/status`, `/cta` | 顧客 / 分析 / care動画 / 推奨設定 / 画像・保持 / 監査 |
+```
+src/lib/domain/     ← 仕様の型と計算。ここが実装の中心
+  types.ts          role/membership・会社店舗・分析・care・推奨・保持・監査の型
+  metrics.ts        指標カタログ + metric_direction + isImproved()
+  care-catalog.ts   固定13枠 + entitlement(Guest/Member/Premium)
+  scope.ts          role→scope 解決・顧客可視判定・capability・画面出し分け
+  kpi.ts            §6 の KPI 定義そのまま。戻り値は必ず母数を持つ Aggregate
+  periods.ts        JST 基準の期間プリセット
+src/lib/mock/seed.ts  決定的モックデータ(実 API 差し替え時はここだけ置換)
+src/contexts/         SessionContext(ログイン + 実効スコープ)
+src/pages/            §4 の8画面 + 顧客詳細 + アカウント + ログイン
+scripts/              仕様不変条件の smoke test
+```
 
-→ **實作新畫面時不要沿用舊 mock-data 的列舉值與型別**,以本書為準重建。
+### 実装済みの仕様ガード(壊すと落ちる)
+- `AggregateStat` を通さない KPI 表示は書かない → 母数・欠測・version・期間が必ず出る
+- `scope.ts` の `canViewCustomer()` は active な `store_data_link` + membership の両方を要求
+- `care-catalog.ts` は 13 枠固定。`assertCareSlotInvariant()` が `npm run smoke` で検証
+- 生画像は `RawImagePlaceholder` / `RawImageViewButton` 経由のみ(理由入力 + 300秒 token)
+
+### 検証コマンド
+```bash
+npm run check         # build + lint + smoke + smoke:render をまとめて実行
+npm run smoke         # スコープ判定・entitlement・KPI 母数などの不変条件
+npm run smoke:render  # 全ページを SSR して実行時エラーを検出
+```
+
+`npm run lint` は継承した shadcn の `ui/*` と `hooks/use-mobile.ts` で 5 件のエラーが出る。
+これは複製時点から存在するもので、v1.0 対応で増やしたものではない。
+
+### 未実装(意図的)
+実 API 接続(`src/lib/api/` は未作成。現在は `src/lib/mock/seed.ts` を直接参照)、実認証と 2FA、
+差し替え申請・承認の永続化(現在は toast のみ)、CSV export、管理画面のビジュアル(§16 P2)。
 
 ## 17. 未決事項(動工前確認)
 

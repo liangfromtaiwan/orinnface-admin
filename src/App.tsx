@@ -3,22 +3,28 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom"
 import { Layout } from "@/components/Layout"
 import { Toaster } from "@/components/ui/sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
-import { CompaniesProvider } from "@/contexts/CompaniesContext"
-import { UserProfilesProvider } from "@/contexts/UserProfilesContext"
-import DashboardPage from "./pages/DashboardPage"
-import UsersPage from "./pages/UsersPage"
-import UserDetailPage from "./pages/UserDetailPage"
-import ContentPage from "./pages/ContentPage"
-import StatusPage from "./pages/StatusPage"
-import CTAAnalysisPage from "./pages/CTAAnalysisPage"
-import SettingsPage from "./pages/SettingsPage"
-import LoginPage from "./pages/LoginPage"
+import { SessionProvider } from "@/contexts/SessionContext"
 import AccountPage from "./pages/AccountPage"
+import AnalysisPage from "./pages/AnalysisPage"
+import AuditPage from "./pages/AuditPage"
+import CareVideosPage from "./pages/CareVideosPage"
+import CustomerDetailPage from "./pages/CustomerDetailPage"
+import CustomersPage from "./pages/CustomersPage"
+import DashboardPage from "./pages/DashboardPage"
+import LoginPage from "./pages/LoginPage"
+import OrganizationsPage from "./pages/OrganizationsPage"
+import RecommendationPage from "./pages/RecommendationPage"
+import RetentionPage from "./pages/RetentionPage"
+import RequireScreen from "./components/RequireScreen"
 
+/**
+ * 画面構成は仕様書 v1.0 §4。
+ * 🔴 RequireScreen は画面の出し分けであり、これ自体をアクセス制御の根拠にしない。
+ *    実 API 接続時は各 query で membership / store_data_link / scope を再検証する。
+ */
 export default function App() {
   return (
-    <CompaniesProvider>
-      <UserProfilesProvider>
+    <SessionProvider>
       <TooltipProvider>
         <BrowserRouter>
           <Routes>
@@ -26,13 +32,78 @@ export default function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route element={<Layout />}>
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/users" element={<UsersPage />} />
-              <Route path="/users/:id" element={<UserDetailPage />} />
-              <Route path="/content" element={<ContentPage />} />
-              <Route path="/status" element={<StatusPage />} />
-              <Route path="/cta-analysis" element={<CTAAnalysisPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
+              <Route
+                path="/dashboard"
+                element={
+                  <RequireScreen screen="dashboard">
+                    <DashboardPage />
+                  </RequireScreen>
+                }
+              />
+              <Route
+                path="/organizations"
+                element={
+                  <RequireScreen screen="organizations">
+                    <OrganizationsPage />
+                  </RequireScreen>
+                }
+              />
+              <Route
+                path="/customers"
+                element={
+                  <RequireScreen screen="customers">
+                    <CustomersPage />
+                  </RequireScreen>
+                }
+              />
+              <Route
+                path="/customers/:dataSubjectId"
+                element={
+                  <RequireScreen screen="customers">
+                    <CustomerDetailPage />
+                  </RequireScreen>
+                }
+              />
+              <Route
+                path="/analysis"
+                element={
+                  <RequireScreen screen="analysis">
+                    <AnalysisPage />
+                  </RequireScreen>
+                }
+              />
+              <Route
+                path="/care"
+                element={
+                  <RequireScreen screen="care">
+                    <CareVideosPage />
+                  </RequireScreen>
+                }
+              />
+              <Route
+                path="/recommendation"
+                element={
+                  <RequireScreen screen="recommendation">
+                    <RecommendationPage />
+                  </RequireScreen>
+                }
+              />
+              <Route
+                path="/retention"
+                element={
+                  <RequireScreen screen="retention">
+                    <RetentionPage />
+                  </RequireScreen>
+                }
+              />
+              <Route
+                path="/audit"
+                element={
+                  <RequireScreen screen="audit">
+                    <AuditPage />
+                  </RequireScreen>
+                }
+              />
               <Route path="/account" element={<AccountPage />} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Route>
@@ -40,7 +111,6 @@ export default function App() {
         </BrowserRouter>
         <Toaster />
       </TooltipProvider>
-      </UserProfilesProvider>
-    </CompaniesProvider>
+    </SessionProvider>
   )
 }
