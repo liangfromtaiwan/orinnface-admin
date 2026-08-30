@@ -139,6 +139,20 @@ export type Customer = {
   ageBand?: string
 }
 
+/**
+ * プラン変更の履歴。
+ *
+ * ℹ️ 仕様書 v1.0 §6 の KPI 一覧には含まれない。運営(本部)が B2C を含む
+ *    会員構成と課金シグナルを把握するための補助指標として追加したもの。
+ *    課金プランは Premium のみ (¥980/月)。Guest / Member は無料。
+ */
+export type PlanChangeEvent = {
+  dataSubjectId: DataSubjectId
+  changedAt: string
+  fromPlan: PlanCode
+  toPlan: PlanCode
+}
+
 /* ------------------------------------------------------------------ *
  * 4. 分析・指標 (§5)
  * ------------------------------------------------------------------ */

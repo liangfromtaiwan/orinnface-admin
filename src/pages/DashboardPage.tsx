@@ -11,6 +11,8 @@ import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from "rec
 import { AggregateStat } from "@/components/AggregateStat"
 import { ChartCard } from "@/components/ChartCard"
 import { PageHeader, PeriodBanner, SpecNote } from "@/components/PageHeader"
+import { PlanCompositionCard } from "@/components/PlanCompositionCard"
+import { PremiumSignalCard } from "@/components/PremiumSignalCard"
 import {
   ChartContainer,
   ChartTooltip,
@@ -44,9 +46,13 @@ import {
   type PeriodKey,
 } from "@/lib/domain/periods"
 import { ROLE_LABEL } from "@/lib/domain/types"
-import { recommendationRuns } from "@/lib/mock/seed"
+import { planComposition, premiumSignal } from "@/lib/domain/plans"
+import { NOW, planChangeEvents, recommendationRuns } from "@/lib/mock/seed"
 
 const IMPROVEMENT_METRICS = METRIC_CATALOG.filter((m) => m.group === "range")
+
+/** 営収シグナルの表示日数。 */
+const PREMIUM_SIGNAL_DAYS = 30
 
 const trendConfig = {
   activeUsers: { label: "アクティブユーザー", color: "var(--chart-1)" },
@@ -210,6 +216,25 @@ export default function DashboardPage() {
           </ChartContainer>
         </ChartCard>
       </div>
+
+      {/* 会員プランは B2C を含む全体の指標のため本部スコープのみ。
+          店舗スコープでは B2C 顧客が含まれず数字の意味が変わる。 */}
+      {scope.crossCompany ? (
+        <div className="grid gap-4 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <PremiumSignalCard
+              points={premiumSignal(
+                customers,
+                planChangeEvents,
+                NOW,
+                PREMIUM_SIGNAL_DAYS
+              )}
+              days={PREMIUM_SIGNAL_DAYS}
+            />
+          </div>
+          <PlanCompositionCard composition={planComposition(customers)} />
+        </div>
+      ) : null}
 
       <div className="space-y-2">
         <div className="flex flex-wrap items-center gap-2">

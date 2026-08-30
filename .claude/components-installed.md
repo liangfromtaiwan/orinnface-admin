@@ -95,6 +95,8 @@
 - [x] `RawImagePlaceholder` / `RawImageViewButton` ✅ 2026-08-30 - 生画像は非表示 + 理由入力付き一時閲覧
 - [x] `ViewerSwitcher` ✅ 2026-08-30 - ログインアカウント切替(membership から role を解決)
 - [x] `RequireScreen` ✅ 2026-08-30 - スコープ外画面へのアクセスを弾く(表示制御)
+- [x] `PremiumSignalCard` ✅ 2026-08-30 - 営収シグナル(Premium 新規/離脱/会員数)。本部のみ
+- [x] `PlanCompositionCard` ✅ 2026-08-30 - プラン構成比ドーナツ。本部のみ
 - [ ] `EmptyState` - 空狀態顯示
 
 > ⚠️ v1.0 対応で削除: `CompanySwitcher` / `AdminDashboard` / `B2BDashboard` / `OEMDashboard`

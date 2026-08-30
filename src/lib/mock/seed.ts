@@ -21,6 +21,7 @@ import type {
   ConsentEvent,
   Customer,
   HandoffToken,
+  PlanChangeEvent,
   MetricValue,
   RawImageAsset,
   RecommendationBaselineSet,
@@ -620,6 +621,34 @@ export const consentEvents: ConsentEvent[] = customers.map((c, i) => ({
   granted: true,
   occurredAt: daysAgo(200 - i),
 }))
+
+/* ------------------------------------------------------------------ *
+ * プラン変更履歴 (営収シグナル用)
+ *
+ * 課金プランは Premium のみ。Guest / Member は無料のため、
+ * G→M や M→G は営収に影響しない。
+ * ------------------------------------------------------------------ */
+
+export const planChangeEvents: PlanChangeEvent[] = []
+
+customers.forEach((c, i) => {
+  if (c.unregistered) return
+  // 直近 30 日で数人が動く程度の頻度にする。
+  const changes = rand() < 0.28 ? 1 + Math.floor(rand() * 2) : 0
+  for (let k = 0; k < changes; k++) {
+    const daysBack = Math.floor(rand() * 34)
+    // 現在のプランへ「向かう」変更として整合させる。
+    const toPremium = c.plan === "premium"
+    planChangeEvents.push({
+      dataSubjectId: c.dataSubjectId,
+      changedAt: daysAgo(daysBack),
+      fromPlan: toPremium ? (i % 3 === 0 ? "guest" : "member") : "premium",
+      toPlan: toPremium ? "premium" : i % 2 === 0 ? "member" : "guest",
+    })
+  }
+})
+
+planChangeEvents.sort((a, b) => a.changedAt.localeCompare(b.changedAt))
 
 /* ------------------------------------------------------------------ *
  * 監査
