@@ -258,7 +258,7 @@ export default function OrganizationsPage() {
                           <TableHead>状態</TableHead>
                           <TableHead className="text-right">連携顧客</TableHead>
                           <TableHead className="text-right">適格分析</TableHead>
-                          <TableHead>membership</TableHead>
+                          <TableHead>担当者</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -299,7 +299,7 @@ export default function OrganizationsPage() {
         単店舗契約でも内部的に会社と店舗を作成します。複数店舗を横断管理へ変更する場合は
         同じアカウントに契約企業管理者を付与し、アカウント・顧客・分析履歴・同意・保存期限を
         作り直しません。一部の店舗だけを管理する担当者には、対象店舗ごとに店舗管理者の
-        membership を複数付与します(固定のエリア管理者ロールは追加しません)。
+        担当を複数割り当てます(固定のエリア管理者ロールは追加しません)。
       </SpecNote>
     </div>
   )

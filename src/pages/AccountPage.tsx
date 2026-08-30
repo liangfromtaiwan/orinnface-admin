@@ -44,7 +44,7 @@ export default function AccountPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">membership</CardTitle>
+          <CardTitle className="text-base">担当範囲</CardTitle>
         </CardHeader>
         <CardContent className="space-y-1 text-sm">
           {account.organizationMemberships.map((m) => (
@@ -60,7 +60,7 @@ export default function AccountPage() {
           ))}
           {account.organizationMemberships.length === 0 &&
           account.storeMemberships.length === 0 ? (
-            <span className="text-muted-foreground">membership がありません</span>
+            <span className="text-muted-foreground">担当している会社・店舗がありません</span>
           ) : null}
         </CardContent>
       </Card>
@@ -82,9 +82,9 @@ export default function AccountPage() {
       </Card>
 
       <SpecNote>
-        一部の店舗だけを管理する担当者には、対象店舗ごとに店舗管理者の membership を
-        複数付与します。固定のエリア管理者ロールは追加しません。画面の表示・非表示だけを
-        権限制御にせず、API query のたびに membership・店舗連携・対象スコープを検証します。
+        一部の店舗だけを管理する担当者には、対象店舗ごとに店舗管理者の担当を
+        複数割り当てます。固定のエリア管理者ロールは追加しません。画面の表示・非表示だけを
+        権限制御にせず、API query のたびに担当の割り当て・店舗連携・対象スコープを検証します。
       </SpecNote>
     </div>
   )

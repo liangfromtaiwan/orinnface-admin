@@ -82,8 +82,8 @@ export default function CustomerDetailPage() {
       <div className="space-y-4">
         <PageHeader title="顧客詳細" />
         <SpecNote>
-          この顧客は現在のスコープでは閲覧できません。active な店舗連携と membership の
-          両方が必要です。連携が解除された顧客も閲覧できません。
+          この顧客は現在のスコープでは閲覧できません。active な店舗連携と、その店舗の
+          担当に割り当てられていることの両方が必要です。連携が解除された顧客も閲覧できません。
         </SpecNote>
         <Button variant="outline" asChild>
           <Link to="/customers">

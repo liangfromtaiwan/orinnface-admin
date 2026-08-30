@@ -238,7 +238,8 @@ export default function CustomersPage() {
       </Card>
 
       <SpecNote>
-        閲覧範囲は active な店舗連携(store_data_link)と membership の両方で判定しています。
+        閲覧範囲は「active な店舗連携」と「その店舗の担当に割り当てられていること」の
+        両方で判定しています。
         来店履歴(store_visits)は閲覧権限の判定に使いません。連携を解除した顧客は店舗から
         即時閲覧できなくなりますが、本人の分析・care 履歴は保持されます。
       </SpecNote>
