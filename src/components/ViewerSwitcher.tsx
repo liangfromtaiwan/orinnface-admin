@@ -18,6 +18,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import { useSession } from "@/contexts/session-context"
 import { resolveScope } from "@/lib/domain/scope"
@@ -26,6 +27,7 @@ import { stores } from "@/lib/mock/seed"
 
 export function ViewerSwitcher() {
   const { account, scope, accounts, switchAccount } = useSession()
+  const { isMobile } = useSidebar()
 
   return (
     <SidebarMenu>
@@ -48,7 +50,13 @@ export function ViewerSwitcher() {
               <ChevronsUpDownIcon className="ml-auto size-4" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-72" align="start" side="bottom">
+          <DropdownMenuContent
+            className="w-72"
+            align="start"
+            // sidebar を覆わないよう横に開く(nav-user と揃える)
+            side={isMobile ? "bottom" : "right"}
+            sideOffset={4}
+          >
             <DropdownMenuLabel className="text-xs text-muted-foreground">
               ログインアカウント(デモ切替)
             </DropdownMenuLabel>
