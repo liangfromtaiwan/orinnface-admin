@@ -18,7 +18,8 @@ export const CARE_VIDEO_SLOTS: CareVideoSlot[] = [
   {
     videoCode: "care_orientation",
     category: "orientation",
-    targetLabel: "案内",
+    // 仕様書 §7 の表では 対象 は「—」(動作に紐づかない案内動画)
+    targetLabel: "—",
     // §16 P1 未決: care_orientation の表示面・権限は動画仕様と Figma 待ち。
     requiredPlans: ["guest", "member", "premium"],
   },
@@ -59,6 +60,16 @@ export const CARE_CATEGORY_LABEL: Record<CareVideoSlot["category"], string> = {
   "1m": "1分",
   "3m": "3分",
   specialist: "専門",
+}
+
+/**
+ * filter や見出しに出す 1 行ラベル。
+ * 案内は対象動作を持たないため区分だけを返す(「案内 案内」にならないように)。
+ */
+export function careSlotLabel(slot: CareVideoSlot): string {
+  return slot.category === "orientation"
+    ? CARE_CATEGORY_LABEL[slot.category]
+    : `${CARE_CATEGORY_LABEL[slot.category]} ${slot.targetLabel}`
 }
 
 const BY_CODE = new Map(CARE_VIDEO_SLOTS.map((s) => [s.videoCode, s]))

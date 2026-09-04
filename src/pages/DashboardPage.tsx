@@ -39,10 +39,7 @@ import {
   totalAnalyses,
   type ImprovementBaseline,
 } from "@/lib/domain/kpi"
-import {
-  CARE_CATEGORY_LABEL,
-  CARE_VIDEO_SLOTS,
-} from "@/lib/domain/care-catalog"
+import { CARE_VIDEO_SLOTS, careSlotLabel } from "@/lib/domain/care-catalog"
 import { getMetric, METRIC_CATALOG } from "@/lib/domain/metrics"
 import {
   buildPeriod,
@@ -359,7 +356,7 @@ export default function DashboardPage() {
               <SelectItem value="all">すべての care 枠</SelectItem>
               {CARE_VIDEO_SLOTS.map((slot) => (
                 <SelectItem key={slot.videoCode} value={slot.videoCode}>
-                  {CARE_CATEGORY_LABEL[slot.category]} {slot.targetLabel}
+                  {careSlotLabel(slot)}
                 </SelectItem>
               ))}
             </SelectContent>

@@ -487,7 +487,10 @@ export const careAssets: CareVideoAsset[] = CARE_VIDEO_SLOTS.flatMap((slot, i) =
   const base: CareVideoAsset = {
     id: `ca_default_${slot.videoCode}`,
     videoCode: slot.videoCode,
-    title: `${slot.targetLabel} ${slot.category === "3m" ? "3分" : slot.category === "1m" ? "1分" : ""}ケア (本部標準)`.trim(),
+    title:
+      slot.category === "orientation"
+        ? "顔トレのご案内 (本部標準)"
+        : `${slot.targetLabel} ${slot.category === "3m" ? "3分" : "1分"}ケア (本部標準)`,
     provider: "FitWayWorld",
     durationSeconds: slot.category === "3m" ? 180 : slot.category === "1m" ? 60 : 90,
     rightsCleared: true,
@@ -500,7 +503,10 @@ export const careAssets: CareVideoAsset[] = CARE_VIDEO_SLOTS.flatMap((slot, i) =
     {
       id: `ca_lumiere_${slot.videoCode}`,
       videoCode: slot.videoCode,
-      title: `${slot.targetLabel} ケア (ルミエール監修)`,
+      title:
+        slot.category === "orientation"
+          ? "顔トレのご案内 (ルミエール監修)"
+          : `${slot.targetLabel} ケア (ルミエール監修)`,
       provider: "株式会社ルミエール",
       durationSeconds: base.durationSeconds,
       // §16 P0: 既存動画の権利確認は本部棚卸し待ち
