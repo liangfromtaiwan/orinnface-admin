@@ -149,11 +149,20 @@ export default function CustomersPage() {
             </TableHeader>
             <TableBody>
               {rows.map((r) => (
-                <TableRow key={r.customer.dataSubjectId}>
+                <TableRow
+                  key={r.customer.dataSubjectId}
+                  className="relative cursor-pointer has-[a:focus-visible]:bg-muted/50"
+                >
                   <TableCell>
+                    {/*
+                      after:inset-0 で行全体をリンクの当たり判定にする。
+                      onClick + navigate ではなく実際の <a> のままにしているので、
+                      ⌘+クリックで新しいタブ・右クリック・キーボード操作が効く。
+                      この行に他のボタンを置くときは覆いを外すこと。
+                    */}
                     <Link
                       to={`/customers/${r.customer.dataSubjectId}`}
-                      className="font-medium underline-offset-4 hover:underline"
+                      className="font-medium underline-offset-4 after:absolute after:inset-0 after:content-[''] hover:underline"
                     >
                       {r.customer.displayCode}
                     </Link>
