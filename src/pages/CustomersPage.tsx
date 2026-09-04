@@ -33,7 +33,7 @@ import {
 import { useSession, useStoreName } from "@/contexts/session-context"
 import { careEntitlement } from "@/lib/domain/care-catalog"
 import {
-  CHURN_RISK_DAYS,
+  isChurnRisk,
   isEligible,
   jstDate,
   jstMonth,
@@ -41,10 +41,6 @@ import {
 } from "@/lib/domain/kpi"
 import { PLAN_LABEL, RETENTION_STATE_LABEL, type PlanCode } from "@/lib/domain/types"
 import { NOW, rawImageAssets, recommendationRuns } from "@/lib/mock/seed"
-
-function daysSince(iso: string): number {
-  return Math.floor((NOW.getTime() - new Date(iso).getTime()) / 86_400_000)
-}
 
 export default function CustomersPage() {
   const {
@@ -101,9 +97,7 @@ export default function CustomersPage() {
         const retention = rawImageAssets.find(
           (a) => a.dataSubjectId === c.dataSubjectId
         )
-        const idleDays = latestFace?.completedAt
-          ? daysSince(latestFace.completedAt)
-          : undefined
+
         return {
           customer: c,
           eligibleCount,
@@ -116,7 +110,13 @@ export default function CustomersPage() {
           careLastDoneAt: lastDoneAt,
           careLimit: careEntitlement(c.plan).monthlyLimit,
           retention,
-          atRisk: idleDays !== undefined && idleDays >= CHURN_RISK_DAYS && !!activeLink,
+          // ダッシュボードの KPI と同じ関数で判定する(種別を問わない)
+          atRisk: isChurnRisk(
+            analysisSessions,
+            c.dataSubjectId,
+            storeDataLinks,
+            NOW.getTime()
+          ),
         }
       })
   }, [customers, analysisSessions, carePlaybacks, storeDataLinks, plan, query, currentMonth])

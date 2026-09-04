@@ -213,6 +213,50 @@ export function continuingUsers(
 export const CHURN_RISK_DAYS = 14
 
 /**
+ * 本人の最終適格分析の完了日時。
+ *
+ * 🔴 分析種別は問わない。§6 の離脱リスクは「最終適格分析から14日以上」で
+ *    種別を限定していないため、顔だけで判定すると姿勢のみ実施した人を
+ *    離脱扱いにしてしまう。
+ *    (種別を分けるのは §5「初回」の定義。あちらは顔と姿勢を別管理する)
+ */
+export function lastEligibleCompletedAt(
+  sessions: AnalysisSession[],
+  dataSubjectId: DataSubjectId
+): string | undefined {
+  let latest: string | undefined
+  for (const s of sessions) {
+    if (s.dataSubjectId !== dataSubjectId || !isEligible(s) || !s.completedAt) continue
+    if (!latest || s.completedAt > latest) latest = s.completedAt
+  }
+  return latest
+}
+
+/**
+ * 離脱リスク判定 (§6)。
+ * 最終適格分析から thresholdDays 以上経過し、かつ active な連携がある。
+ *
+ * 一覧のバッジとダッシュボードの KPI で同じ関数を使う。
+ * 片方だけ種別を絞る等の食い違いを防ぐため、判定はここ 1 箇所に置く。
+ * 🔴 日数は §6 で「運用設定」とされている。現在は既定 14 日の決め打ち。
+ */
+export function isChurnRisk(
+  sessions: AnalysisSession[],
+  dataSubjectId: DataSubjectId,
+  links: StoreDataLink[],
+  asOfMs: number,
+  thresholdDays: number = CHURN_RISK_DAYS
+): boolean {
+  const hasActiveLink = links.some(
+    (l) => l.dataSubjectId === dataSubjectId && l.status === "active"
+  )
+  if (!hasActiveLink) return false
+  const last = lastEligibleCompletedAt(sessions, dataSubjectId)
+  if (!last) return false
+  return (asOfMs - new Date(last).getTime()) / 86_400_000 >= thresholdDays
+}
+
+/**
  * 離脱リスク = 最終適格分析から 14 日以上かつ active な account / link。
  * 日数は運用設定 (§6)。
  */
@@ -222,22 +266,16 @@ export function churnRiskUsers(
   period: Period,
   thresholdDays: number = CHURN_RISK_DAYS
 ): Aggregate {
-  const last = new Map<DataSubjectId, string>()
-  for (const s of sessions) {
-    if (!isEligible(s) || !s.completedAt) continue
-    const prev = last.get(s.dataSubjectId)
-    if (!prev || s.completedAt > prev) last.set(s.dataSubjectId, s.completedAt)
-  }
-  const activeSubjects = new Set(
-    links.filter((l) => l.status === "active").map((l) => l.dataSubjectId)
-  )
   const boundary = new Date(`${period.to}T23:59:59+09:00`).getTime()
-  let n = 0
-  for (const [id, iso] of last) {
-    if (!activeSubjects.has(id)) continue
-    const days = (boundary - new Date(iso).getTime()) / 86_400_000
-    if (days >= thresholdDays) n += 1
+  const subjectIds = new Set<DataSubjectId>()
+  for (const s of sessions) {
+    if (isEligible(s) && s.completedAt) subjectIds.add(s.dataSubjectId)
   }
+  let n = 0
+  for (const id of subjectIds) {
+    if (isChurnRisk(sessions, id, links, boundary, thresholdDays)) n += 1
+  }
+  const last = subjectIds
   return count(
     n,
     period,

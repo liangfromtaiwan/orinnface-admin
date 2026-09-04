@@ -6,10 +6,10 @@
  * KPI の母数 — をここで押さえる。仕様が変わったらまずこのファイルを直すこと。
  */
 
-import { adminAccounts, analysisSessions, carePlaybacks, customers, storeDataLinks, stores, rawImageAssets, handoffTokens, recommendationRuns } from "@/lib/mock/seed"
+import { adminAccounts, analysisSessions, carePlaybacks, customers, storeDataLinks, stores, rawImageAssets, handoffTokens, recommendationRuns, NOW } from "@/lib/mock/seed"
 import { resolveScope, canViewCustomer, visibleCustomerIds, can, visibleScreens, usesB2bDisplay } from "@/lib/domain/scope"
 import { CARE_VIDEO_SLOTS, careEntitlement, assertCareSlotInvariant } from "@/lib/domain/care-catalog"
-import { monthlyActiveUsers, totalAnalyses, continuingUsers, churnRiskUsers, improvementRate, careCompletionRate, isEligible } from "@/lib/domain/kpi"
+import { monthlyActiveUsers, totalAnalyses, continuingUsers, churnRiskUsers, improvementRate, careCompletionRate, isEligible, isChurnRisk } from "@/lib/domain/kpi"
 import { buildPeriod } from "@/lib/domain/periods"
 
 let failed = 0
@@ -104,6 +104,10 @@ check("継続 <= 母数", cont.value <= cont.denominator)
 check("改善率 0-100", imp.value >= 0 && imp.value <= 100)
 check("改善率の母数が出ている", imp.denominator > 0)
 check("care完了率 0-100", done.value >= 0 && done.value <= 100)
+check("離脱リスクは一覧のバッジと KPI が一致する",
+  customers.filter(c => isChurnRisk(analysisSessions, c.dataSubjectId, storeDataLinks, NOW.getTime())).length
+    === churnRiskUsers(analysisSessions, storeDataLinks, buildPeriod("last_12m")).value,
+  "(同じ関数を使っていること)")
 check("適格分析は再解析を除外",
   analysisSessions.filter(s => !s.newCapture).every(s => !isEligible(s)))
 
