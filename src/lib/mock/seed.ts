@@ -20,8 +20,10 @@ import type {
   Company,
   ConsentEvent,
   Customer,
+  DataSubjectId,
   HandoffToken,
   PlanChangeEvent,
+  PlanCode,
   MetricValue,
   RawImageAsset,
   RecommendationBaselineSet,
@@ -273,7 +275,17 @@ function metricValues(
 }
 
 export const analysisSessions: AnalysisSession[] = []
-export const rawImageAssets: RawImageAsset[] = []
+
+type RawImageStub = {
+  id: string
+  dataSubjectId?: DataSubjectId
+  anonymousId?: string
+  analysisSessionId: string
+  capturedAt: string
+  plan: PlanCode
+  unregistered: boolean
+}
+const rawImageStubs: RawImageStub[] = []
 
 const MODEL_VERSION = "face-v1.6.0"
 const THRESHOLD_VERSION = "th-v1.6.0"
@@ -346,32 +358,141 @@ customers.forEach((c, i) => {
     }
 
     if (!failed) {
-      const policy = c.unregistered
-        ? ("unlinked_180d" as const)
-        : c.plan === "guest"
-          ? ("guest_180d" as const)
-          : ("registered_2y" as const)
-      const retentionDays = policy === "registered_2y" ? 730 : 180
-      const expiresInDays = retentionDays - daysBack
-      rawImageAssets.push({
+      // 期限は「最終適格分析完了日」に依存するため、全セッションを作り終えた
+      // あとでまとめて計算する (§10)。ここでは素の情報だけ残す。
+      rawImageStubs.push({
         id: `ria_${pad(i + 1)}_${s}`,
         dataSubjectId: c.unregistered ? undefined : c.dataSubjectId,
         anonymousId: c.unregistered ? `anon_${pad(i + 1)}` : undefined,
         analysisSessionId: id,
         capturedAt: completedAt,
-        policy,
-        expiresAt: daysAhead(expiresInDays),
-        state:
-          expiresInDays < -30
-            ? "deleted"
-            : expiresInDays < 0
-              ? "deletion_queued"
-              : expiresInDays <= 30
-                ? "notice_scheduled"
-                : "active",
-        noticeSentAt: expiresInDays <= 30 && expiresInDays > 0 ? daysAgo(1) : undefined,
+        plan: c.plan,
+        unregistered: c.unregistered,
       })
     }
+  }
+})
+
+/**
+ * 保持状態を一通り画面で確認できるようにするための追加分析。
+ *
+ * 通常生成では撮影日の分布に偏りがあり、期限まで残り 0〜30 日(通知予定)と
+ * 期限超過直後(削除キュー)の帯にデータが入らなかったため、
+ * その帯に落ちる撮影日で Guest の分析を足している。
+ * state は他と同じ計算式から導出しており、直接上書きはしていない。
+ */
+const RETENTION_FIXTURES = [
+  { daysBack: 158, suffix: "notice" }, // 180 - 158 = 残り 22 日 → 通知予定
+  { daysBack: 195, suffix: "queued" }, // 180 - 195 = 15 日超過 → 削除キュー
+]
+
+customers
+  .filter((c) => !c.unregistered && c.plan === "guest")
+  .slice(0, RETENTION_FIXTURES.length)
+  .forEach((c, k) => {
+    const { daysBack, suffix } = RETENTION_FIXTURES[k]
+    const id = `as_${c.dataSubjectId}_${suffix}`
+    const completedAt = daysAgo(daysBack)
+    analysisSessions.push({
+      id,
+      dataSubjectId: c.dataSubjectId,
+      analysisType: "face",
+      status: "completed",
+      startedAt: new Date(new Date(completedAt).getTime() - 120_000).toISOString(),
+      completedAt,
+      storeId: undefined,
+      newCapture: true,
+      quality: "ok",
+      metrics: metricValues(FACE_METRICS, 0, 5),
+      versions: {
+        modelVersion: MODEL_VERSION,
+        thresholdVersion: THRESHOLD_VERSION,
+        averageVersion: AVERAGE_VERSION,
+        recommendationBaselineVersion: ACTIVE_BASELINE_VERSION,
+        recommendationPolicyVersion: ACTIVE_POLICY_VERSION,
+        careCatalogVersion: CARE_CATALOG_VERSION,
+      },
+      rawImageAssetIds: [`ria_${c.dataSubjectId}_${suffix}`],
+    })
+    rawImageStubs.push({
+      id: `ria_${c.dataSubjectId}_${suffix}`,
+      dataSubjectId: c.dataSubjectId,
+      analysisSessionId: id,
+      capturedAt: completedAt,
+      plan: c.plan,
+      unregistered: false,
+    })
+  })
+
+/* ------------------------------------------------------------------ *
+ * 生画像の保持期限 (§10)
+ *
+ * 🔴 登録ユーザーは「最終適格分析完了日から 2 年」で、新規撮影を伴う分析が
+ *    completed するたびに過去の全画像が同じ期限へ更新される。
+ *    画像ごとに撮影日から数えるのは誤り。
+ * 🔴 Guest / 未連携分析はその分析の完了から 180 日で、rolling しない。
+ *    通常登録＋引き継ぎで登録規則へ移行する。
+ * ------------------------------------------------------------------ */
+
+const REGISTERED_RETENTION_DAYS = 730
+const SHORT_RETENTION_DAYS = 180
+/** 満了何日前に通知するか。 */
+const RETENTION_NOTICE_DAYS = 30
+
+/** 本人の最終適格分析完了日 (顔・姿勢を通じた最新)。 */
+const lastEligibleCompletedAt = new Map<DataSubjectId, string>()
+for (const session of analysisSessions) {
+  if (session.status !== "completed" || !session.newCapture || !session.completedAt) {
+    continue
+  }
+  const prev = lastEligibleCompletedAt.get(session.dataSubjectId)
+  if (!prev || session.completedAt > prev) {
+    lastEligibleCompletedAt.set(session.dataSubjectId, session.completedAt)
+  }
+}
+
+function addDays(iso: string, days: number): string {
+  return new Date(new Date(iso).getTime() + days * 86_400_000).toISOString()
+}
+
+export const rawImageAssets: RawImageAsset[] = rawImageStubs.map((stub) => {
+  const policy: RawImageAsset["policy"] = stub.unregistered
+    ? "unlinked_180d"
+    : stub.plan === "guest"
+      ? "guest_180d"
+      : "registered_2y"
+
+  // 登録ユーザーは本人の最終適格分析が起算日。過去画像も同じ期限に揃う。
+  const basis =
+    policy === "registered_2y" && stub.dataSubjectId
+      ? (lastEligibleCompletedAt.get(stub.dataSubjectId) ?? stub.capturedAt)
+      : stub.capturedAt
+  const expiresAt = addDays(
+    basis,
+    policy === "registered_2y" ? REGISTERED_RETENTION_DAYS : SHORT_RETENTION_DAYS
+  )
+
+  const daysLeft = (new Date(expiresAt).getTime() - NOW.getTime()) / 86_400_000
+  const state: RawImageAsset["state"] =
+    daysLeft < -RETENTION_NOTICE_DAYS
+      ? "deleted"
+      : daysLeft < 0
+        ? "deletion_queued"
+        : daysLeft <= RETENTION_NOTICE_DAYS
+          ? "notice_scheduled"
+          : "active"
+
+  return {
+    id: stub.id,
+    dataSubjectId: stub.dataSubjectId,
+    anonymousId: stub.anonymousId,
+    analysisSessionId: stub.analysisSessionId,
+    capturedAt: stub.capturedAt,
+    policy,
+    expiresAt,
+    state,
+    noticeSentAt:
+      state === "notice_scheduled" ? daysAgo(1 + Math.floor(rand() * 5)) : undefined,
   }
 })
 
