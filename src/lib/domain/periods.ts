@@ -49,3 +49,20 @@ export function periodDays(period: Period): number {
   const to = new Date(`${period.to}T00:00:00+09:00`).getTime()
   return Math.round((to - from) / 86_400_000) + 1
 }
+
+/** 期間に含まれる JST の日付一覧 (YYYY-MM-DD)。 */
+export function periodDates(period: Period): string[] {
+  const out: string[] = []
+  const from = new Date(`${period.from}T00:00:00+09:00`).getTime()
+  for (let i = 0; i < periodDays(period); i++) {
+    out.push(jstDate(new Date(from + i * 86_400_000).toISOString()))
+  }
+  return out
+}
+
+/** 期間に含まれる JST の月一覧 (YYYY-MM)。部分月も 1 件として含む。 */
+export function periodMonths(period: Period): string[] {
+  const seen = new Set<string>()
+  for (const d of periodDates(period)) seen.add(d.slice(0, 7))
+  return [...seen]
+}

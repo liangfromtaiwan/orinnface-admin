@@ -41,13 +41,18 @@ export function planComposition(customers: Customer[]): PlanComposition {
 }
 
 /**
- * 日次のままだと長期間で点が多すぎて読めないため、期間に応じて粒度を切り替える。
- * 92 日(約3ヶ月)までは日次、それ以上は月次にまとめる。
+ * 期間に応じた集計粒度。ダッシュボードの全チャートで共通に使う。
+ *
+ * 1 ヶ月を超えたら月次にまとめる。3 ヶ月を日次で出すと 90 点を超え、
+ * 1 日あたり 0〜3 という小さな値が尖ったノイズになって傾向が読めないため。
+ * 逆に「今月」を月次にすると 1 点しか出ないので日次にする。
  */
 export type SignalGranularity = "day" | "month"
 
+export const DAILY_MAX_DAYS = 35
+
 export function granularityFor(days: number): SignalGranularity {
-  return days <= 92 ? "day" : "month"
+  return days <= DAILY_MAX_DAYS ? "day" : "month"
 }
 
 export type PremiumSignalPoint = {

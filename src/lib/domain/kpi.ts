@@ -371,6 +371,32 @@ export function careCompletionRate(
   )
 }
 
+/**
+ * 日ごとの推移。グラフ用。
+ *
+ * 🔴 activeUsers は「その日に completed 分析があった一意 data_subject 数」で、
+ *    §6 の月間アクティブユーザー(MAU)とは粒度が違う別の値。
+ *    画面では必ず「日別」と明示し、MAU と同じ名前で出さないこと。
+ */
+export function dailySeries(
+  sessions: AnalysisSession[],
+  dates: string[]
+): { date: string; activeUsers: number; analyses: number }[] {
+  const byDate = new Map<string, { subjects: Set<DataSubjectId>; analyses: number }>()
+  for (const d of dates) byDate.set(d, { subjects: new Set(), analyses: 0 })
+  for (const s of sessions) {
+    if (s.status !== "completed" || !s.completedAt) continue
+    const bucket = byDate.get(jstDate(s.completedAt))
+    if (!bucket) continue
+    bucket.subjects.add(s.dataSubjectId)
+    bucket.analyses += 1
+  }
+  return dates.map((date) => {
+    const b = byDate.get(date)!
+    return { date, activeUsers: b.subjects.size, analyses: b.analyses }
+  })
+}
+
 /** 月ごとの推移。グラフ用。 */
 export function monthlySeries(
   sessions: AnalysisSession[],

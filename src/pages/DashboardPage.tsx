@@ -32,6 +32,7 @@ import {
   careExecutionRate,
   churnRiskUsers,
   continuingUsers,
+  dailySeries,
   improvementRate,
   monthlyActiveUsers,
   monthlySeries,
@@ -42,29 +43,40 @@ import { getMetric, METRIC_CATALOG } from "@/lib/domain/metrics"
 import {
   buildPeriod,
   PERIOD_LABEL,
+  periodDates,
   periodDays,
-  recentMonths,
+  periodMonths,
   type PeriodKey,
 } from "@/lib/domain/periods"
 import { ROLE_LABEL } from "@/lib/domain/types"
-import { granularityFor, planComposition, premiumSignal } from "@/lib/domain/plans"
+import {
+  granularityFor,
+  planComposition,
+  premiumSignal,
+  type SignalGranularity,
+} from "@/lib/domain/plans"
 import { NOW, planChangeEvents, recommendationRuns } from "@/lib/mock/seed"
 
 const IMPROVEMENT_METRICS = METRIC_CATALOG.filter((m) => m.group === "range")
 
-/** 月別チャートの表示月数。期間 filter とは独立(1ヶ月だけでは推移が読めないため)。 */
-const TREND_MONTHS = 8
-
 /**
- * X 軸の月ラベル。
- * "2026-07" をそのまま出すと 8 本ぶんの幅に収まらず、
- * Recharts が重なるラベルを黙って間引いてしまう(7月が消えていた)ため短縮する。
- * 年をまたぐ場合に備え、1月と先頭だけ年を添える。
+ * X 軸ラベル。
+ * "2026-07" をそのまま出すと本数ぶんの幅に収まらず、Recharts が重なる
+ * ラベルを黙って間引いてしまう(7月が消えていた)ため短縮する。
+ * 年をまたぐ場合に備え、月次では 1月と先頭だけ年を添える。
+ * 日次は本数が多いので、収まる本数だけ残るよう間引き幅を点数から決める。
  */
-function monthTick(value: string, index: number) {
-  const [year, month] = value.split("-")
-  const m = Number(month)
-  return index === 0 || m === 1 ? `${year}/${m}` : `${m}月`
+function makeTrendTick(granularity: SignalGranularity, count: number) {
+  if (granularity === "month") {
+    return (value: string, index: number) => {
+      const [year, month] = value.split("-")
+      const m = Number(month)
+      return index === 0 || m === 1 ? `${year}/${m}` : `${m}月`
+    }
+  }
+  const step = Math.max(1, Math.ceil(count / 6))
+  return (value: string, index: number) =>
+    index % step === 0 ? value.slice(5) : ""
 }
 
 const trendConfig = {
@@ -125,8 +137,26 @@ export default function DashboardPage() {
   const careExec = careExecutionRate(carePlaybacks, recommendedSubjectIds, period)
   const careDone = careCompletionRate(carePlaybacks, period)
 
-  const months = recentMonths(TREND_MONTHS)
-  const series = monthlySeries(sessions, months)
+  // 営収シグナルと同じ規則で粒度を切り替える。
+  // 「今月」を月次のままにすると 1 点しか出ず推移が読めないため。
+  const granularity = granularityFor(periodDays(period))
+  // 月次/日次で key 名が違うと Recharts に渡せないため label に正規化する
+  const series = (
+    granularity === "month"
+      ? monthlySeries(sessions, periodMonths(period)).map((p) => ({
+          label: p.month,
+          activeUsers: p.activeUsers,
+          analyses: p.analyses,
+        }))
+      : dailySeries(sessions, periodDates(period)).map((p) => ({
+          label: p.date,
+          activeUsers: p.activeUsers,
+          analyses: p.analyses,
+        }))
+  ) satisfies { label: string; activeUsers: number; analyses: number }[]
+  const trendTick = makeTrendTick(granularity, series.length)
+  // 🔴 日次の activeUsers は DAU であり §6 の MAU とは別物。同名で出さない。
+  const trendUnit = granularity === "month" ? "月別" : "日別"
 
   const metricDef = getMetric(metricCode)
 
@@ -194,20 +224,24 @@ export default function DashboardPage() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <ChartCard
-          title={`月別アクティブユーザー(直近${TREND_MONTHS}ヶ月)`}
-          description={`JST 月内に completed 分析が1回以上ある一意 data_subject 数(重複除外)。推移を読むため、上部の集計期間とは独立に直近 ${TREND_MONTHS} ヶ月を表示します。`}
+          title={`${trendUnit}アクティブユーザー`}
+          description={
+            granularity === "month"
+              ? "JST 月内に completed 分析が1回以上ある一意 data_subject 数(重複除外)。上の月間アクティブユーザーと同じ定義です。"
+              : "その日に completed 分析が1回以上ある一意 data_subject 数(重複除外)。日別のため、上の月間アクティブユーザーとは粒度が異なる別の値です。"
+          }
         >
           <ChartContainer config={trendConfig} className="h-56 w-full">
             <LineChart data={series} margin={{ left: 4, right: 8, top: 8 }}>
               <CartesianGrid vertical={false} strokeDasharray="3 3" />
               <XAxis
-                dataKey="month"
+                dataKey="label"
                 tickLine={false}
                 axisLine={false}
                 fontSize={11}
-                // 間引かせない(1本でも欠けると欠測に見える)
+                // 間引きは formatter 側で制御する(Recharts に黙って落とさせない)
                 interval={0}
-                tickFormatter={monthTick}
+                tickFormatter={trendTick}
               />
               <YAxis tickLine={false} axisLine={false} width={32} fontSize={11} allowDecimals={false} />
               <ChartTooltip content={<ChartTooltipContent />} />
@@ -223,20 +257,20 @@ export default function DashboardPage() {
         </ChartCard>
 
         <ChartCard
-          title={`月別分析回数(直近${TREND_MONTHS}ヶ月)`}
-          description={`completed analysis_session 数(失敗・取消を除外)。推移を読むため、上部の集計期間とは独立に直近 ${TREND_MONTHS} ヶ月を表示します。`}
+          title={`${trendUnit}分析回数`}
+          description="completed analysis_session 数(失敗・取消を除外)。"
         >
           <ChartContainer config={trendConfig} className="h-56 w-full">
             <BarChart data={series} margin={{ left: 4, right: 8, top: 8 }}>
               <CartesianGrid vertical={false} strokeDasharray="3 3" />
               <XAxis
-                dataKey="month"
+                dataKey="label"
                 tickLine={false}
                 axisLine={false}
                 fontSize={11}
-                // 間引かせない(1本でも欠けると欠測に見える)
+                // 間引きは formatter 側で制御する(Recharts に黙って落とさせない)
                 interval={0}
-                tickFormatter={monthTick}
+                tickFormatter={trendTick}
               />
               <YAxis tickLine={false} axisLine={false} width={32} fontSize={11} allowDecimals={false} />
               <ChartTooltip content={<ChartTooltipContent />} />
