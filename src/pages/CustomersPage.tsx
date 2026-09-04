@@ -10,6 +10,7 @@ import { useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { SearchIcon } from "lucide-react"
 
+import { InfoHint } from "@/components/InfoHint"
 import { PageHeader, SpecNote } from "@/components/PageHeader"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
@@ -30,14 +31,16 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { useSession, useStoreName } from "@/contexts/session-context"
+import { careEntitlement } from "@/lib/domain/care-catalog"
 import {
   CHURN_RISK_DAYS,
   isEligible,
   jstDate,
+  jstMonth,
   latestEligible,
 } from "@/lib/domain/kpi"
 import { PLAN_LABEL, RETENTION_STATE_LABEL, type PlanCode } from "@/lib/domain/types"
-import { NOW, rawImageAssets } from "@/lib/mock/seed"
+import { NOW, rawImageAssets, recommendationRuns } from "@/lib/mock/seed"
 
 function daysSince(iso: string): number {
   return Math.floor((NOW.getTime() - new Date(iso).getTime()) / 86_400_000)
@@ -56,6 +59,8 @@ export default function CustomersPage() {
 
   const [query, setQuery] = useState("")
   const [plan, setPlan] = useState<PlanCode | "all">("all")
+
+  const currentMonth = jstMonth(NOW.toISOString())
 
   const rows = useMemo(() => {
     return customers
@@ -80,6 +85,19 @@ export default function CustomersPage() {
         const plays = carePlaybacks.filter(
           (p) => p.dataSubjectId === c.dataSubjectId
         )
+        // §5.1 の care 欄は 推奨表示 / 再生開始 / 完了 / 直近実施 / 月次回数
+        const ownSessionIds = new Set(own.map((s) => s.id))
+        const recommended = recommendationRuns
+          .filter((r) => ownSessionIds.has(r.analysisSessionId))
+          .reduce((n, r) => n + r.items.length, 0)
+        const completedPlays = plays.filter((p) => p.completedAt)
+        const monthlyCompleted = completedPlays.filter(
+          (p) => jstMonth(p.completedAt!) === currentMonth
+        ).length
+        const lastDoneAt = completedPlays
+          .map((p) => p.completedAt!)
+          .sort()
+          .pop()
         const retention = rawImageAssets.find(
           (a) => a.dataSubjectId === c.dataSubjectId
         )
@@ -91,13 +109,17 @@ export default function CustomersPage() {
           eligibleCount,
           latestFace,
           activeLink,
-          careCompleted: plays.filter((p) => p.completedAt).length,
+          careRecommended: recommended,
+          careCompleted: completedPlays.length,
           careStarted: plays.length,
+          careMonthly: monthlyCompleted,
+          careLastDoneAt: lastDoneAt,
+          careLimit: careEntitlement(c.plan).monthlyLimit,
           retention,
           atRisk: idleDays !== undefined && idleDays >= CHURN_RISK_DAYS && !!activeLink,
         }
       })
-  }, [customers, analysisSessions, carePlaybacks, storeDataLinks, plan, query])
+  }, [customers, analysisSessions, carePlaybacks, storeDataLinks, plan, query, currentMonth])
 
   return (
     <div className="space-y-4">
@@ -143,7 +165,24 @@ export default function CustomersPage() {
                 <TableHead>店舗</TableHead>
                 <TableHead>最新分析</TableHead>
                 <TableHead className="text-right">適格分析</TableHead>
-                <TableHead>care</TableHead>
+                <TableHead>
+                  <span className="inline-flex items-center gap-1.5">
+                    care
+                    <InfoHint label="care 欄の見かた">
+                      <p className="font-medium text-foreground">care</p>
+                      <p className="mt-1">
+                        上段は「完了 / 再生開始」の playback 数。分母はその顧客が
+                        再生を開始した回数なので、分析回数が違えば人によって変わります。
+                      </p>
+                      <p className="mt-1">
+                        下段は 推奨表示回数・当月の完了回数・直近実施日。Member は
+                        JST 暦月 10 回が上限なので「今月 2/10」の形で出します。
+                        Guest は再生できませんが推奨はロック表示されるため、
+                        推奨回数だけ表示します。
+                      </p>
+                    </InfoHint>
+                  </span>
+                </TableHead>
                 <TableHead>保持</TableHead>
               </TableRow>
             </TableHeader>
@@ -213,12 +252,29 @@ export default function CustomersPage() {
                       </Badge>
                     ) : null}
                   </TableCell>
-                  <TableCell className="text-sm tabular-nums">
+                  <TableCell className="text-sm">
                     {r.careStarted === 0 ? (
-                      <span className="text-muted-foreground">—</span>
+                      <span className="text-muted-foreground tabular-nums">—</span>
                     ) : (
-                      `${r.careCompleted} / ${r.careStarted}`
+                      <span className="tabular-nums">
+                        {r.careCompleted} / {r.careStarted}
+                      </span>
                     )}
+                    <div className="text-[11px] text-muted-foreground tabular-nums">
+                      推奨 {r.careRecommended}
+                      {r.customer.plan === "guest" ? (
+                        <span className="ml-1">(ロック表示)</span>
+                      ) : (
+                        <>
+                          {" · 今月 "}
+                          {r.careMonthly}
+                          {r.careLimit === null ? "" : `/${r.careLimit}`}
+                          {r.careLastDoneAt
+                            ? ` · 直近 ${jstDate(r.careLastDoneAt).slice(5)}`
+                            : ""}
+                        </>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-sm">
                     {r.retention ? (
