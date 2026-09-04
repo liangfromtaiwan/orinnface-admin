@@ -9,6 +9,11 @@
  *
  * 会社ごとに別の table を描くので、列幅を固定しないと会社をまたいで列がずれる。
  * TableHead の w-[..%] と Table の table-fixed はそのために付けている。
+ *
+ * 左端は会社名の位置(px-4 + アイコン 16px + gap-3 = 44px)に揃える。
+ * 開閉アイコンだけが左の余白に入り、それ以外のテキストは同じ縦線に乗る。
+ *   - 契約企業管理者の行: pl-11 (44px)
+ *   - 店舗テーブル: 外側に pl-9 (36px) + セルの px-2 (8px) = 44px
  */
 
 import { useMemo, useState } from "react"
@@ -257,52 +262,54 @@ export default function OrganizationsPage() {
               <CollapsibleContent>
                 <div className="border-t">
                   {companyAdmins.length > 0 ? (
-                    <p className="px-4 pt-3 text-xs text-muted-foreground">
+                    <p className="pt-3 pr-4 pl-11 text-xs text-muted-foreground">
                       契約企業管理者: {companyAdmins.map((a) => a.displayName).join(" / ")}
                     </p>
                   ) : null}
 
                   {listed.length === 0 ? (
-                    <p className="px-4 py-6 text-sm text-muted-foreground">
+                    <p className="py-6 pr-4 pl-11 text-sm text-muted-foreground">
                       スコープ内に表示できる店舗はありません
                     </p>
                   ) : (
-                    <Table className="table-fixed">
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-[30%]">店舗</TableHead>
-                          <TableHead className="w-[10%]">状態</TableHead>
-                          <TableHead className="w-[12%] text-right">連携顧客</TableHead>
-                          <TableHead className="w-[12%] text-right">適格分析</TableHead>
-                          <TableHead className="w-[36%]">担当者</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {listed.map((store: Store) => {
-                          const st = statsByStore.get(store.id)
-                          const members = membershipsByStore.get(store.id) ?? []
-                          return (
-                            <TableRow key={store.id}>
-                              <TableCell className="font-medium">{store.name}</TableCell>
-                              <TableCell className="text-sm">
-                                {store.status === "active" ? "営業中" : "閉店"}
-                              </TableCell>
-                              <TableCell className="text-right tabular-nums">
-                                {st?.customers ?? 0}
-                              </TableCell>
-                              <TableCell className="text-right tabular-nums">
-                                {st?.eligible ?? 0}
-                              </TableCell>
-                              <TableCell className="truncate text-xs text-muted-foreground">
-                                {members.length === 0
-                                  ? "—"
-                                  : members.map((m) => `${m.name}(${m.role})`).join(" / ")}
-                              </TableCell>
-                            </TableRow>
-                          )
-                        })}
-                      </TableBody>
-                    </Table>
+                    <div className="pr-2 pl-9">
+                      <Table className="table-fixed">
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-[30%]">店舗</TableHead>
+                            <TableHead className="w-[10%]">状態</TableHead>
+                            <TableHead className="w-[12%] text-right">連携顧客</TableHead>
+                            <TableHead className="w-[12%] text-right">適格分析</TableHead>
+                            <TableHead className="w-[36%]">担当者</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {listed.map((store: Store) => {
+                            const st = statsByStore.get(store.id)
+                            const members = membershipsByStore.get(store.id) ?? []
+                            return (
+                              <TableRow key={store.id}>
+                                <TableCell className="font-medium">{store.name}</TableCell>
+                                <TableCell className="text-sm">
+                                  {store.status === "active" ? "営業中" : "閉店"}
+                                </TableCell>
+                                <TableCell className="text-right tabular-nums">
+                                  {st?.customers ?? 0}
+                                </TableCell>
+                                <TableCell className="text-right tabular-nums">
+                                  {st?.eligible ?? 0}
+                                </TableCell>
+                                <TableCell className="truncate text-xs text-muted-foreground">
+                                  {members.length === 0
+                                    ? "—"
+                                    : members.map((m) => `${m.name}(${m.role})`).join(" / ")}
+                                </TableCell>
+                              </TableRow>
+                            )
+                          })}
+                          </TableBody>
+                      </Table>
+                    </div>
                   )}
                 </div>
               </CollapsibleContent>
