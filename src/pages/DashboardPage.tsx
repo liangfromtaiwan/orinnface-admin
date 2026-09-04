@@ -54,6 +54,21 @@ const IMPROVEMENT_METRICS = METRIC_CATALOG.filter((m) => m.group === "range")
 /** 営収シグナルの表示日数。 */
 const PREMIUM_SIGNAL_DAYS = 30
 
+/** 月別チャートの表示月数。期間 filter とは独立(1ヶ月だけでは推移が読めないため)。 */
+const TREND_MONTHS = 8
+
+/**
+ * X 軸の月ラベル。
+ * "2026-07" をそのまま出すと 8 本ぶんの幅に収まらず、
+ * Recharts が重なるラベルを黙って間引いてしまう(7月が消えていた)ため短縮する。
+ * 年をまたぐ場合に備え、1月と先頭だけ年を添える。
+ */
+function monthTick(value: string, index: number) {
+  const [year, month] = value.split("-")
+  const m = Number(month)
+  return index === 0 || m === 1 ? `${year}/${m}` : `${m}月`
+}
+
 const trendConfig = {
   activeUsers: { label: "アクティブユーザー", color: "var(--chart-1)" },
   analyses: { label: "分析回数", color: "var(--chart-2)" },
@@ -112,7 +127,7 @@ export default function DashboardPage() {
   const careExec = careExecutionRate(carePlaybacks, recommendedSubjectIds, period)
   const careDone = careCompletionRate(carePlaybacks, period)
 
-  const months = recentMonths(8)
+  const months = recentMonths(TREND_MONTHS)
   const series = monthlySeries(sessions, months)
 
   const metricDef = getMetric(metricCode)
@@ -181,13 +196,21 @@ export default function DashboardPage() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <ChartCard
-          title="月別アクティブユーザー"
-          description="JST 月内に completed 分析が1回以上ある一意 data_subject 数(重複除外)"
+          title={`月別アクティブユーザー(直近${TREND_MONTHS}ヶ月)`}
+          description={`JST 月内に completed 分析が1回以上ある一意 data_subject 数(重複除外)。推移を読むため、上部の集計期間とは独立に直近 ${TREND_MONTHS} ヶ月を表示します。`}
         >
           <ChartContainer config={trendConfig} className="h-56 w-full">
             <LineChart data={series} margin={{ left: 4, right: 8, top: 8 }}>
               <CartesianGrid vertical={false} strokeDasharray="3 3" />
-              <XAxis dataKey="month" tickLine={false} axisLine={false} fontSize={11} />
+              <XAxis
+                dataKey="month"
+                tickLine={false}
+                axisLine={false}
+                fontSize={11}
+                // 間引かせない(1本でも欠けると欠測に見える)
+                interval={0}
+                tickFormatter={monthTick}
+              />
               <YAxis tickLine={false} axisLine={false} width={32} fontSize={11} allowDecimals={false} />
               <ChartTooltip content={<ChartTooltipContent />} />
               <Line
@@ -202,13 +225,21 @@ export default function DashboardPage() {
         </ChartCard>
 
         <ChartCard
-          title="月別分析回数"
-          description="completed analysis_session 数(失敗・取消を除外)"
+          title={`月別分析回数(直近${TREND_MONTHS}ヶ月)`}
+          description={`completed analysis_session 数(失敗・取消を除外)。推移を読むため、上部の集計期間とは独立に直近 ${TREND_MONTHS} ヶ月を表示します。`}
         >
           <ChartContainer config={trendConfig} className="h-56 w-full">
             <BarChart data={series} margin={{ left: 4, right: 8, top: 8 }}>
               <CartesianGrid vertical={false} strokeDasharray="3 3" />
-              <XAxis dataKey="month" tickLine={false} axisLine={false} fontSize={11} />
+              <XAxis
+                dataKey="month"
+                tickLine={false}
+                axisLine={false}
+                fontSize={11}
+                // 間引かせない(1本でも欠けると欠測に見える)
+                interval={0}
+                tickFormatter={monthTick}
+              />
               <YAxis tickLine={false} axisLine={false} width={32} fontSize={11} allowDecimals={false} />
               <ChartTooltip content={<ChartTooltipContent />} />
               <Bar dataKey="analyses" fill="var(--color-analyses)" radius={3} />
