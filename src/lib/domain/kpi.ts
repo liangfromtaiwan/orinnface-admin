@@ -340,11 +340,16 @@ export function careExecutionRate(
     recommended.size,
     0,
     period,
-    filter?.videoCode
-      ? `slot ${filter.videoCode} を推奨された人のうち、その枠を完了した人の割合。` +
+    !filter?.videoCode
+      ? "care 完了人数 ÷ 推奨表示人数"
+      : `slot ${filter.videoCode} を推奨された人のうち、その枠を完了した人の割合。` +
         "枠を絞ると分母もその枠を推奨された人だけになります。" +
-        "案内・リンパ・神経は推奨の対象外なので母数 0(「—」)になります。"
-      : "care 完了人数 ÷ 推奨表示人数"
+        "案内・リンパ・神経は推奨の対象外なので母数 0(「—」)になります。" +
+        (filter.careAssetId
+          ? " 🔴 asset を絞っても分母は「その枠を推奨された人」全員のままです。" +
+            "asset ごとに比べるときは、その asset が公開されていた期間に" +
+            "集計期間を合わせてください(公開前の人が分母に残り、率が低く出ます)。"
+          : "")
   )
 }
 
@@ -356,12 +361,13 @@ export function careExecutionRate(
 export function careCompletionRate(
   playbacks: CarePlayback[],
   period: Period,
-  filter?: { videoCode?: string }
+  filter?: { videoCode?: string; careAssetId?: string }
 ): Aggregate {
   const started = new Set<string>()
   const completed = new Set<string>()
   for (const p of playbacks) {
     if (filter?.videoCode && p.videoCode !== filter.videoCode) continue
+    if (filter?.careAssetId && p.careAssetId !== filter.careAssetId) continue
     if (inPeriod(p.startedAt, period)) started.add(p.id)
     if (p.completedAt && inPeriod(p.completedAt, period)) completed.add(p.id)
   }
@@ -371,7 +377,8 @@ export function careCompletionRate(
     0,
     period,
     "完了 playback ÷ 開始 playback(再接続は同一 playback として重複除外)" +
-      (filter?.videoCode ? ` / slot ${filter.videoCode}` : "")
+      (filter?.videoCode ? ` / slot ${filter.videoCode}` : "") +
+      (filter?.careAssetId ? ` / asset ${filter.careAssetId}` : "")
   )
 }
 

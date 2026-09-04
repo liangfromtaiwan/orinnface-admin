@@ -496,25 +496,35 @@ export const careAssets: CareVideoAsset[] = CARE_VIDEO_SLOTS.flatMap((slot, i) =
     rightsCleared: true,
     createdAt: daysAgo(120),
   }
-  // 一部の枠に店舗差し替え候補を用意する。
-  if (i % 4 !== 1) return [base]
+  // 動作 10 枠には差し替え候補を用意する(asset 別の比較ができるように)。
+  if (slot.category !== "1m" && slot.category !== "3m") return [base]
   return [
     base,
     {
       id: `ca_lumiere_${slot.videoCode}`,
       videoCode: slot.videoCode,
-      title:
-        slot.category === "orientation"
-          ? "顔トレのご案内 (ルミエール監修)"
-          : `${slot.targetLabel} ケア (ルミエール監修)`,
+      title: `${slot.targetLabel} ${slot.category === "3m" ? "3分" : "1分"}ケア (ルミエール監修)`,
       provider: "株式会社ルミエール",
       durationSeconds: base.durationSeconds,
-      // §16 P0: 既存動画の権利確認は本部棚卸し待ち
-      rightsCleared: i % 8 === 1,
+      // §16 P0: 既存動画の権利確認は本部棚卸し待ち。一部は未確認のまま。
+      rightsCleared: i % 3 !== 1,
       createdAt: daysAgo(20),
     },
   ]
 })
+
+/**
+ * 実際に差し替えが行われた枠と時期。
+ * asset 別の実施率を比べられるよう、この日を境に playback の asset を切り替える。
+ */
+const SWITCHED_SLOT = "care_1m_pucker"
+const SWITCHED_COMPANY = "co_lumiere"
+const SWITCHED_DAYS_AGO = 210
+const switchedAt = daysAgo(SWITCHED_DAYS_AGO)
+
+const lumiereStoreIds = new Set(
+  stores.filter((st) => st.companyId === SWITCHED_COMPANY).map((st) => st.id)
+)
 
 export const careAssignments: CareAssignment[] = [
   ...CARE_VIDEO_SLOTS.map((slot) => ({
@@ -530,6 +540,21 @@ export const careAssignments: CareAssignment[] = [
     catalogVersion: CARE_CATALOG_VERSION,
     createdAt: daysAgo(120),
   })),
+  {
+    // 100 日前に実際に切り替わった差し替え(asset 別比較の対象)
+    id: "asg_switched_pucker",
+    videoCode: SWITCHED_SLOT,
+    careAssetId: `ca_lumiere_${SWITCHED_SLOT}`,
+    scope: { companyId: SWITCHED_COMPANY },
+    status: "active",
+    requestedBy: "高橋 由紀",
+    approvedBy: "宮村 健一",
+    reason: "自社セラピスト監修版へ差し替え",
+    previousCareAssetId: `ca_default_${SWITCHED_SLOT}`,
+    startAt: switchedAt,
+    catalogVersion: CARE_CATALOG_VERSION,
+    createdAt: daysAgo(SWITCHED_DAYS_AGO + 7),
+  },
   {
     id: "asg_req_001",
     videoCode: "care_1m_pucker",
@@ -571,6 +596,23 @@ export const careAssignments: CareAssignment[] = [
   },
 ]
 
+/**
+ * その時点・その店舗で公開されていた asset を返す。
+ * 実装では assignment の scope と有効期間から解決する処理に置き換える。
+ */
+function resolveCareAssetId(
+  videoCode: string,
+  storeId: string | undefined,
+  at: string
+): string {
+  const switched =
+    videoCode === SWITCHED_SLOT &&
+    storeId !== undefined &&
+    lumiereStoreIds.has(storeId) &&
+    at >= switchedAt
+  return switched ? `ca_lumiere_${videoCode}` : `ca_default_${videoCode}`
+}
+
 export const carePlaybacks: CarePlayback[] = []
 
 recommendationRuns.forEach((run, i) => {
@@ -588,7 +630,7 @@ recommendationRuns.forEach((run, i) => {
       id: `pb_${pad(i + 1, 4)}_${k}`,
       dataSubjectId: session.dataSubjectId,
       videoCode: item.videoCode,
-      careAssetId: `ca_default_${item.videoCode}`,
+      careAssetId: resolveCareAssetId(item.videoCode, session.storeId, startedAt),
       startedAt,
       completedAt: completed
         ? new Date(new Date(startedAt).getTime() + 120_000).toISOString()

@@ -56,7 +56,12 @@ import {
   premiumSignal,
   type SignalGranularity,
 } from "@/lib/domain/plans"
-import { NOW, planChangeEvents, recommendationRuns } from "@/lib/mock/seed"
+import {
+  careAssets,
+  NOW,
+  planChangeEvents,
+  recommendationRuns,
+} from "@/lib/mock/seed"
 
 const IMPROVEMENT_METRICS = METRIC_CATALOG.filter((m) => m.group === "range")
 
@@ -93,8 +98,9 @@ export default function DashboardPage() {
   const [storeId, setStoreId] = useState<string>("all")
   const [metricCode, setMetricCode] = useState(IMPROVEMENT_METRICS[0].code)
   const [baseline, setBaseline] = useState<ImprovementBaseline>("first")
-  /** §6「care実施率は期間・slot・asset・scope 別」。asset 別は未実装。 */
+  /** §6「care実施率は期間・slot・asset・scope 別」。scope は右上の店舗 filter。 */
   const [careSlot, setCareSlot] = useState<string>("all")
+  const [careAssetId, setCareAssetId] = useState<string>("all")
 
   const period = useMemo(() => buildPeriod(periodKey), [periodKey])
 
@@ -149,14 +155,43 @@ export default function DashboardPage() {
     return [...ids]
   }, [sessions, careSlot])
 
-  const careFilter = careSlot === "all" ? undefined : { videoCode: careSlot }
+  /** 枠を変えたら asset の選択は無効になるので戻す。 */
+  const slotAssets = useMemo(
+    () => (careSlot === "all" ? [] : careAssets.filter((a) => a.videoCode === careSlot)),
+    [careSlot]
+  )
+  const effectiveAssetId =
+    careSlot !== "all" && slotAssets.some((a) => a.id === careAssetId)
+      ? careAssetId
+      : "all"
+
+  const careFilter =
+    careSlot === "all"
+      ? undefined
+      : {
+          videoCode: careSlot,
+          ...(effectiveAssetId === "all" ? {} : { careAssetId: effectiveAssetId }),
+        }
+
+  /**
+   * scope(店舗)を playback にも効かせる。
+   * 🔴 これを忘れると完了率だけ右上の店舗 filter を無視する。
+   */
+  const scopedPlaybacks = useMemo(
+    () =>
+      storeId === "all"
+        ? carePlaybacks
+        : carePlaybacks.filter((p) => p.storeId === storeId),
+    [carePlaybacks, storeId]
+  )
+
   const careExec = careExecutionRate(
-    carePlaybacks,
+    scopedPlaybacks,
     recommendedSubjectIds,
     period,
     careFilter
   )
-  const careDone = careCompletionRate(carePlaybacks, period, careFilter)
+  const careDone = careCompletionRate(scopedPlaybacks, period, careFilter)
 
   // 営収シグナルと同じ規則で粒度を切り替える。
   // 「今月」を月次のままにすると 1 点しか出ず推移が読めないため。
@@ -348,8 +383,14 @@ export default function DashboardPage() {
               <SelectItem value="previous">直前分析</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={careSlot} onValueChange={setCareSlot}>
-            <SelectTrigger className="h-8 w-48 text-xs">
+          <Select
+            value={careSlot}
+            onValueChange={(v) => {
+              setCareSlot(v)
+              setCareAssetId("all")
+            }}
+          >
+            <SelectTrigger className="h-8 w-44 text-xs">
               <SelectValue placeholder="care 枠" />
             </SelectTrigger>
             <SelectContent>
@@ -357,6 +398,26 @@ export default function DashboardPage() {
               {CARE_VIDEO_SLOTS.map((slot) => (
                 <SelectItem key={slot.videoCode} value={slot.videoCode}>
                   {careSlotLabel(slot)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {/* asset は枠に属するので、枠を選ぶまでは選べない */}
+          <Select
+            value={effectiveAssetId}
+            onValueChange={setCareAssetId}
+            disabled={careSlot === "all"}
+          >
+            <SelectTrigger className="h-8 w-52 text-xs">
+              <SelectValue
+                placeholder={careSlot === "all" ? "枠を選ぶと asset 別に見られます" : "asset"}
+              />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">すべての asset</SelectItem>
+              {slotAssets.map((a) => (
+                <SelectItem key={a.id} value={a.id}>
+                  {a.title}
                 </SelectItem>
               ))}
             </SelectContent>
