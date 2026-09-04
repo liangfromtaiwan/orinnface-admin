@@ -19,4 +19,13 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    // shadcn 由来の src/components/ui/* は component と variants(cva)を
+    // 同じファイルから export する構成。Fast Refresh の warning は
+    // upstream の書き方に従うため個別に無効化する(自作 component は対象外)。
+    files: ['src/components/ui/**/*.{ts,tsx}'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
 ])
