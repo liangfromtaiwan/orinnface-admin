@@ -42,17 +42,15 @@ import { getMetric, METRIC_CATALOG } from "@/lib/domain/metrics"
 import {
   buildPeriod,
   PERIOD_LABEL,
+  periodDays,
   recentMonths,
   type PeriodKey,
 } from "@/lib/domain/periods"
 import { ROLE_LABEL } from "@/lib/domain/types"
-import { planComposition, premiumSignal } from "@/lib/domain/plans"
+import { granularityFor, planComposition, premiumSignal } from "@/lib/domain/plans"
 import { NOW, planChangeEvents, recommendationRuns } from "@/lib/mock/seed"
 
 const IMPROVEMENT_METRICS = METRIC_CATALOG.filter((m) => m.group === "range")
-
-/** 営収シグナルの表示日数。 */
-const PREMIUM_SIGNAL_DAYS = 30
 
 /** 月別チャートの表示月数。期間 filter とは独立(1ヶ月だけでは推移が読めないため)。 */
 const TREND_MONTHS = 8
@@ -258,9 +256,10 @@ export default function DashboardPage() {
                 customers,
                 planChangeEvents,
                 NOW,
-                PREMIUM_SIGNAL_DAYS
+                periodDays(period)
               )}
-              days={PREMIUM_SIGNAL_DAYS}
+              periodLabel={PERIOD_LABEL[periodKey]}
+              granularity={granularityFor(periodDays(period))}
             />
           </div>
           <PlanCompositionCard composition={planComposition(customers)} />

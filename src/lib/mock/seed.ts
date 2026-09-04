@@ -631,19 +631,42 @@ export const consentEvents: ConsentEvent[] = customers.map((c, i) => ({
 
 export const planChangeEvents: PlanChangeEvent[] = []
 
+/**
+ * 過去 1 年ぶんの履歴を作る。期間 filter で「過去12ヶ月」を選んでも
+ * 空にならないようにするため。直近ほど密になるよう分布を寄せている。
+ *
+ * 会員数は「現在の Premium 数」から履歴を遡って復元するので、
+ * イベントは現在のプランと矛盾しないように作る:
+ *   - いま Premium の人 → 期間内に「Premium になった」イベント
+ *   - いま Premium でない人 → 期間内に「Premium をやめた」イベント
+ */
+const HISTORY_DAYS = 365
+
+function skewedDaysBack(): number {
+  // r^1.7 で直近側に寄せる(サービス成長を模す)
+  return Math.floor(HISTORY_DAYS * Math.pow(rand(), 1.7))
+}
+
 customers.forEach((c, i) => {
   if (c.unregistered) return
-  // 直近 30 日で数人が動く程度の頻度にする。
-  const changes = rand() < 0.28 ? 1 + Math.floor(rand() * 2) : 0
-  for (let k = 0; k < changes; k++) {
-    const daysBack = Math.floor(rand() * 34)
-    // 現在のプランへ「向かう」変更として整合させる。
-    const toPremium = c.plan === "premium"
+
+  if (c.plan === "premium") {
+    // 8 割は期間内に Premium 化。残りは期間より前から Premium だった扱い。
+    if (rand() < 0.8) {
+      planChangeEvents.push({
+        dataSubjectId: c.dataSubjectId,
+        changedAt: daysAgo(skewedDaysBack()),
+        fromPlan: i % 3 === 0 ? "guest" : "member",
+        toPlan: "premium",
+      })
+    }
+  } else if (rand() < 0.4) {
+    // かつて Premium だった人が期間内に離脱した
     planChangeEvents.push({
       dataSubjectId: c.dataSubjectId,
-      changedAt: daysAgo(daysBack),
-      fromPlan: toPremium ? (i % 3 === 0 ? "guest" : "member") : "premium",
-      toPlan: toPremium ? "premium" : i % 2 === 0 ? "member" : "guest",
+      changedAt: daysAgo(skewedDaysBack()),
+      fromPlan: "premium",
+      toPlan: c.plan,
     })
   }
 })

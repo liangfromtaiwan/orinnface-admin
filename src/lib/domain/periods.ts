@@ -42,3 +42,10 @@ export function recentMonths(n: number): string[] {
   }
   return out
 }
+
+/** 期間の日数(両端を含む)。日次系列の長さを決めるのに使う。 */
+export function periodDays(period: Period): number {
+  const from = new Date(`${period.from}T00:00:00+09:00`).getTime()
+  const to = new Date(`${period.to}T00:00:00+09:00`).getTime()
+  return Math.round((to - from) / 86_400_000) + 1
+}

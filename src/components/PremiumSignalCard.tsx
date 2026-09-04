@@ -19,7 +19,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart"
-import type { PremiumSignalPoint } from "@/lib/domain/plans"
+import type { PremiumSignalPoint, SignalGranularity } from "@/lib/domain/plans"
 
 const config = {
   premiumTotal: { label: "Premium 会員数", color: "var(--chart-3)" },
@@ -27,18 +27,28 @@ const config = {
   lostPremium: { label: "Premium 離脱", color: "var(--chart-1)" },
 } satisfies ChartConfig
 
-/** 目盛りを間引く(30 日ぶんのラベルは詰まりすぎるため)。 */
-function tickFormatter(value: string, index: number) {
-  return index % 5 === 0 ? value.slice(5) : ""
+/**
+ * 日次は "08-26"、月次は "8月" で表示する。
+ * 日次は本数が多いので、収まる本数だけ残るよう間引き幅を点数から決める。
+ */
+function makeTickFormatter(granularity: SignalGranularity, count: number) {
+  if (granularity === "month") return (value: string) => `${Number(value.slice(5))}月`
+  const step = Math.max(1, Math.ceil(count / 6))
+  return (value: string, index: number) =>
+    index % step === 0 ? value.slice(5) : ""
 }
 
 export function PremiumSignalCard({
   points,
-  days,
+  periodLabel,
+  granularity,
 }: {
   points: PremiumSignalPoint[]
-  days: number
+  /** 上部の期間 filter に追従する。集計対象を文言に出すために受け取る。 */
+  periodLabel: string
+  granularity: SignalGranularity
 }) {
+  const tickFormatter = makeTickFormatter(granularity, points.length)
   const current = points[points.length - 1]?.premiumTotal ?? 0
   const gained = points.reduce((n, p) => n + p.newPremium, 0)
   const lost = points.reduce((n, p) => n + p.lostPremium, 0)
@@ -52,15 +62,18 @@ export function PremiumSignalCard({
           <InfoHint label="営収シグナルについて">
             <p className="font-medium text-foreground">営収シグナル</p>
             <p className="mt-1">
-              過去 {days} 日間の Premium 新規 vs 離脱。課金プランは Premium のみのため、
+              {periodLabel}の Premium 新規 vs 離脱。課金プランは Premium のみのため、
               Guest ⇄ Member の移動は営収に影響せず集計に含めません。
             </p>
             <p className="mt-1">
               新規 = Guest / Member から Premium へ。離脱 = Premium から Guest / Member へ。
             </p>
             <p className="mt-2 border-t pt-2 text-muted-foreground">
-              会員数(ストック)と日次の新規・離脱(フロー)は桁が違うため、
-              二軸にせず X 軸を共有した 2 段に分けて表示しています。
+              会員数(ストック)と新規・離脱(フロー)は桁が違うため、二軸にせず
+              X 軸を共有した 2 段に分けて表示しています。
+              {granularity === "month"
+                ? "期間が長いため月次にまとめています(会員数は各月末の値)。"
+                : "日次で表示しています。"}
             </p>
           </InfoHint>
         </CardTitle>
@@ -74,7 +87,7 @@ export function PremiumSignalCard({
             <span className="text-sm text-muted-foreground">名</span>
           </div>
           <div className="text-xs text-muted-foreground tabular-nums">
-            過去{days}日 新規 {gained} / 離脱 {lost} / 純増減{" "}
+            {periodLabel} 新規 {gained} / 離脱 {lost} / 純増減{" "}
             <span className={net < 0 ? "text-destructive" : undefined}>
               {net > 0 ? "+" : ""}
               {net}

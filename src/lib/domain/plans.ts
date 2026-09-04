@@ -10,7 +10,7 @@
  *    この指標は crossCompany(本部)のみに表示する。
  */
 
-import { jstDate } from "./kpi"
+import { jstDate, jstMonth } from "./kpi"
 import { PLAN_LABEL, type Customer, type PlanChangeEvent, type PlanCode } from "./types"
 
 export const PLAN_ORDER: PlanCode[] = ["guest", "member", "premium"]
@@ -40,8 +40,18 @@ export function planComposition(customers: Customer[]): PlanComposition {
   return { slices, total: slices.reduce((n, s) => n + s.count, 0) }
 }
 
+/**
+ * 日次のままだと長期間で点が多すぎて読めないため、期間に応じて粒度を切り替える。
+ * 92 日(約3ヶ月)までは日次、それ以上は月次にまとめる。
+ */
+export type SignalGranularity = "day" | "month"
+
+export function granularityFor(days: number): SignalGranularity {
+  return days <= 92 ? "day" : "month"
+}
+
 export type PremiumSignalPoint = {
-  /** JST の YYYY-MM-DD */
+  /** 日次は JST の YYYY-MM-DD、月次は YYYY-MM */
   date: string
   /** その日に Premium になった人数 (Member→Premium, Guest→Premium) */
   newPremium: number
@@ -62,7 +72,33 @@ export function premiumSignal(
   customers: Customer[],
   events: PlanChangeEvent[],
   now: Date,
-  days = 30
+  days = 30,
+  granularity: SignalGranularity = granularityFor(days)
+): PremiumSignalPoint[] {
+  const daily = dailyPremiumSignal(customers, events, now, days)
+  if (granularity === "day") return daily
+
+  // 月次: 新規と離脱は合計、会員数はその月の最終日の値を採用する。
+  const buckets = new Map<string, PremiumSignalPoint>()
+  for (const p of daily) {
+    const key = jstMonth(`${p.date}T00:00:00+09:00`)
+    const cur = buckets.get(key)
+    if (!cur) {
+      buckets.set(key, { ...p, date: key })
+    } else {
+      cur.newPremium += p.newPremium
+      cur.lostPremium += p.lostPremium
+      cur.premiumTotal = p.premiumTotal
+    }
+  }
+  return [...buckets.values()]
+}
+
+function dailyPremiumSignal(
+  customers: Customer[],
+  events: PlanChangeEvent[],
+  now: Date,
+  days: number
 ): PremiumSignalPoint[] {
   const dates: string[] = []
   for (let i = days - 1; i >= 0; i--) {
