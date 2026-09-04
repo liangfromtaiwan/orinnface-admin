@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/table"
 import { useSession, useStoreName } from "@/contexts/session-context"
 import { isEligible, jstDate } from "@/lib/domain/kpi"
+import { usesB2bDisplay } from "@/lib/domain/scope"
 import {
   ANALYSIS_STATUS_LABEL,
   ANALYSIS_TYPE_LABEL,
@@ -36,7 +37,7 @@ import {
 } from "@/lib/domain/types"
 
 export default function AnalysisPage() {
-  const { analysisSessions, customers } = useSession()
+  const { analysisSessions, customers, storeDataLinks } = useSession()
   const storeName = useStoreName()
 
   const [type, setType] = useState<AnalysisType | "all">("all")
@@ -47,14 +48,26 @@ export default function AnalysisPage() {
     [customers]
   )
 
+  /** 🔴 姿勢分析は B2B のみ。active な連携がない顧客の分は出さない (§5.2)。 */
+  const b2bSubjects = useMemo(() => {
+    const ids = new Set<string>()
+    for (const c of customers) {
+      if (usesB2bDisplay(c.dataSubjectId, storeDataLinks)) ids.add(c.dataSubjectId)
+    }
+    return ids
+  }, [customers, storeDataLinks])
+
   const rows = useMemo(
     () =>
       analysisSessions
+        .filter(
+          (s) => s.analysisType !== "posture" || b2bSubjects.has(s.dataSubjectId)
+        )
         .filter((s) => (type === "all" ? true : s.analysisType === type))
         .filter((s) => (status === "all" ? true : s.status === status))
         .sort((a, b) => (b.completedAt ?? "").localeCompare(a.completedAt ?? ""))
         .slice(0, 200),
-    [analysisSessions, type, status]
+    [analysisSessions, type, status, b2bSubjects]
   )
 
   const eligibleCount = rows.filter(isEligible).length

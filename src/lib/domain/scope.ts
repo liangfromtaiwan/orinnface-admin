@@ -107,6 +107,22 @@ export function canViewCustomer(
   return activeLinks.some((l) => scope.storeIds.includes(l.storeId))
 }
 
+/**
+ * その顧客を B2B 表示形式で描くか (仕様書 v1.0 §3, §5.2)。
+ *
+ * 🔴 姿勢分析は B2B のみ。B2C には出さない。
+ * 🔴 判定は company ではなく「active な店舗連携があるか」。
+ *    連携を解除したら表示は B2C 形式に戻る(データ自体は保持される)。
+ */
+export function usesB2bDisplay(
+  dataSubjectId: DataSubjectId,
+  links: StoreDataLink[]
+): boolean {
+  return links.some(
+    (l) => l.dataSubjectId === dataSubjectId && l.status === "active"
+  )
+}
+
 export function visibleCustomerIds(
   scope: Scope,
   allIds: DataSubjectId[],

@@ -42,6 +42,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useSession, useStoreName } from "@/contexts/session-context"
 import { isEligible, jstDate } from "@/lib/domain/kpi"
+import { usesB2bDisplay } from "@/lib/domain/scope"
 import { careEntitlement, getCareSlot } from "@/lib/domain/care-catalog"
 import { getMetric, isImproved, METRIC_GROUP_LABEL, metricsByGroup } from "@/lib/domain/metrics"
 import {
@@ -62,13 +63,25 @@ export default function CustomerDetailPage() {
 
   const customer = customers.find((c) => c.dataSubjectId === dataSubjectId)
 
-  const sessions = useMemo(
+  /**
+   * 🔴 姿勢分析は B2B のみ。active な店舗連携がない顧客には出さない (§5.2)。
+   *    連携解除でデータが消えるわけではなく、表示形式が B2C に戻るだけ。
+   */
+  const isB2b = usesB2bDisplay(dataSubjectId, storeDataLinks)
+
+  const allOwnSessions = useMemo(
     () =>
       analysisSessions
         .filter((s) => s.dataSubjectId === dataSubjectId)
         .sort((a, b) => (b.completedAt ?? "").localeCompare(a.completedAt ?? "")),
     [analysisSessions, dataSubjectId]
   )
+  const sessions = useMemo(
+    () => (isB2b ? allOwnSessions : allOwnSessions.filter((s) => s.analysisType !== "posture")),
+    [allOwnSessions, isB2b]
+  )
+  /** 連携解除で非表示にした姿勢分析の件数(データは保持されている旨を出すため)。 */
+  const hiddenPostureCount = allOwnSessions.length - sessions.length
 
   const faceSessions = sessions.filter((s) => s.analysisType === "face" && isEligible(s))
   const postureSessions = sessions.filter((s) => s.analysisType === "posture" && isEligible(s))
@@ -205,6 +218,15 @@ export default function CustomerDetailPage() {
               </Table>
             </div>
           </Card>
+
+          {hiddenPostureCount > 0 ? (
+            <SpecNote>
+              この顧客は店舗連携が有効でないため、姿勢分析 {hiddenPostureCount} 件は
+              表示していません。姿勢分析は B2B のみの項目で、連携を解除すると表示は
+              B2C 形式に戻ります。データ自体は削除されておらず、再連携すれば
+              また表示されます。
+            </SpecNote>
+          ) : null}
 
           {selected ? <SessionDetail session={selected} /> : null}
         </TabsContent>

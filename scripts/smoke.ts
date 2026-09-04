@@ -7,7 +7,7 @@
  */
 
 import { adminAccounts, analysisSessions, carePlaybacks, customers, storeDataLinks, stores, rawImageAssets, handoffTokens, recommendationRuns } from "@/lib/mock/seed"
-import { resolveScope, canViewCustomer, visibleCustomerIds, can, visibleScreens } from "@/lib/domain/scope"
+import { resolveScope, canViewCustomer, visibleCustomerIds, can, visibleScreens, usesB2bDisplay } from "@/lib/domain/scope"
 import { CARE_VIDEO_SLOTS, careEntitlement, assertCareSlotInvariant } from "@/lib/domain/care-catalog"
 import { monthlyActiveUsers, totalAnalyses, continuingUsers, churnRiskUsers, improvementRate, careCompletionRate, isEligible } from "@/lib/domain/kpi"
 import { buildPeriod } from "@/lib/domain/periods"
@@ -69,6 +69,20 @@ check("operator は生画像 token を発行できる", can(opScope, "raw_image.
 check("company_admin は care 承認できない", !can(resolveScope(adminAccounts[1], stores), "care.approve"))
 check("company_admin は差し替え申請できる", can(resolveScope(adminAccounts[1], stores), "care.request_replacement"))
 check("staff は監査検索できない", !can(staffScope, "audit.search"))
+
+console.log("── 姿勢分析は B2B のみ (§5.2) ──")
+{
+  const withPosture = customers.filter(c =>
+    analysisSessions.some(s => s.dataSubjectId === c.dataSubjectId && s.analysisType === "posture"))
+  const leaked = withPosture.filter(c => !usesB2bDisplay(c.dataSubjectId, storeDataLinks))
+  check("姿勢データを持つ顧客がいる", withPosture.length > 0, `(${withPosture.length}人)`)
+  check("active 連携のない顧客の姿勢は表示対象外",
+    withPosture.every(c => usesB2bDisplay(c.dataSubjectId, storeDataLinks) || leaked.includes(c)),
+    "(判定関数が false を返すこと)")
+  check("解除済み顧客は B2C 表示形式になる",
+    leaked.every(c => !usesB2bDisplay(c.dataSubjectId, storeDataLinks)),
+    `(解除済みで姿勢データを持つ ${leaked.length}人)`)
+}
 
 console.log("── entitlement ──")
 check("Guest 再生不可 + lock表示", careEntitlement("guest").canPlay === false && careEntitlement("guest").showLockedWithCta === true)
