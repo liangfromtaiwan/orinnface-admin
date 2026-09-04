@@ -39,6 +39,10 @@ import {
   totalAnalyses,
   type ImprovementBaseline,
 } from "@/lib/domain/kpi"
+import {
+  CARE_CATEGORY_LABEL,
+  CARE_VIDEO_SLOTS,
+} from "@/lib/domain/care-catalog"
 import { getMetric, METRIC_CATALOG } from "@/lib/domain/metrics"
 import {
   buildPeriod,
@@ -92,6 +96,8 @@ export default function DashboardPage() {
   const [storeId, setStoreId] = useState<string>("all")
   const [metricCode, setMetricCode] = useState(IMPROVEMENT_METRICS[0].code)
   const [baseline, setBaseline] = useState<ImprovementBaseline>("first")
+  /** §6「care実施率は期間・slot・asset・scope 別」。asset 別は未実装。 */
+  const [careSlot, setCareSlot] = useState<string>("all")
 
   const period = useMemo(() => buildPeriod(periodKey), [periodKey])
 
@@ -123,19 +129,37 @@ export default function DashboardPage() {
     "avg-2026Q2"
   )
 
-  /** 推奨が表示された人 = 正式 run が存在する人。 */
+  /**
+   * 推奨が表示された人 = 正式 run が存在する人。
+   *
+   * 🔴 slot を絞ったときは分母もその slot を推奨された人だけにする。
+   *    分子だけ絞ると実施率が実際より低く出てしまう。
+   */
   const recommendedSubjectIds = useMemo(() => {
     const byId = new Map(sessions.map((s) => [s.id, s.dataSubjectId]))
     const ids = new Set<string>()
     for (const run of recommendationRuns) {
       const subject = byId.get(run.analysisSessionId)
-      if (subject) ids.add(subject)
+      if (!subject) continue
+      if (
+        careSlot !== "all" &&
+        !run.items.some((i) => i.videoCode === careSlot)
+      ) {
+        continue
+      }
+      ids.add(subject)
     }
     return [...ids]
-  }, [sessions])
+  }, [sessions, careSlot])
 
-  const careExec = careExecutionRate(carePlaybacks, recommendedSubjectIds, period)
-  const careDone = careCompletionRate(carePlaybacks, period)
+  const careFilter = careSlot === "all" ? undefined : { videoCode: careSlot }
+  const careExec = careExecutionRate(
+    carePlaybacks,
+    recommendedSubjectIds,
+    period,
+    careFilter
+  )
+  const careDone = careCompletionRate(carePlaybacks, period, careFilter)
 
   // 営収シグナルと同じ規則で粒度を切り替える。
   // 「今月」を月次のままにすると 1 点しか出ず推移が読めないため。
@@ -325,6 +349,19 @@ export default function DashboardPage() {
             <SelectContent>
               <SelectItem value="first">本人の同一分析種別の初回適格分析</SelectItem>
               <SelectItem value="previous">直前分析</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={careSlot} onValueChange={setCareSlot}>
+            <SelectTrigger className="h-8 w-48 text-xs">
+              <SelectValue placeholder="care 枠" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">すべての care 枠</SelectItem>
+              {CARE_VIDEO_SLOTS.map((slot) => (
+                <SelectItem key={slot.videoCode} value={slot.videoCode}>
+                  {CARE_CATEGORY_LABEL[slot.category]} {slot.targetLabel}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

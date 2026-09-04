@@ -340,8 +340,11 @@ export function careExecutionRate(
     recommended.size,
     0,
     period,
-    "care 完了人数 ÷ 推奨表示人数" +
-      (filter?.videoCode ? ` / slot ${filter.videoCode}` : "")
+    filter?.videoCode
+      ? `slot ${filter.videoCode} を推奨された人のうち、その枠を完了した人の割合。` +
+        "枠を絞ると分母もその枠を推奨された人だけになります。" +
+        "案内・リンパ・神経は推奨の対象外なので母数 0(「—」)になります。"
+      : "care 完了人数 ÷ 推奨表示人数"
   )
 }
 
@@ -367,7 +370,8 @@ export function careCompletionRate(
     started.size,
     0,
     period,
-    "完了 playback ÷ 開始 playback(再接続は同一 playback として重複除外)"
+    "完了 playback ÷ 開始 playback(再接続は同一 playback として重複除外)" +
+      (filter?.videoCode ? ` / slot ${filter.videoCode}` : "")
   )
 }
 

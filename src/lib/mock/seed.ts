@@ -8,7 +8,7 @@
  * 対応する管理 API は仕様書 §12 / API設計書 v1.3 を参照。
  */
 
-import { CARE_VIDEO_SLOTS } from "../domain/care-catalog"
+import { CARE_VIDEO_SLOTS, careSlotFor } from "../domain/care-catalog"
 import { METRIC_CATALOG } from "../domain/metrics"
 import type {
   AdminAccount,
@@ -393,6 +393,10 @@ const POSES = ["smile", "pucker", "jaw_open", "eye_open", "brow_furrow"] as cons
 export const recommendationRuns: RecommendationRun[] = analysisSessions
   .filter((s) => s.analysisType === "face" && s.status === "completed")
   .map((s, i) => {
+    // 動作は同じで尺だけプランで切り替える (AI推奨 v1.2)。
+    // Guest は再生できないが推奨自体は lock 表示されるため 1分枠を割り当てる。
+    const plan = customers.find((c) => c.dataSubjectId === s.dataSubjectId)?.plan
+    const duration = plan === "premium" ? ("3m" as const) : ("1m" as const)
     // 可動域の乖離度が大きい下位 2 動作を推奨する (AI推奨 v1.2)。左右差は使わない。
     const ranked = POSES.map((pose) => {
       const value = s.metrics.find((m) => m.metricCode === `${pose}_range`)?.value ?? 0
@@ -414,7 +418,7 @@ export const recommendationRuns: RecommendationRun[] = analysisSessions
         score: r.value,
         baseline: r.baseline,
         deviation: r.deviation,
-        videoCode: `care_1m_${r.pose}`,
+        videoCode: careSlotFor(r.pose, duration)!.videoCode,
       })),
     }
   })
