@@ -6,6 +6,9 @@
  *
  * 会社数が増えても目的の会社に辿り着けるよう、既定は折りたたみ表示にし、
  * 店舗一覧は展開したときだけ出す。検索時は一致した会社を自動で開く。
+ *
+ * 会社ごとに別の table を描くので、列幅を固定しないと会社をまたいで列がずれる。
+ * TableHead の w-[..%] と Table の table-fixed はそのために付けている。
  */
 
 import { useMemo, useState } from "react"
@@ -83,17 +86,30 @@ export default function OrganizationsPage() {
   }, [])
 
   /** filter の選択肢に件数を出すため、検索前の母数で数える。 */
+  const partnerCompanies = useMemo(
+    () => companies.filter((c) => c.kind !== "internal"),
+    [companies]
+  )
+
   const contractCounts = useMemo(() => {
     const map = new Map<Company["contractStatus"], number>()
-    for (const c of companies) map.set(c.contractStatus, (map.get(c.contractStatus) ?? 0) + 1)
+    for (const c of partnerCompanies) {
+      map.set(c.contractStatus, (map.get(c.contractStatus) ?? 0) + 1)
+    }
     return map
-  }, [companies])
+  }, [partnerCompanies])
 
   const q = query.trim().toLowerCase()
 
-  /** 会社名の一致、または配下店舗名の一致で絞り込む。 */
+  /**
+   * 会社名の一致、または配下店舗名の一致で絞り込む。
+   *
+   * 本部(kind: "internal")は契約企業ではなく店舗も持たないため、この一覧には出さない。
+   * 本部アカウントの権限は「アカウント」画面で確認する。
+   */
   const rows = useMemo(() => {
     return companies
+      .filter((company) => company.kind !== "internal")
       .map((company) => {
         const own = stores.filter((s) => s.companyId === company.id)
         const companyHit = company.name.toLowerCase().includes(q)
@@ -139,7 +155,7 @@ export default function OrganizationsPage() {
                 <SelectValue placeholder="契約状態" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">すべて ({companies.length})</SelectItem>
+                <SelectItem value="all">すべて ({partnerCompanies.length})</SelectItem>
                 {(
                   Object.keys(CONTRACT_LABEL) as Company["contractStatus"][]
                 ).map((status) => (
@@ -211,26 +227,28 @@ export default function OrganizationsPage() {
                     >
                       {CONTRACT_LABEL[company.contractStatus]}
                     </Badge>
-                    {company.kind === "internal" ? (
-                      <Badge variant="secondary" className="text-[10px]">
-                        本部
-                      </Badge>
-                    ) : null}
                   </div>
 
                   {/* 閉じたままでも規模が分かるよう、要約は常に出す */}
-                  <dl className="hidden shrink-0 gap-4 text-xs text-muted-foreground sm:flex">
-                    <div className="flex gap-1">
+                  {/* 数値の桁で位置がずれないよう、各項目の幅を固定する */}
+                  <dl className="hidden shrink-0 items-baseline gap-4 text-xs text-muted-foreground sm:flex">
+                    <div className="flex items-baseline gap-1">
                       <dt>店舗</dt>
-                      <dd className="tabular-nums text-foreground">{own.length}</dd>
+                      <dd className="w-6 text-right tabular-nums text-foreground">
+                        {own.length}
+                      </dd>
                     </div>
-                    <div className="flex gap-1">
+                    <div className="flex items-baseline gap-1">
                       <dt>連携顧客</dt>
-                      <dd className="tabular-nums text-foreground">{totals.customers}</dd>
+                      <dd className="w-8 text-right tabular-nums text-foreground">
+                        {totals.customers}
+                      </dd>
                     </div>
-                    <div className="flex gap-1">
+                    <div className="flex items-baseline gap-1">
                       <dt>適格分析</dt>
-                      <dd className="tabular-nums text-foreground">{totals.eligible}</dd>
+                      <dd className="w-10 text-right tabular-nums text-foreground">
+                        {totals.eligible}
+                      </dd>
                     </div>
                   </dl>
                 </button>
@@ -249,14 +267,14 @@ export default function OrganizationsPage() {
                       スコープ内に表示できる店舗はありません
                     </p>
                   ) : (
-                    <Table>
+                    <Table className="table-fixed">
                       <TableHeader>
                         <TableRow>
-                          <TableHead>店舗</TableHead>
-                          <TableHead>状態</TableHead>
-                          <TableHead className="text-right">連携顧客</TableHead>
-                          <TableHead className="text-right">適格分析</TableHead>
-                          <TableHead>担当者</TableHead>
+                          <TableHead className="w-[30%]">店舗</TableHead>
+                          <TableHead className="w-[10%]">状態</TableHead>
+                          <TableHead className="w-[12%] text-right">連携顧客</TableHead>
+                          <TableHead className="w-[12%] text-right">適格分析</TableHead>
+                          <TableHead className="w-[36%]">担当者</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -275,7 +293,7 @@ export default function OrganizationsPage() {
                               <TableCell className="text-right tabular-nums">
                                 {st?.eligible ?? 0}
                               </TableCell>
-                              <TableCell className="text-xs text-muted-foreground">
+                              <TableCell className="truncate text-xs text-muted-foreground">
                                 {members.length === 0
                                   ? "—"
                                   : members.map((m) => `${m.name}(${m.role})`).join(" / ")}
