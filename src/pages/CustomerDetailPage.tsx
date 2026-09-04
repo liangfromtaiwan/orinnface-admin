@@ -158,7 +158,14 @@ export default function CustomerDetailPage() {
                       data-state={s.id === selected?.id ? "selected" : undefined}
                     >
                       <TableCell className="tabular-nums">
-                        {s.completedAt ? jstDate(s.completedAt) : "—"}
+                        {s.completedAt ? (
+                          jstDate(s.completedAt)
+                        ) : (
+                          <span className="text-muted-foreground">
+                            {jstDate(s.startedAt)}
+                            <span className="ml-1 text-[10px]">開始</span>
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell>{ANALYSIS_TYPE_LABEL[s.analysisType]}</TableCell>
                       <TableCell>

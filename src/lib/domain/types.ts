@@ -204,6 +204,15 @@ export type AnalysisSession = {
   dataSubjectId: DataSubjectId
   analysisType: AnalysisType
   status: AnalysisStatus
+  /**
+   * 分析の開始日時。failed / analyzing は completedAt を持たないため、
+   * 画面で日時を出すときのフォールバックに使う。
+   *
+   * 🔴 §6 の KPI(月間アクティブユーザー・総分析回数など)は completedAt 基準の
+   *    ままにすること。仕様が completed を母数と定めているため、ここを
+   *    startedAt に替えると別定義の指標になる。
+   */
+  startedAt: string
   completedAt?: string
   /** 撮影を実施した店舗。B2C は undefined。 */
   storeId?: StoreId

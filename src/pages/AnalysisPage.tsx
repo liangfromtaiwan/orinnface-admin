@@ -115,7 +115,15 @@ export default function AnalysisPage() {
               {rows.map((s) => (
                 <TableRow key={s.id}>
                   <TableCell className="tabular-nums">
-                    {s.completedAt ? jstDate(s.completedAt) : "—"}
+                    {s.completedAt ? (
+                      jstDate(s.completedAt)
+                    ) : (
+                      // failed / 進行中は completedAt を持たないため開始日を出す
+                      <span className="text-muted-foreground">
+                        {jstDate(s.startedAt)}
+                        <span className="ml-1 text-[10px]">開始</span>
+                      </span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Link

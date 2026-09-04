@@ -304,11 +304,16 @@ customers.forEach((c, i) => {
 
     const id = `as_${pad(i + 1)}_${s}`
     const completedAt = daysAgo(daysBack)
+    // 撮影から解析完了まで数分かかる想定。failed でも開始時刻は残る。
+    const startedAt = new Date(
+      new Date(completedAt).getTime() - (90_000 + Math.floor(rand() * 240_000))
+    ).toISOString()
     const session: AnalysisSession = {
       id,
       dataSubjectId: c.dataSubjectId,
       analysisType: "face",
       status: failed ? "failed" : "completed",
+      startedAt,
       completedAt: failed ? undefined : completedAt,
       storeId: link?.storeId,
       // 再解析は新規撮影を伴わない → 適格分析ではない (§5「初回」定義)
