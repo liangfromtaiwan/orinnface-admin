@@ -109,18 +109,30 @@ export default function DashboardPage() {
   const period = useMemo(() => buildPeriod(periodKey), [periodKey])
 
   /**
-   * 🔴 B2B / B2C は「その分析を店舗で撮ったか」で分ける。
-   *    顧客の現在の連携状態で分けると、連携を解除した人の過去の店舗分析が
-   *    B2C 側に移り、店舗へ課金した実績と合わなくなる。
+   * 🔴 B2B / B2C は「その顧客に active な店舗連携があるか」で分ける。
+   *    基準は「店舗に課金できるか」。連携がなければ店舗へ請求できないので、
+   *    過去に店舗で撮った分析であっても B2C 側に入る。
    */
+  const linkedSubjectIds = useMemo(
+    () =>
+      new Set(
+        storeDataLinks
+          .filter((l) => l.status === "active")
+          .map((l) => l.dataSubjectId)
+      ),
+    [storeDataLinks]
+  )
+
   const sessions = useMemo(() => {
-    const bySegment = analysisSessions.filter((s) =>
-      segment === "all" ? true : segment === "b2b" ? !!s.storeId : !s.storeId
-    )
+    const bySegment = analysisSessions.filter((s) => {
+      if (segment === "all") return true
+      const linked = linkedSubjectIds.has(s.dataSubjectId)
+      return segment === "b2b" ? linked : !linked
+    })
     return storeId === "all"
       ? bySegment
       : bySegment.filter((s) => s.storeId === storeId)
-  }, [analysisSessions, storeId, segment])
+  }, [analysisSessions, storeId, segment, linkedSubjectIds])
 
   /** B2C には店舗が存在しないので、店舗 filter は B2C タブでは意味を持たない。 */
   const storeFilterEnabled = segment !== "b2c"
@@ -130,14 +142,8 @@ export default function DashboardPage() {
    * 本人課金が発生しないため除く。
    */
   const payingCustomers = useMemo(
-    () =>
-      customers.filter(
-        (c) =>
-          !storeDataLinks.some(
-            (l) => l.dataSubjectId === c.dataSubjectId && l.status === "active"
-          )
-      ),
-    [customers, storeDataLinks]
+    () => customers.filter((c) => !linkedSubjectIds.has(c.dataSubjectId)),
+    [customers, linkedSubjectIds]
   )
 
   const subjectIds = useMemo(() => {
@@ -206,13 +212,15 @@ export default function DashboardPage() {
    * 🔴 これを忘れると完了率だけ右上の店舗 filter を無視する。
    */
   const scopedPlaybacks = useMemo(() => {
-    const bySegment = carePlaybacks.filter((p) =>
-      segment === "all" ? true : segment === "b2b" ? !!p.storeId : !p.storeId
-    )
+    const bySegment = carePlaybacks.filter((p) => {
+      if (segment === "all") return true
+      const linked = linkedSubjectIds.has(p.dataSubjectId)
+      return segment === "b2b" ? linked : !linked
+    })
     return storeId === "all"
       ? bySegment
       : bySegment.filter((p) => p.storeId === storeId)
-  }, [carePlaybacks, storeId, segment])
+  }, [carePlaybacks, storeId, segment, linkedSubjectIds])
 
   const careExec = careExecutionRate(
     scopedPlaybacks,
@@ -309,7 +317,7 @@ export default function DashboardPage() {
         period={period}
         scopeLabel={
           segment === "b2c"
-            ? "B2C(店舗で撮っていない分析)"
+            ? "B2C(店舗連携なし)"
             : storeId === "all"
               ? segment === "b2b"
                 ? "すべての店舗"

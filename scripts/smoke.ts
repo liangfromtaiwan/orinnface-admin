@@ -109,11 +109,15 @@ check("連携なしは契約プランのまま",
 
 console.log("── B2B / B2C の切り分け ──")
 {
-  const atStore = analysisSessions.filter(s => s.storeId)
-  const atHome = analysisSessions.filter(s => !s.storeId)
-  check("分析は店舗の有無で漏れなく二分される",
-    atStore.length + atHome.length === analysisSessions.length,
-    `(店舗 ${atStore.length} / 自宅 ${atHome.length})`)
+  const linkedIds = new Set(storeDataLinks.filter(l => l.status === "active").map(l => l.dataSubjectId))
+  const b2b = analysisSessions.filter(s => linkedIds.has(s.dataSubjectId))
+  const b2c = analysisSessions.filter(s => !linkedIds.has(s.dataSubjectId))
+  check("分析は顧客の連携状態で漏れなく二分される",
+    b2b.length + b2c.length === analysisSessions.length,
+    `(B2B ${b2b.length} / B2C ${b2c.length})`)
+  check("B2C 側に店舗で撮った分析が含まれうる",
+    b2c.some(s => s.storeId),
+    `(連携解除後は B2C 扱い: ${b2c.filter(s => s.storeId).length} 件)`)
   const paying = customers.filter(c =>
     !storeDataLinks.some(l => l.dataSubjectId === c.dataSubjectId && l.status === "active"))
   const payingPremium = paying.filter(c => c.plan === "premium").length
