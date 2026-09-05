@@ -107,6 +107,22 @@ check("連携なしは契約プランのまま",
     `(${linkedRuns.length} run)`)
 }
 
+console.log("── B2B / B2C の切り分け ──")
+{
+  const atStore = analysisSessions.filter(s => s.storeId)
+  const atHome = analysisSessions.filter(s => !s.storeId)
+  check("分析は店舗の有無で漏れなく二分される",
+    atStore.length + atHome.length === analysisSessions.length,
+    `(店舗 ${atStore.length} / 自宅 ${atHome.length})`)
+  const paying = customers.filter(c =>
+    !storeDataLinks.some(l => l.dataSubjectId === c.dataSubjectId && l.status === "active"))
+  const payingPremium = paying.filter(c => c.plan === "premium").length
+  const allPremium = customers.filter(c => c.plan === "premium").length
+  check("課金指標の母数から連携済みが除かれている",
+    payingPremium < allPremium,
+    `(課金 Premium ${payingPremium} 人 / 契約 Premium ${allPremium} 人)`)
+}
+
 console.log("── KPI ──")
 const period = buildPeriod("last_12m")
 const mau = monthlyActiveUsers(analysisSessions, period)

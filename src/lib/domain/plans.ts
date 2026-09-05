@@ -15,6 +15,21 @@ import { PLAN_LABEL, type Customer, type PlanChangeEvent, type PlanCode } from "
 
 export const PLAN_ORDER: PlanCode[] = ["guest", "member", "premium"]
 
+/**
+ * ダッシュボードの表示区分。
+ *
+ * 🔴 B2B / B2C の切り分けは「分析ごとに店舗で撮ったか」で行う。
+ *    顧客の現在の連携状態で分けると、連携を解除した人の過去の店舗分析が
+ *    B2C 側に移ってしまい、店舗へ課金した実績と合わなくなる。
+ */
+export type DashboardSegment = "all" | "b2b" | "b2c"
+
+export const SEGMENT_LABEL: Record<DashboardSegment, string> = {
+  all: "全体",
+  b2b: "B2B(店舗)",
+  b2c: "B2C",
+}
+
 export type PlanSlice = {
   plan: PlanCode
   label: string

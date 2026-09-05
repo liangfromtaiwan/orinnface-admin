@@ -19,6 +19,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Select,
   SelectContent,
@@ -54,6 +55,8 @@ import {
   granularityFor,
   planComposition,
   premiumSignal,
+  SEGMENT_LABEL,
+  type DashboardSegment,
   type SignalGranularity,
 } from "@/lib/domain/plans"
 import {
@@ -94,6 +97,7 @@ export default function DashboardPage() {
   const { scope, customers, analysisSessions, carePlaybacks, storeDataLinks, stores } =
     useSession()
 
+  const [segment, setSegment] = useState<DashboardSegment>("all")
   const [periodKey, setPeriodKey] = useState<PeriodKey>("last_3m")
   const [storeId, setStoreId] = useState<string>("all")
   const [metricCode, setMetricCode] = useState(IMPROVEMENT_METRICS[0].code)
@@ -104,12 +108,36 @@ export default function DashboardPage() {
 
   const period = useMemo(() => buildPeriod(periodKey), [periodKey])
 
-  const sessions = useMemo(
+  /**
+   * 🔴 B2B / B2C は「その分析を店舗で撮ったか」で分ける。
+   *    顧客の現在の連携状態で分けると、連携を解除した人の過去の店舗分析が
+   *    B2C 側に移り、店舗へ課金した実績と合わなくなる。
+   */
+  const sessions = useMemo(() => {
+    const bySegment = analysisSessions.filter((s) =>
+      segment === "all" ? true : segment === "b2b" ? !!s.storeId : !s.storeId
+    )
+    return storeId === "all"
+      ? bySegment
+      : bySegment.filter((s) => s.storeId === storeId)
+  }, [analysisSessions, storeId, segment])
+
+  /** B2C には店舗が存在しないので、店舗 filter は B2C タブでは意味を持たない。 */
+  const storeFilterEnabled = segment !== "b2c"
+
+  /**
+   * 課金の指標の母数。active な店舗連携がある顧客は費用を店舗が負担しており
+   * 本人課金が発生しないため除く。
+   */
+  const payingCustomers = useMemo(
     () =>
-      storeId === "all"
-        ? analysisSessions
-        : analysisSessions.filter((s) => s.storeId === storeId),
-    [analysisSessions, storeId]
+      customers.filter(
+        (c) =>
+          !storeDataLinks.some(
+            (l) => l.dataSubjectId === c.dataSubjectId && l.status === "active"
+          )
+      ),
+    [customers, storeDataLinks]
   )
 
   const subjectIds = useMemo(() => {
@@ -177,13 +205,14 @@ export default function DashboardPage() {
    * scope(店舗)を playback にも効かせる。
    * 🔴 これを忘れると完了率だけ右上の店舗 filter を無視する。
    */
-  const scopedPlaybacks = useMemo(
-    () =>
-      storeId === "all"
-        ? carePlaybacks
-        : carePlaybacks.filter((p) => p.storeId === storeId),
-    [carePlaybacks, storeId]
-  )
+  const scopedPlaybacks = useMemo(() => {
+    const bySegment = carePlaybacks.filter((p) =>
+      segment === "all" ? true : segment === "b2b" ? !!p.storeId : !p.storeId
+    )
+    return storeId === "all"
+      ? bySegment
+      : bySegment.filter((p) => p.storeId === storeId)
+  }, [carePlaybacks, storeId, segment])
 
   const careExec = careExecutionRate(
     scopedPlaybacks,
@@ -230,7 +259,11 @@ export default function DashboardPage() {
         }
         actions={
           <>
-            <Select value={storeId} onValueChange={setStoreId}>
+            <Select
+              value={storeId}
+              onValueChange={setStoreId}
+              disabled={!storeFilterEnabled}
+            >
               <SelectTrigger className="w-52">
                 <SelectValue placeholder="店舗" />
               </SelectTrigger>
@@ -262,12 +295,26 @@ export default function DashboardPage() {
         }
       />
 
+      <Tabs value={segment} onValueChange={(v) => setSegment(v as DashboardSegment)}>
+        <TabsList>
+          {(Object.keys(SEGMENT_LABEL) as DashboardSegment[]).map((k) => (
+            <TabsTrigger key={k} value={k}>
+              {SEGMENT_LABEL[k]}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
+
       <PeriodBanner
         period={period}
         scopeLabel={
-          storeId === "all"
-            ? "すべての店舗"
-            : (stores.find((s) => s.id === storeId)?.name ?? "すべての店舗")
+          segment === "b2c"
+            ? "B2C(店舗で撮っていない分析)"
+            : storeId === "all"
+              ? segment === "b2b"
+                ? "すべての店舗"
+                : "全体(B2B + B2C)"
+              : (stores.find((s) => s.id === storeId)?.name ?? "すべての店舗")
         }
       />
 
@@ -336,14 +383,17 @@ export default function DashboardPage() {
         </ChartCard>
       </div>
 
-      {/* 会員プランは B2C を含む全体の指標のため本部スコープのみ。
-          店舗スコープでは B2C 顧客が含まれず数字の意味が変わる。 */}
-      {scope.crossCompany ? (
+      {/*
+        課金の指標なので B2C タブでのみ出す。連携済みの顧客は費用を店舗が負担して
+        いて本人課金がないため、母数からも外す(混ぜると Premium の課金者数が
+        実態より多く見える)。本部スコープ限定なのは B2C 顧客が店舗に紐づかないため。
+      */}
+      {scope.crossCompany && segment === "b2c" ? (
         <div className="grid gap-4 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <PremiumSignalCard
               points={premiumSignal(
-                customers,
+                payingCustomers,
                 planChangeEvents,
                 NOW,
                 periodDays(period)
@@ -352,7 +402,7 @@ export default function DashboardPage() {
               granularity={granularityFor(periodDays(period))}
             />
           </div>
-          <PlanCompositionCard composition={planComposition(customers)} />
+          <PlanCompositionCard composition={planComposition(payingCustomers)} />
         </div>
       ) : null}
 
