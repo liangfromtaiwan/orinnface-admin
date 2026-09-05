@@ -230,9 +230,11 @@ export default function CustomerDetailPage() {
           {hiddenPostureCount > 0 ? (
             <SpecNote>
               この顧客は店舗連携が有効でないため、姿勢分析 {hiddenPostureCount} 件は
-              表示していません。姿勢分析は B2B のみの項目で、連携を解除すると表示は
-              B2C 形式に戻ります。データ自体は削除されておらず、再連携すれば
-              また表示されます。
+              表示していません。姿勢分析は B2B のみの項目です。
+              {customer.unregistered
+                ? "この顧客はまだ登録・連携が済んでいません(未連携分析)。登録して連携すると表示されます。"
+                : "連携を解除すると表示は B2C 形式に戻ります。再連携すればまた表示されます。"}
+              いずれの場合もデータ自体は削除されていません。
             </SpecNote>
           ) : null}
 

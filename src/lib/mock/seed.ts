@@ -299,6 +299,14 @@ const CARE_CATALOG_VERSION = "cc-2026.08.1"
 
 customers.forEach((c, i) => {
   const link = storeDataLinks.find((l) => l.dataSubjectId === c.dataSubjectId)
+  /**
+   * 未連携分析はスタッフが店舗で撮る (§9)。store_data_link はまだ存在しないが、
+   * 撮影した店舗は分かっているので storeId は持つ。
+   * 連携の有無と「どこで撮ったか」は別の情報。
+   */
+  const captureStoreId =
+    link?.storeId ??
+    (c.unregistered ? activeStores[i % activeStores.length].id : undefined)
   const sessionCount = c.unregistered ? 1 : 1 + Math.floor(rand() * 5)
 
   // 約 3 割を「離脱した顧客」にし、残りは直近まで継続しているものとする。
@@ -330,7 +338,7 @@ customers.forEach((c, i) => {
       status: failed ? "failed" : "completed",
       startedAt,
       completedAt: failed ? undefined : completedAt,
-      storeId: link?.storeId,
+      storeId: captureStoreId,
       // 再解析は新規撮影を伴わない → 適格分析ではない (§5「初回」定義)
       newCapture: !reanalysis,
       quality: rand() < 0.08 ? "warn" : "ok",
@@ -350,7 +358,7 @@ customers.forEach((c, i) => {
     analysisSessions.push(session)
 
     // 姿勢分析は B2B(店舗連携あり)のみ (§5)
-    if (link && !failed && s % 2 === 0) {
+    if (captureStoreId && !failed && s % 2 === 0) {
       analysisSessions.push({
         ...session,
         id: `${id}_p`,
