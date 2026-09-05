@@ -204,6 +204,9 @@ export const storeDataLinks: StoreDataLink[] = []
 export const storeVisits: StoreVisit[] = []
 
 customers.forEach((c, i) => {
+  // 🔴 未登録顧客(未連携分析のみ)は store_data_link を持たない。
+  //    §9 のとおり、連携は「通常登録して handoff token を 1 回消費した時」に作られる。
+  if (c.unregistered) return
   // 約 6 割を店舗連携あり(B2B)、残りは B2C とする。
   if (i % 5 === 4) return
   const store = activeStores[i % activeStores.length]

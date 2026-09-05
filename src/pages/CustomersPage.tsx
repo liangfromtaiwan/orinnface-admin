@@ -10,6 +10,7 @@ import { useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { SearchIcon } from "lucide-react"
 
+import { CustomerBadges } from "@/components/CustomerBadges"
 import { InfoHint } from "@/components/InfoHint"
 import { PageHeader, SpecNote } from "@/components/PageHeader"
 import { Badge } from "@/components/ui/badge"
@@ -40,7 +41,7 @@ import {
   jstMonth,
   latestEligible,
 } from "@/lib/domain/kpi"
-import { PLAN_LABEL, RETENTION_STATE_LABEL, type PlanCode } from "@/lib/domain/types"
+import { RETENTION_STATE_LABEL, type PlanCode } from "@/lib/domain/types"
 import { NOW, rawImageAssets, recommendationRuns } from "@/lib/mock/seed"
 
 export default function CustomersPage() {
@@ -208,14 +209,10 @@ export default function CustomersPage() {
                     </Link>
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <span>{r.customer.displayName}</span>
-                      <Badge variant="outline" className="px-1 py-0 text-[10px]">
-                        {PLAN_LABEL[r.customer.plan]}
-                      </Badge>
-                      {r.customer.unregistered ? (
-                        <Badge variant="secondary" className="px-1 py-0 text-[10px]">
-                          未連携分析
-                        </Badge>
-                      ) : null}
+                      <CustomerBadges
+                        customer={r.customer}
+                        linked={!!r.activeLink}
+                      />
                     </div>
                   </TableCell>
                   <TableCell className="text-sm">

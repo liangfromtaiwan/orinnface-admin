@@ -12,10 +12,10 @@ import { useMemo, useState } from "react"
 import { Link, useParams } from "react-router-dom"
 import { AlertTriangleIcon, ArrowLeftIcon } from "lucide-react"
 
+import { CustomerBadges } from "@/components/CustomerBadges"
 import { InfoHint } from "@/components/InfoHint"
 import { PageHeader, SpecNote } from "@/components/PageHeader"
 import { RawImagePlaceholder, RawImageViewButton } from "@/components/RawImageAccess"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -49,7 +49,6 @@ import {
   ANALYSIS_STATUS_LABEL,
   ANALYSIS_TYPE_LABEL,
   CONSENT_KIND_LABEL,
-  PLAN_LABEL,
   RETENTION_POLICY_LABEL,
   RETENTION_STATE_LABEL,
   type AnalysisSession,
@@ -122,7 +121,11 @@ export default function CustomerDetailPage() {
         description={
           <span className="flex flex-wrap items-center gap-2">
             <span>{customer.displayName}</span>
-            <Badge variant="outline">{PLAN_LABEL[customer.plan]}</Badge>
+            <CustomerBadges
+              customer={customer}
+              linked={!!activeLink}
+              className="px-1.5 py-0.5 text-[11px]"
+            />
             {customer.ageBand ? (
               <span className="text-xs">{customer.ageBand}</span>
             ) : null}
