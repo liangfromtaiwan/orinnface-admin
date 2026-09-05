@@ -33,25 +33,33 @@ export function SpecNote({ children }: { children: ReactNode }) {
 }
 
 /**
- * 集計期間を画面に一度だけ表示する (仕様書 v1.0 §6)。
+ * 集計対象と期間を画面に一度だけ表示する (仕様書 v1.0 §6)。
  *
  * 🔴 AggregateStat はカードごとに期間を出さないため、
  *    AggregateStat を使う画面には必ずこれを置くこと。
+ *
+ * 対象(店舗)を先に、期間を後に置く。「どこの」数字かのほうが読み手にとって
+ * 前提条件なので、期間より目立たせている。
  */
 export function PeriodBanner({
   period,
-  note,
+  scopeLabel,
 }: {
   period: Period
-  note?: ReactNode
+  /** 集計対象。店舗名など。 */
+  scopeLabel?: ReactNode
 }) {
   return (
-    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 border-b pb-2 text-sm">
-      <span className="text-muted-foreground">集計期間</span>
-      <span className="font-medium tabular-nums">{period.label}</span>
-      {note ? (
-        <span className="text-xs text-muted-foreground">{note}</span>
+    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b pb-2">
+      {scopeLabel ? (
+        <span className="text-base font-semibold tracking-tight">
+          {scopeLabel}
+        </span>
       ) : null}
+      <span className="flex items-baseline gap-2 text-sm">
+        <span className="text-muted-foreground">集計期間</span>
+        <span className="font-medium tabular-nums">{period.label}</span>
+      </span>
     </div>
   )
 }

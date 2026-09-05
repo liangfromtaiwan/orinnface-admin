@@ -264,10 +264,10 @@ export default function DashboardPage() {
 
       <PeriodBanner
         period={period}
-        note={
+        scopeLabel={
           storeId === "all"
             ? "すべての店舗"
-            : stores.find((s) => s.id === storeId)?.name
+            : (stores.find((s) => s.id === storeId)?.name ?? "すべての店舗")
         }
       />
 
