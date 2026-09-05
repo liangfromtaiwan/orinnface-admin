@@ -41,7 +41,7 @@ import {
 } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useSession, useStoreName } from "@/contexts/session-context"
-import { isEligible, jstDate } from "@/lib/domain/kpi"
+import { formatDate, isEligible } from "@/lib/domain/kpi"
 import { usesB2bDisplay } from "@/lib/domain/scope"
 import { careEntitlement, getCareSlot } from "@/lib/domain/care-catalog"
 import { getMetric, isImproved, METRIC_GROUP_LABEL, metricsByGroup } from "@/lib/domain/metrics"
@@ -172,10 +172,10 @@ export default function CustomerDetailPage() {
                     >
                       <TableCell className="tabular-nums">
                         {s.completedAt ? (
-                          jstDate(s.completedAt)
+                          formatDate(s.completedAt)
                         ) : (
                           <span className="text-muted-foreground">
-                            {jstDate(s.startedAt)}
+                            {formatDate(s.startedAt)}
                             <span className="ml-1 text-[10px]">開始</span>
                           </span>
                         )}
@@ -289,12 +289,12 @@ export default function CustomerDetailPage() {
                 <TableBody>
                   {plays.map((p) => (
                     <TableRow key={p.id}>
-                      <TableCell className="tabular-nums">{jstDate(p.startedAt)}</TableCell>
+                      <TableCell className="tabular-nums">{formatDate(p.startedAt)}</TableCell>
                       <TableCell className="font-mono text-xs">{p.videoCode}</TableCell>
                       <TableCell>{getCareSlot(p.videoCode)?.targetLabel ?? "—"}</TableCell>
                       <TableCell>
                         {p.completedAt ? (
-                          jstDate(p.completedAt)
+                          formatDate(p.completedAt)
                         ) : (
                           <span className="text-muted-foreground">未完了</span>
                         )}
@@ -347,7 +347,7 @@ export default function CustomerDetailPage() {
                           {RETENTION_POLICY_LABEL[a.policy]}
                         </TableCell>
                         <TableCell className="text-sm tabular-nums">
-                          {jstDate(a.expiresAt)}
+                          {formatDate(a.expiresAt)}
                         </TableCell>
                         <TableCell className="text-sm">
                           {RETENTION_STATE_LABEL[a.state]}
@@ -383,7 +383,7 @@ export default function CustomerDetailPage() {
                 <div key={c.id}>
                   {CONSENT_KIND_LABEL[c.kind]}: {c.granted ? "同意あり" : "同意なし"}
                   <span className="ml-2 text-xs text-muted-foreground tabular-nums">
-                    {jstDate(c.occurredAt)}
+                    {formatDate(c.occurredAt)}
                   </span>
                 </div>
               ))}
@@ -663,7 +663,7 @@ function ComparePanel({
             <SelectContent>
               {sorted.map((s) => (
                 <SelectItem key={s.id} value={s.id}>
-                  {s.completedAt ? jstDate(s.completedAt) : s.id}
+                  {s.completedAt ? formatDate(s.completedAt) : s.id}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -676,7 +676,7 @@ function ComparePanel({
             <SelectContent>
               {sorted.map((s) => (
                 <SelectItem key={s.id} value={s.id}>
-                  {s.completedAt ? jstDate(s.completedAt) : s.id}
+                  {s.completedAt ? formatDate(s.completedAt) : s.id}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -702,10 +702,10 @@ function ComparePanel({
               <TableRow>
                 <TableHead>指標</TableHead>
                 <TableHead className="text-right">
-                  {left.completedAt ? jstDate(left.completedAt) : "—"}
+                  {left.completedAt ? formatDate(left.completedAt) : "—"}
                 </TableHead>
                 <TableHead className="text-right">
-                  {right.completedAt ? jstDate(right.completedAt) : "—"}
+                  {right.completedAt ? formatDate(right.completedAt) : "—"}
                 </TableHead>
                 <TableHead className="text-right">評価</TableHead>
               </TableRow>

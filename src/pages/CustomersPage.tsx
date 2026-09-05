@@ -35,7 +35,8 @@ import { careEntitlement } from "@/lib/domain/care-catalog"
 import {
   isChurnRisk,
   isEligible,
-  jstDate,
+  formatDate,
+  formatMonthDay,
   jstMonth,
   latestEligible,
 } from "@/lib/domain/kpi"
@@ -227,7 +228,7 @@ export default function CustomersPage() {
                   <TableCell className="text-sm tabular-nums">
                     {r.latestFace?.completedAt ? (
                       <>
-                        {jstDate(r.latestFace.completedAt)}
+                        {formatDate(r.latestFace.completedAt)}
                         {r.latestFace.quality === "warn" ? (
                           <Badge
                             variant="outline"
@@ -270,7 +271,7 @@ export default function CustomersPage() {
                           {r.careMonthly}
                           {r.careLimit === null ? "" : `/${r.careLimit}`}
                           {r.careLastDoneAt
-                            ? ` · 直近 ${jstDate(r.careLastDoneAt).slice(5)}`
+                            ? ` · 直近 ${formatMonthDay(r.careLastDoneAt)}`
                             : ""}
                         </>
                       )}
@@ -281,7 +282,7 @@ export default function CustomersPage() {
                       <>
                         <div>{RETENTION_STATE_LABEL[r.retention.state]}</div>
                         <div className="text-xs text-muted-foreground tabular-nums">
-                          {jstDate(r.retention.expiresAt)} まで
+                          {formatDate(r.retention.expiresAt)} まで
                         </div>
                       </>
                     ) : (

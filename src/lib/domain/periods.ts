@@ -1,6 +1,12 @@
 /** 画面共通の期間プリセット (JST 基準)。 */
 
-import { jstDate, jstMonth, type Period } from "./kpi"
+import {
+  formatDateString,
+  formatMonthString,
+  jstDate,
+  jstMonth,
+  type Period,
+} from "./kpi"
 import { NOW } from "../mock/seed"
 
 function shiftDays(days: number): string {
@@ -21,14 +27,26 @@ export function buildPeriod(key: PeriodKey): Period {
   switch (key) {
     case "this_month": {
       const month = jstMonth(NOW.toISOString())
-      return { from: `${month}-01`, to, label: `${month}(JST)` }
+      return { from: `${month}-01`, to, label: formatMonthString(month) }
     }
     case "last_3m":
-      return { from: shiftDays(90), to, label: `${shiftDays(90)} 〜 ${to}(JST)` }
+      return {
+        from: shiftDays(90),
+        to,
+        label: `${formatDateString(shiftDays(90))} 〜 ${formatDateString(to)}`,
+      }
     case "last_6m":
-      return { from: shiftDays(180), to, label: `${shiftDays(180)} 〜 ${to}(JST)` }
+      return {
+        from: shiftDays(180),
+        to,
+        label: `${formatDateString(shiftDays(180))} 〜 ${formatDateString(to)}`,
+      }
     case "last_12m":
-      return { from: shiftDays(365), to, label: `${shiftDays(365)} 〜 ${to}(JST)` }
+      return {
+        from: shiftDays(365),
+        to,
+        label: `${formatDateString(shiftDays(365))} 〜 ${formatDateString(to)}`,
+      }
   }
 }
 

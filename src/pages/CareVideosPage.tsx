@@ -28,7 +28,7 @@ import {
   CARE_CATEGORY_LABEL,
   CARE_VIDEO_SLOTS,
 } from "@/lib/domain/care-catalog"
-import { jstDate } from "@/lib/domain/kpi"
+import { formatDate } from "@/lib/domain/kpi"
 import { can } from "@/lib/domain/scope"
 import {
   CARE_ASSIGNMENT_STATUS_LABEL,
@@ -171,8 +171,8 @@ export default function CareVideosPage() {
                       {CARE_ASSIGNMENT_STATUS_LABEL[r.status]}
                     </TableCell>
                     <TableCell className="text-xs tabular-nums text-muted-foreground">
-                      {r.startAt ? jstDate(r.startAt) : "—"}
-                      {r.endAt ? ` 〜 ${jstDate(r.endAt)}` : ""}
+                      {r.startAt ? formatDate(r.startAt) : "—"}
+                      {r.endAt ? ` 〜 ${formatDate(r.endAt)}` : ""}
                     </TableCell>
                     <TableCell className="text-xs">
                       {asset?.rightsCleared ? (

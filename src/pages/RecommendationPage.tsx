@@ -21,7 +21,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { useSession } from "@/contexts/session-context"
-import { jstDate } from "@/lib/domain/kpi"
+import { formatDate } from "@/lib/domain/kpi"
 import { can } from "@/lib/domain/scope"
 import {
   VERSIONED_SET_STATUS_LABEL,
@@ -67,11 +67,11 @@ export default function RecommendationPage() {
                 <StatusBadge status={set.status} />
               </CardTitle>
               <CardDescription className="text-xs">
-                作成 {set.createdBy} / {jstDate(set.createdAt)}
+                作成 {set.createdBy} / {formatDate(set.createdAt)}
                 {set.approvedBy ? ` ・承認 ${set.approvedBy}` : ""}
-                {set.activatedAt ? ` ・有効化 ${jstDate(set.activatedAt)}` : ""}
+                {set.activatedAt ? ` ・有効化 ${formatDate(set.activatedAt)}` : ""}
                 {set.scheduledActivateAt
-                  ? ` ・有効化予約 ${jstDate(set.scheduledActivateAt)}`
+                  ? ` ・有効化予約 ${formatDate(set.scheduledActivateAt)}`
                   : ""}
               </CardDescription>
             </CardHeader>
@@ -140,9 +140,9 @@ export default function RecommendationPage() {
                 <StatusBadge status={set.status} />
               </CardTitle>
               <CardDescription className="text-xs">
-                作成 {set.createdBy} / {jstDate(set.createdAt)}
+                作成 {set.createdBy} / {formatDate(set.createdAt)}
                 {set.scheduledActivateAt
-                  ? ` ・有効化予約 ${jstDate(set.scheduledActivateAt)}`
+                  ? ` ・有効化予約 ${formatDate(set.scheduledActivateAt)}`
                   : ""}
               </CardDescription>
             </CardHeader>

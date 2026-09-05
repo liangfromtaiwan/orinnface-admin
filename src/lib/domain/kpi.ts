@@ -33,6 +33,48 @@ export function jstDate(iso: string): string {
   return JST_PARTS.format(new Date(iso))
 }
 
+/* ------------------------------------------------------------------ *
+ * 表示用の日付整形
+ *
+ * 🔴 jstDate() は期間比較(文字列の大小)にも使うロジック用なので形式を変えない。
+ *    画面に出す文字列はこちらを使う。
+ *    日本国内向けサービスのため、時間帯(JST)の注記は付けない。
+ * ------------------------------------------------------------------ */
+
+/** "2026-06-01" → "2026年06月01日" */
+export function formatDateString(ymd: string): string {
+  const [y, m, d] = ymd.split("-")
+  return `${y}年${m}月${d}日`
+}
+
+/** "2026-08" → "2026年08月" */
+export function formatMonthString(ym: string): string {
+  const [y, m] = ym.split("-")
+  return `${y}年${m}月`
+}
+
+/** ISO 文字列 → "2026年06月01日" */
+export function formatDate(iso: string): string {
+  return formatDateString(jstDate(iso))
+}
+
+/** ISO 文字列 → "06月01日"(年を省く。行内の補足など幅が限られる場所用) */
+export function formatMonthDay(iso: string): string {
+  const [, m, d] = jstDate(iso).split("-")
+  return `${m}月${d}日`
+}
+
+/** ISO 文字列 → "2026年09月04日 12:34" */
+export function formatDateTime(iso: string): string {
+  const time = new Intl.DateTimeFormat("ja-JP", {
+    timeZone: JST,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(new Date(iso))
+  return `${formatDate(iso)} ${time}`
+}
+
 /** ISO 文字列を JST の YYYY-MM にする。MAU / care 上限の暦月判定に使う。 */
 export function jstMonth(iso: string): string {
   return jstDate(iso).slice(0, 7)

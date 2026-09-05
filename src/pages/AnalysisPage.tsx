@@ -27,7 +27,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { useSession, useStoreName } from "@/contexts/session-context"
-import { isEligible, jstDate } from "@/lib/domain/kpi"
+import { formatDate, isEligible } from "@/lib/domain/kpi"
 import { usesB2bDisplay } from "@/lib/domain/scope"
 import {
   ANALYSIS_STATUS_LABEL,
@@ -129,11 +129,11 @@ export default function AnalysisPage() {
                 <TableRow key={s.id}>
                   <TableCell className="tabular-nums">
                     {s.completedAt ? (
-                      jstDate(s.completedAt)
+                      formatDate(s.completedAt)
                     ) : (
                       // failed / 進行中は completedAt を持たないため開始日を出す
                       <span className="text-muted-foreground">
-                        {jstDate(s.startedAt)}
+                        {formatDate(s.startedAt)}
                         <span className="ml-1 text-[10px]">開始</span>
                       </span>
                     )}

@@ -27,6 +27,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { useSession } from "@/contexts/session-context"
+import { formatDateTime } from "@/lib/domain/kpi"
 import { can } from "@/lib/domain/scope"
 import { AUDIT_CATEGORY_LABEL, type AuditCategory } from "@/lib/domain/types"
 import { auditEvents } from "@/lib/mock/seed"
@@ -116,11 +117,7 @@ export default function AuditPage() {
               {rows.map((e) => (
                 <TableRow key={e.id}>
                   <TableCell className="text-sm tabular-nums">
-                    {new Date(e.occurredAt).toLocaleString("ja-JP", {
-                      timeZone: "Asia/Tokyo",
-                      dateStyle: "short",
-                      timeStyle: "short",
-                    })}
+                    {formatDateTime(e.occurredAt)}
                   </TableCell>
                   <TableCell>
                     <Badge

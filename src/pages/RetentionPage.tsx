@@ -30,7 +30,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { useSession } from "@/contexts/session-context"
-import { jstDate } from "@/lib/domain/kpi"
+import { formatDate } from "@/lib/domain/kpi"
 import { can } from "@/lib/domain/scope"
 import {
   HANDOFF_STATUS_LABEL,
@@ -131,15 +131,15 @@ export default function RetentionPage() {
                       {RETENTION_POLICY_LABEL[a.policy]}
                     </TableCell>
                     <TableCell className="text-sm tabular-nums">
-                      {jstDate(a.capturedAt)}
+                      {formatDate(a.capturedAt)}
                     </TableCell>
                     <TableCell className="text-sm tabular-nums">
                       <span className={expired ? "text-amber-700" : undefined}>
-                        {jstDate(a.expiresAt)}
+                        {formatDate(a.expiresAt)}
                       </span>
                       {a.noticeSentAt ? (
                         <div className="text-[11px] text-muted-foreground">
-                          通知済 {jstDate(a.noticeSentAt)}
+                          通知済 {formatDate(a.noticeSentAt)}
                         </div>
                       ) : null}
                     </TableCell>
@@ -206,10 +206,10 @@ export default function RetentionPage() {
                   <TableRow key={h.id}>
                     <TableCell className="font-mono text-xs">{h.token}</TableCell>
                     <TableCell className="text-sm tabular-nums">
-                      {jstDate(h.issuedAt)}
+                      {formatDate(h.issuedAt)}
                     </TableCell>
                     <TableCell className="text-sm tabular-nums">
-                      {jstDate(h.expiresAt)}
+                      {formatDate(h.expiresAt)}
                       <div className="text-[11px] text-muted-foreground">発行から1日</div>
                     </TableCell>
                     <TableCell className="text-sm">
