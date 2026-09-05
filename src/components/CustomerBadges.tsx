@@ -9,8 +9,10 @@
  *      (⚠️ 課金の扱いは docs/QUESTIONS_FOR_YOSHIDA.md の項目 8 で確認中)
  *   3. それ以外(純 B2C / 連携解除済み) → プラン名
  *
- * 🔴 表示を切り替えるだけで、プランのデータ自体は保持している。
- *    care の視聴権限(§7.2)は現状もプランで決まる。
+ * 🔴 連携済みの顧客は機能面では Premium 相当として扱う(effectivePlan())。
+ *    契約プランのデータ自体は保持しており、課金の集計はそちらで行う。
+ * ⚠️ この扱いは全確定事項 v1(2026年4月)からの読み取り。
+ *    docs/QUESTIONS_FOR_YOSHIDA.md の項目 8 で確認中。
  */
 
 import { Badge } from "@/components/ui/badge"

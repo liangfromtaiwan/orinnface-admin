@@ -47,6 +47,11 @@ export function PlanCompositionCard({
             <p className="mt-1">
               未登録顧客(未連携分析のみ)は Guest に含めています。
             </p>
+            <p className="mt-2 border-t pt-2 text-muted-foreground">
+              🔴 店舗連携済みの顧客は機能面では Premium 相当として扱いますが、
+              本人課金が発生しないため、ここでは**契約プランのまま**数えています。
+              課金の実態を見る指標なので実効プランでは集計しません。
+            </p>
           </InfoHint>
         </CardTitle>
       </CardHeader>

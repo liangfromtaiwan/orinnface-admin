@@ -32,7 +32,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { useSession, useStoreName } from "@/contexts/session-context"
-import { careEntitlement } from "@/lib/domain/care-catalog"
+import { careEntitlement, effectivePlan } from "@/lib/domain/care-catalog"
 import {
   isChurnRisk,
   isEligible,
@@ -110,7 +110,9 @@ export default function CustomersPage() {
           careStarted: plays.length,
           careMonthly: monthlyCompleted,
           careLastDoneAt: lastDoneAt,
-          careLimit: careEntitlement(c.plan).monthlyLimit,
+          // 連携済みは Premium 相当(上限なし)
+          careLimit: careEntitlement(effectivePlan(c.plan, !!activeLink))
+            .monthlyLimit,
           retention,
           // ダッシュボードの KPI と同じ関数で判定する(種別を問わない)
           atRisk: isChurnRisk(
@@ -260,7 +262,7 @@ export default function CustomersPage() {
                     )}
                     <div className="text-[11px] text-muted-foreground tabular-nums">
                       推奨 {r.careRecommended}
-                      {r.customer.plan === "guest" ? (
+                      {effectivePlan(r.customer.plan, !!r.activeLink) === "guest" ? (
                         <span className="ml-1">(ロック表示)</span>
                       ) : (
                         <>

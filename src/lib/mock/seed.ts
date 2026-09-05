@@ -8,7 +8,7 @@
  * 対応する管理 API は仕様書 §12 / API設計書 v1.3 を参照。
  */
 
-import { CARE_VIDEO_SLOTS, careSlotFor } from "../domain/care-catalog"
+import { CARE_VIDEO_SLOTS, careSlotFor, effectivePlan } from "../domain/care-catalog"
 import { METRIC_CATALOG } from "../domain/metrics"
 import type {
   AdminAccount,
@@ -514,13 +514,25 @@ if (rawImageAssets.length > 12) {
 
 const POSES = ["smile", "pucker", "jaw_open", "eye_open", "brow_furrow"] as const
 
+/** active な店舗連携があるか。実効プランの判定に使う。 */
+function hasActiveLink(dataSubjectId: DataSubjectId): boolean {
+  return storeDataLinks.some(
+    (l) => l.dataSubjectId === dataSubjectId && l.status === "active"
+  )
+}
+
 export const recommendationRuns: RecommendationRun[] = analysisSessions
   .filter((s) => s.analysisType === "face" && s.status === "completed")
   .map((s, i) => {
     // 動作は同じで尺だけプランで切り替える (AI推奨 v1.2)。
+    // 連携済みは Premium 相当なので 3分。
     // Guest は再生できないが推奨自体は lock 表示されるため 1分枠を割り当てる。
     const plan = customers.find((c) => c.dataSubjectId === s.dataSubjectId)?.plan
-    const duration = plan === "premium" ? ("3m" as const) : ("1m" as const)
+    const linked = hasActiveLink(s.dataSubjectId)
+    const duration =
+      plan && effectivePlan(plan, linked) === "premium"
+        ? ("3m" as const)
+        : ("1m" as const)
     // 可動域の乖離度が大きい下位 2 動作を推奨する (AI推奨 v1.2)。左右差は使わない。
     const ranked = POSES.map((pose) => {
       const value = s.metrics.find((m) => m.metricCode === `${pose}_range`)?.value ?? 0
@@ -743,8 +755,13 @@ recommendationRuns.forEach((run, i) => {
   const session = analysisSessions.find((s) => s.id === run.analysisSessionId)
   if (!session) return
   const customer = customers.find((c) => c.dataSubjectId === session.dataSubjectId)
-  // Guest は再生不可 (推奨は lock 表示 + 登録 CTA)
-  if (!customer || customer.plan === "guest") return
+  // Guest は再生不可 (推奨は lock 表示 + 登録 CTA)。連携済みは Premium 相当。
+  if (
+    !customer ||
+    effectivePlan(customer.plan, hasActiveLink(customer.dataSubjectId)) === "guest"
+  ) {
+    return
+  }
 
   run.items.forEach((item, k) => {
     if (rand() < 0.35) return

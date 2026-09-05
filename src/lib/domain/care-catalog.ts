@@ -104,8 +104,30 @@ export type CareEntitlement = {
 }
 
 /**
+ * 実効プラン = 機能の可否を決めるときに使うプラン。
+ *
+ * 🔴 active な店舗連携がある顧客は、契約プランに関わらず **Premium 相当**として扱う。
+ *    根拠: 全確定事項 v1 の解約フロー「サロン連携解除(ユーザー側) → 解除完了 →
+ *    Member 扱いに移行」。解除で Member に落ちるということは、連携中は Member より
+ *    上の扱い、つまり Premium 相当だと読める。
+ *    費用は店舗が負担するため本人課金は発生しない(同 v1「エンドユーザーの課金:
+ *    カード登録不要 / Stripe と無関係 / 契約・課金は全てサロン側で完結」)。
+ *
+ * ⚠️ 管理画面仕様書 v1.0 §7.2 は Guest/Member/Premium でしか権限を規定しておらず、
+ *    連携状態が出てこない。この扱いは上記 v1(2026年4月版)からの読み取りなので、
+ *    docs/QUESTIONS_FOR_YOSHIDA.md の項目 8 で確認中。
+ *
+ * 🔴 課金の集計(プラン構成比・営収シグナル)には使わない。
+ *    連携済みの顧客は本人課金がないため、契約プランのままで数える。
+ */
+export function effectivePlan(plan: PlanCode, linked: boolean): PlanCode {
+  return linked ? "premium" : plan
+}
+
+/**
  * 🔴 実際の判定は Backend entitlement が正 (§15 受入条件)。
  *    ここは管理画面で「その顧客に何が見えているはずか」を説明表示するためのもの。
+ *    連携済みの顧客は effectivePlan() を通した値を渡すこと。
  */
 export function careEntitlement(plan: PlanCode): CareEntitlement {
   switch (plan) {

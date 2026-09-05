@@ -8,7 +8,7 @@
 
 import { adminAccounts, analysisSessions, carePlaybacks, customers, storeDataLinks, stores, rawImageAssets, handoffTokens, recommendationRuns, NOW } from "@/lib/mock/seed"
 import { resolveScope, canViewCustomer, visibleCustomerIds, can, visibleScreens, usesB2bDisplay } from "@/lib/domain/scope"
-import { CARE_VIDEO_SLOTS, careEntitlement, assertCareSlotInvariant } from "@/lib/domain/care-catalog"
+import { CARE_VIDEO_SLOTS, careEntitlement, assertCareSlotInvariant, effectivePlan } from "@/lib/domain/care-catalog"
 import { monthlyActiveUsers, totalAnalyses, continuingUsers, churnRiskUsers, improvementRate, careCompletionRate, isEligible, isChurnRisk } from "@/lib/domain/kpi"
 import { buildPeriod } from "@/lib/domain/periods"
 
@@ -29,8 +29,14 @@ check("handoff tokens seeded", handoffTokens.length > 0, `(${handoffTokens.lengt
 check("每人 active link <= 1 (V1 制約)",
   customers.every(c => storeDataLinks.filter(l => l.dataSubjectId === c.dataSubjectId && l.status === "active").length <= 1))
 check("推奨は 2 件 (AI推奨 v1.2)", recommendationRuns.every(r => r.items.length === 2))
-check("Guest に care playback が無い",
-  carePlaybacks.every(p => customers.find(c => c.dataSubjectId === p.dataSubjectId)?.plan !== "guest"))
+check("実効プランが Guest の人には care playback が無い",
+  carePlaybacks.every(p => {
+    const c = customers.find(c => c.dataSubjectId === p.dataSubjectId)
+    if (!c) return false
+    const linked = storeDataLinks.some(l => l.dataSubjectId === c.dataSubjectId && l.status === "active")
+    return effectivePlan(c.plan, linked) !== "guest"
+  }),
+  "(連携済みの Guest は Premium 相当なので再生できる)")
 
 console.log("── scope ──")
 const allIds = customers.map(c => c.dataSubjectId)
@@ -88,6 +94,18 @@ console.log("── entitlement ──")
 check("Guest 再生不可 + lock表示", careEntitlement("guest").canPlay === false && careEntitlement("guest").showLockedWithCta === true)
 check("Member 月10回", careEntitlement("member").monthlyLimit === 10)
 check("Premium 上限なし", careEntitlement("premium").monthlyLimit === null)
+check("連携済みは契約プランに関わらず Premium 相当",
+  (["guest","member","premium"] as const).every(p => effectivePlan(p, true) === "premium"))
+check("連携なしは契約プランのまま",
+  (["guest","member","premium"] as const).every(p => effectivePlan(p, false) === p))
+{
+  const linkedIds = new Set(storeDataLinks.filter(l => l.status === "active").map(l => l.dataSubjectId))
+  const byId = new Map(analysisSessions.map(s => [s.id, s.dataSubjectId]))
+  const linkedRuns = recommendationRuns.filter(r => linkedIds.has(byId.get(r.analysisSessionId) ?? ""))
+  check("連携済みへの推奨は 3分枠",
+    linkedRuns.length > 0 && linkedRuns.every(r => r.items.every(i => i.videoCode.includes("_3m_"))),
+    `(${linkedRuns.length} run)`)
+}
 
 console.log("── KPI ──")
 const period = buildPeriod("last_12m")

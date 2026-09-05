@@ -43,7 +43,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useSession, useStoreName } from "@/contexts/session-context"
 import { formatDate, isEligible } from "@/lib/domain/kpi"
 import { usesB2bDisplay } from "@/lib/domain/scope"
-import { careEntitlement, getCareSlot } from "@/lib/domain/care-catalog"
+import {
+  careEntitlement,
+  effectivePlan,
+  getCareSlot,
+} from "@/lib/domain/care-catalog"
 import { getMetric, isImproved, METRIC_GROUP_LABEL, metricsByGroup } from "@/lib/domain/metrics"
 import {
   ANALYSIS_STATUS_LABEL,
@@ -110,7 +114,8 @@ export default function CustomerDetailPage() {
     (l) => l.dataSubjectId === dataSubjectId && l.status === "active"
   )
   const plays = carePlaybacks.filter((p) => p.dataSubjectId === dataSubjectId)
-  const entitlement = careEntitlement(customer.plan)
+  // 連携済みは Premium 相当として扱う
+  const entitlement = careEntitlement(effectivePlan(customer.plan, !!activeLink))
   const assets = rawImageAssets.filter((a) => a.dataSubjectId === dataSubjectId)
   const consents = consentEvents.filter((c) => c.dataSubjectId === dataSubjectId)
 
@@ -308,7 +313,9 @@ export default function CustomerDetailPage() {
                     <TableRow>
                       <TableCell colSpan={4} className="py-8 text-center text-sm text-muted-foreground">
                         care 再生の記録はありません
-                        {customer.plan === "guest" ? "(Guest は再生不可)" : ""}
+                        {effectivePlan(customer.plan, !!activeLink) === "guest"
+                          ? "(Guest は再生不可)"
+                          : ""}
                       </TableCell>
                     </TableRow>
                   ) : null}
