@@ -16,11 +16,14 @@ import { cn } from "@/lib/utils"
 export function CustomerBadges({
   customer,
   linked,
+  awaitingReconsent = false,
   className,
 }: {
   customer: Customer
-  /** active な店舗連携があるか。 */
+  /** active な店舗連携があり、本人の同意も取れているか。 */
   linked: boolean
+  /** 連携は active だが本人の再同意を待っている状態。 */
+  awaitingReconsent?: boolean
   className?: string
 }) {
   const size = cn("px-1 py-0 text-[10px]", className)
@@ -39,6 +42,14 @@ export function CustomerBadges({
         {PLAN_LABEL[customer.plan]}
       </Badge>
       {linked ? <Badge className={size}>連携済み</Badge> : null}
+      {awaitingReconsent ? (
+        <Badge
+          variant="outline"
+          className={cn(size, "border-amber-300 text-amber-700")}
+        >
+          再同意待ち
+        </Badge>
+      ) : null}
     </>
   )
 }

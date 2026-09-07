@@ -257,7 +257,10 @@ export default function CustomersPage() {
                       <span>{r.customer.displayName}</span>
                       <CustomerBadges
                         customer={r.customer}
-                        linked={!!r.activeLink}
+                        linked={!!r.activeLink && !!r.activeLink.consentedAt}
+                        awaitingReconsent={
+                          !!r.activeLink && !r.activeLink.consentedAt
+                        }
                       />
                     </div>
                   </TableCell>

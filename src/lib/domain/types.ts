@@ -104,6 +104,15 @@ export type StoreDataLink = {
   status: "active" | "revoked"
   linkedAt: string
   revokedAt?: string
+  /**
+   * この連携に対する本人の同意日時。
+   *
+   * 🔴 連携解除後は閲覧不可。再び閲覧できるのは「**再連携＋再同意**」の後
+   *    (吉田さん確定 2026-09-07)。したがって連携が active でも、
+   *    この同意がなければ店舗は閲覧できない。
+   *    再連携したときは以前の同意を引き継がず、改めて取得する。
+   */
+  consentedAt?: string
 }
 
 /** 来店履歴。閲覧権限の判定には使わない (§3)。 */

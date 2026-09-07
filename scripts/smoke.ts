@@ -10,7 +10,7 @@ import { adminAccounts, analysisSessions, carePlaybacks, customers, storeDataLin
 import { resolveScope, canViewCustomer, visibleCustomerIds, can, visibleScreens, usesB2bDisplay } from "@/lib/domain/scope"
 import { CARE_VIDEO_SLOTS, careEntitlement, assertCareSlotInvariant, canPlaySlot, careSlotFor } from "@/lib/domain/care-catalog"
 import { matchesCustomerFilter, CUSTOMER_FILTER_ORDER } from "@/lib/domain/plans"
-import { decideRawImageView } from "@/lib/domain/scope"
+import { decideRawImageView, isAwaitingReconsent, usesB2bDisplay } from "@/lib/domain/scope"
 import { monthlyActiveUsers, totalAnalyses, continuingUsers, churnRiskUsers, improvementRate, careCompletionRate, isEligible, isChurnRisk, billableActiveUsers, makeBillingIdentityResolver } from "@/lib/domain/kpi"
 import { buildPeriod } from "@/lib/domain/periods"
 
@@ -107,6 +107,31 @@ console.log("── 姿勢分析は B2B のみ (§5.2) ──")
   check("解除済み顧客は B2C 表示形式になる",
     leaked.every(c => !usesB2bDisplay(c.dataSubjectId, storeDataLinks)),
     `(解除済みで姿勢データを持つ ${leaked.length}人)`)
+}
+
+console.log("── 再連携は再同意が必要 (吉田さん確定 2026-09-07) ──")
+{
+  const active = storeDataLinks.filter(l => l.status === "active")
+  const pending = active.filter(l => !l.consentedAt)
+  check("再同意待ちの連携がある", pending.length > 0, `(${pending.length} 件 / active ${active.length} 件)`)
+  const staffScope = resolveScope(adminAccounts[3], stores)
+  const opScope = resolveScope(adminAccounts[0], stores)
+  const ids = customers.map(c => c.dataSubjectId)
+  for (const l of pending) {
+    check("再同意待ちの顧客は店舗から閲覧できない",
+      !canViewCustomer(staffScope, l.dataSubjectId, storeDataLinks) ||
+      !staffScope.storeIds.includes(l.storeId))
+    check("再同意待ちでも本部からは閲覧できる",
+      canViewCustomer(opScope, l.dataSubjectId, storeDataLinks))
+    check("再同意待ちは B2B 表示形式にならない(姿勢を出さない)",
+      !usesB2bDisplay(l.dataSubjectId, storeDataLinks))
+    check("再同意待ちとして識別できる",
+      isAwaitingReconsent(l.dataSubjectId, storeDataLinks))
+    break
+  }
+  check("同意済みの連携は閲覧できる",
+    active.filter(l => l.consentedAt).length > 0 &&
+    visibleCustomerIds(staffScope, ids, storeDataLinks).length > 0)
 }
 
 console.log("── 生画像の閲覧可否 (吉田さん確定 2026-09-07) ──")

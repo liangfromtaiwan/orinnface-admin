@@ -101,10 +101,29 @@ export function canViewCustomer(
   links: StoreDataLink[]
 ): boolean {
   if (scope.crossCompany) return true
-  const activeLinks = links.filter(
-    (l) => l.dataSubjectId === dataSubjectId && l.status === "active"
+  return links.some(
+    (l) =>
+      l.dataSubjectId === dataSubjectId &&
+      l.status === "active" &&
+      // 🔴 再連携しただけでは足りない。本人の再同意が必要
+      //    (吉田さん確定 2026-09-07)
+      !!l.consentedAt &&
+      scope.storeIds.includes(l.storeId)
   )
-  return activeLinks.some((l) => scope.storeIds.includes(l.storeId))
+}
+
+/**
+ * 連携は active だが本人の同意が未取得の状態。
+ * 再連携したあと再同意を待っている顧客がこれに当たる。
+ */
+export function isAwaitingReconsent(
+  dataSubjectId: DataSubjectId,
+  links: StoreDataLink[]
+): boolean {
+  return links.some(
+    (l) =>
+      l.dataSubjectId === dataSubjectId && l.status === "active" && !l.consentedAt
+  )
 }
 
 /**
@@ -119,7 +138,8 @@ export function usesB2bDisplay(
   links: StoreDataLink[]
 ): boolean {
   return links.some(
-    (l) => l.dataSubjectId === dataSubjectId && l.status === "active"
+    (l) =>
+      l.dataSubjectId === dataSubjectId && l.status === "active" && !!l.consentedAt
   )
 }
 

@@ -149,7 +149,8 @@ export default function CustomerDetailPage() {
             <span>{customer.displayName}</span>
             <CustomerBadges
               customer={customer}
-              linked={!!activeLink}
+              linked={!!activeLink && !!activeLink.consentedAt}
+              awaitingReconsent={!!activeLink && !activeLink.consentedAt}
               className="px-1.5 py-0.5 text-[11px]"
             />
             {customer.ageBand ? (
