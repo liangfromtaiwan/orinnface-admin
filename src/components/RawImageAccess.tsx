@@ -48,16 +48,18 @@ export function RawImageViewButton({
   disabled?: boolean
   disabledReason?: string
 }) {
-  const { scope, account } = useSession()
-  const { grantView } = useNotifications()
+  const { scope } = useSession()
+  const { submitRequest, issueDirect } = useNotifications()
   const [open, setOpen] = useState(false)
   const [pending, setPending] = useState(false)
   const [reason, setReason] = useState("")
 
-  const allowed = can(scope, "raw_image.view_token")
-  if (!allowed) {
+  // 本部は承認者なので自分で発行できる。それ以外は本部へ申請する。
+  const isReviewer = can(scope, "raw_image.view_token")
+  const canAct = isReviewer || can(scope, "raw_image.request")
+  if (!canAct) {
     return (
-      <Button variant="outline" size="sm" disabled title="この権限では発行できません">
+      <Button variant="outline" size="sm" disabled title="この権限では申請できません">
         <LockIcon /> 閲覧不可
       </Button>
     )
@@ -65,26 +67,22 @@ export function RawImageViewButton({
 
   function issue() {
     // 実装時は POST /admin/v1/raw-image-assets/{id}/view-tokens を呼ぶ (§12)。
-    // §11 のとおり権限・所有・active link・目的・理由を検証してから発行される。
     const trimmed = reason.trim()
     setOpen(false)
     setReason("")
-    setPending(true)
-    toast.info("一時閲覧を申請しました", {
-      description: "権限と理由を検証しています",
-    })
-    // 検証は非同期。承認されたらヘッダーの通知に届く。
-    window.setTimeout(() => {
-      setPending(false)
-      grantView({
-        rawImageAssetId,
-        reason: trimmed,
-        viewerName: account.displayName,
-      })
-      toast.success("承認されました", {
+    if (isReviewer) {
+      issueDirect({ rawImageAssetId, purpose: trimmed })
+      toast.success("一時閲覧を発行しました", {
         description: `通知から閲覧できます（有効 ${VIEW_TOKEN_TTL_SECONDS / 60} 分）`,
       })
-    }, 1200)
+      return
+    }
+    setPending(true)
+    submitRequest({ rawImageAssetId, purpose: trimmed })
+    window.setTimeout(() => setPending(false), 600)
+    toast.info("本部へ申請しました", {
+      description: "審査の結果は通知でお知らせします",
+    })
   }
 
   return (
@@ -96,21 +94,24 @@ export function RawImageViewButton({
           disabled={disabled || pending}
           title={disabledReason}
         >
-          <EyeIcon /> {pending ? "検証中…" : "一時閲覧"}
+          <EyeIcon /> {pending ? "送信中…" : isReviewer ? "一時閲覧" : "閲覧を申請"}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>生画像の一時閲覧</DialogTitle>
+          <DialogTitle>
+            {isReviewer ? "生画像の一時閲覧" : "生画像の閲覧を申請"}
+          </DialogTitle>
           <DialogDescription>
-            対象 {rawImageAssetId} の署名 URL を {VIEW_TOKEN_TTL_SECONDS} 秒だけ発行します。
+            {isReviewer
+              ? `対象 ${rawImageAssetId} の署名 URL を ${VIEW_TOKEN_TTL_SECONDS} 秒だけ発行します。`
+              : `対象 ${rawImageAssetId} の閲覧を本部へ申請します。承認されると ${VIEW_TOKEN_TTL_SECONDS} 秒だけ閲覧できます。`}
             閲覧者・対象・理由・日時・request ID が image_access_logs に記録されます。
-            承認されるとヘッダーの通知に届きます。
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-2">
           <label className="text-sm font-medium" htmlFor="raw-image-reason">
-            閲覧理由(必須)
+            {isReviewer ? "閲覧理由(必須)" : "申請理由(必須・本部が審査します)"}
           </label>
           <Input
             id="raw-image-reason"
@@ -124,7 +125,7 @@ export function RawImageViewButton({
             キャンセル
           </Button>
           <Button onClick={issue} disabled={reason.trim().length < 4}>
-            発行する
+            {isReviewer ? "発行する" : "申請する"}
           </Button>
         </DialogFooter>
       </DialogContent>

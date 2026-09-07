@@ -137,8 +137,10 @@ export function visibleCustomerIds(
  * ------------------------------------------------------------------ */
 
 export type Capability =
-  /** 生画像の理由付き一時閲覧 token を発行できる */
+  /** 生画像の一時閲覧を自分で発行できる(＝承認者) */
   | "raw_image.view_token"
+  /** 生画像の閲覧を本部へ申請できる */
+  | "raw_image.request"
   /** care 差し替えを申請できる */
   | "care.request_replacement"
   /** care 差し替えを承認・公開できる */
@@ -168,10 +170,10 @@ const CAPABILITIES: Record<RoleCode, Capability[]> = {
     "retention.operate",
   ],
   // 差し替え申請はできるが、承認・公開と slot 新設はできない (§4.2)
-  company_admin: ["care.request_replacement", "org.manage"],
-  store_admin: ["care.request_replacement", "org.manage"],
+  company_admin: ["care.request_replacement", "org.manage", "raw_image.request"],
+  store_admin: ["care.request_replacement", "org.manage", "raw_image.request"],
   // B2B 撮影・分析実行・結果表示・staff note・handoff (§4.4)
-  store_staff: ["session.capture"],
+  store_staff: ["session.capture", "raw_image.request"],
   customer: [],
 }
 

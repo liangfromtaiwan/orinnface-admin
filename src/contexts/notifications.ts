@@ -1,45 +1,73 @@
 /**
- * 管理画面の通知 (ヘッダーのベル)
+ * 生画像 一時閲覧の申請・審査 (ヘッダーのベル)
  *
- * V1 で通知が必要なのは、生画像の一時閲覧が承認されたことの伝達。
- * §11 のとおり閲覧は「権限・所有・active link・目的・理由を検証」してから
- * 署名 URL 300 秒を発行する。検証が通ったことを利用者に知らせ、
- * そこから実際の閲覧画面へ入る。
+ * 🔴 流れ (使用者確定 2026-09-07):
+ *    1. 店舗スタッフ・店舗管理者・契約企業管理者が閲覧を申請する(理由必須)
+ *    2. 申請は本部(operator)にだけ通知される
+ *    3. 本部が内容を見て「承認」か「却下」を決める
+ *    4. 却下する場合は理由を入力し、それが申請者に見える
+ *    5. 承認されると申請者に通知が届き、署名 URL 300 秒で閲覧できる
  *
- * ⚠️ 実装では管理 API からの応答で作る。ここは画面側の入れ物のみ。
+ * ⚠️ 仕様書 v1.0 §11 は「権限・所有・active link・目的・理由を検証し署名URL300秒」
+ *    としか書いておらず、人による承認ステップは規定されていない。
+ *    この承認フロー自体が §11 への追加なので、確定したら仕様書側にも反映が必要。
+ *
+ * 本部自身は承認者なので、申請を経ずに直接発行する(§2 の「理由入力と監査付き
+ * token を別操作で発行する」に沿う)。
  */
 
 import { createContext, useContext } from "react"
 
-export type ViewGrant = {
-  /** 対象の生画像 asset */
-  rawImageAssetId: string
-  /** 監査に記録される閲覧理由 */
-  reason: string
-  /** 閲覧者 */
-  viewerName: string
-  /** 署名 URL の失効時刻 (ISO) */
-  expiresAt: string
-  /** 監査ログの request ID */
-  requestId: string
+export type ViewRequestStatus = "pending" | "approved" | "rejected"
+
+export const VIEW_REQUEST_STATUS_LABEL: Record<ViewRequestStatus, string> = {
+  pending: "審査待ち",
+  approved: "承認済み",
+  rejected: "却下",
 }
 
-export type AdminNotification = {
+export type ViewRequest = {
   id: string
-  kind: "view_grant"
-  title: string
-  createdAt: string
-  read: boolean
-  grant: ViewGrant
+  rawImageAssetId: string
+  /** 申請理由。監査に記録される。 */
+  purpose: string
+  requesterAccountId: string
+  requesterName: string
+  requesterRole: string
+  requestedAt: string
+  status: ViewRequestStatus
+  /** 監査ログの request ID */
+  requestId: string
+
+  reviewerName?: string
+  reviewedAt?: string
+  /** 却下の理由。申請者に見せる。 */
+  rejectReason?: string
+  /** 承認時のみ。署名 URL の失効時刻。 */
+  expiresAt?: string
+
+  /** 申請者が結果を読んだか(未読バッジ用)。 */
+  readByRequester: boolean
 }
 
 export type NotificationsValue = {
-  notifications: AdminNotification[]
+  /** すべての申請。表示側でアカウントごとに絞る。 */
+  requests: ViewRequest[]
+  /** 本部の審査待ち。 */
+  pendingForReview: ViewRequest[]
+  /** 自分が出した申請のうち、結果が出ていて未読のもの。 */
+  resultsForMe: ViewRequest[]
   unreadCount: number
-  /** 一時閲覧の承認を受け取る。 */
-  grantView: (grant: Omit<ViewGrant, "requestId" | "expiresAt">) => void
-  markRead: (id: string) => void
-  markAllRead: () => void
+
+  submitRequest: (input: {
+    rawImageAssetId: string
+    purpose: string
+  }) => void
+  approve: (requestId: string) => void
+  reject: (requestId: string, reason: string) => void
+  markResultRead: (requestId: string) => void
+  /** 本部が申請を経ずに自分で発行する。 */
+  issueDirect: (input: { rawImageAssetId: string; purpose: string }) => void
 }
 
 export const NotificationsContext = createContext<NotificationsValue | null>(null)

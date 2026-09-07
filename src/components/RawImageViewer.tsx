@@ -22,7 +22,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { formatDateTime } from "@/lib/domain/kpi"
-import type { ViewGrant } from "@/contexts/notifications"
+import type { ViewRequest } from "@/contexts/notifications"
 import { cn } from "@/lib/utils"
 
 function secondsLeft(expiresAt: string): number {
@@ -40,7 +40,8 @@ export function RawImageViewer({
   open,
   onOpenChange,
 }: {
-  grant: ViewGrant | null
+  /** 承認済みの申請。expiresAt を持つ。 */
+  grant: ViewRequest | null
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
@@ -49,12 +50,12 @@ export function RawImageViewer({
   const [, setTick] = useState(0)
 
   useEffect(() => {
-    if (!open || !grant) return
+    if (!open || !grant?.expiresAt) return
     const id = setInterval(() => setTick((t) => t + 1), 1000)
     return () => clearInterval(id)
   }, [open, grant])
 
-  if (!grant) return null
+  if (!grant || !grant.expiresAt) return null
   const left = secondsLeft(grant.expiresAt)
   const expired = left <= 0
   const urgent = left > 0 && left <= 60
@@ -124,19 +125,23 @@ export function RawImageViewer({
           </div>
           <div className="flex justify-between gap-2 border-b py-1">
             <dt className="text-muted-foreground">閲覧者</dt>
-            <dd>{grant.viewerName}</dd>
+            <dd>{grant.requesterName}</dd>
           </div>
           <div className="flex justify-between gap-2 border-b py-1">
             <dt className="text-muted-foreground">request ID</dt>
             <dd className="font-mono">{grant.requestId}</dd>
           </div>
           <div className="flex justify-between gap-2 border-b py-1">
+            <dt className="text-muted-foreground">承認者</dt>
+            <dd>{grant.reviewerName ?? "—"}</dd>
+          </div>
+          <div className="flex justify-between gap-2 border-b py-1">
             <dt className="text-muted-foreground">失効</dt>
             <dd className="tabular-nums">{formatDateTime(grant.expiresAt)}</dd>
           </div>
           <div className="border-b py-1 sm:col-span-2">
-            <dt className="text-muted-foreground">閲覧理由（監査に記録）</dt>
-            <dd className="mt-0.5">{grant.reason}</dd>
+            <dt className="text-muted-foreground">申請理由（監査に記録）</dt>
+            <dd className="mt-0.5">{grant.purpose}</dd>
           </div>
         </dl>
 
