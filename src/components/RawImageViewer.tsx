@@ -25,6 +25,30 @@ import { formatDateTime } from "@/lib/domain/kpi"
 import type { ViewRequest } from "@/contexts/notifications"
 import { cn } from "@/lib/utils"
 
+/**
+ * ダミー画像の特徴点。眉・目・鼻・唇・輪郭をそれぞれ独立した線として描く。
+ * 全部を 1 本の線で繋ぐと顔に見えないため、部位ごとに分けている。
+ */
+const LANDMARK_GROUPS: [number, number][][] = [
+  // 左右の眉
+  [[70, 78], [78, 73], [88, 73], [94, 76]],
+  [[106, 76], [112, 73], [122, 73], [130, 78]],
+  // 左右の目(閉じた輪郭)
+  [[73, 88], [80, 83], [89, 83], [95, 88], [88, 92], [80, 92], [73, 88]],
+  [[105, 88], [111, 83], [120, 83], [127, 88], [120, 92], [111, 92], [105, 88]],
+  // 鼻筋と鼻下
+  [[100, 86], [100, 106]],
+  [[92, 111], [100, 114], [108, 111]],
+  // 唇(上下)
+  [[83, 127], [92, 122], [100, 124], [108, 122], [117, 127]],
+  [[117, 127], [108, 135], [100, 137], [92, 135], [83, 127]],
+  // フェイスライン
+  [
+    [54, 96], [57, 114], [66, 132], [80, 146], [100, 152],
+    [120, 146], [134, 132], [143, 114], [146, 96],
+  ],
+]
+
 function secondsLeft(expiresAt: string): number {
   return Math.max(0, Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 1000))
 }
@@ -97,19 +121,25 @@ export function RawImageViewer({
             <div className="relative flex h-64 items-center justify-center bg-zinc-900">
               {/* デモ用のダミー。実装では署名 URL の画像を表示する。 */}
               <svg viewBox="0 0 200 200" className="h-56 w-56" aria-label="ダミー画像">
-                <ellipse cx="100" cy="100" rx="52" ry="66" fill="none"
-                         stroke="#4b5563" stroke-width="1.5" />
-                <g fill="#7CB518">
-                  <circle cx="82" cy="88" r="2.5" /><circle cx="118" cy="88" r="2.5" />
-                  <circle cx="100" cy="104" r="2.5" /><circle cx="88" cy="124" r="2.5" />
-                  <circle cx="112" cy="124" r="2.5" /><circle cx="100" cy="128" r="2.5" />
-                  <circle cx="70" cy="100" r="2" /><circle cx="130" cy="100" r="2" />
-                  <circle cx="76" cy="76" r="2" /><circle cx="124" cy="76" r="2" />
-                </g>
-                <g stroke="#7CB518" stroke-width="1" opacity=".55" fill="none">
-                  <path d="M76 76 L82 88 L70 100 L88 124 L100 128 L112 124 L130 100 L118 88 L124 76" />
-                  <path d="M82 88 L100 104 L118 88" />
-                </g>
+                {/* 顔の輪郭 */}
+                <ellipse cx="100" cy="98" rx="50" ry="64" fill="none"
+                         stroke="#3f4652" strokeWidth="1.5" />
+                {/* 特徴点群。実装では 478 点の landmark を重ねた画像を表示する */}
+                {LANDMARK_GROUPS.map((pts, gi) => (
+                  <g key={gi}>
+                    <polyline
+                      points={pts.map(([x, y]) => `${x},${y}`).join(" ")}
+                      fill="none"
+                      stroke="#7CB518"
+                      strokeWidth="0.9"
+                      strokeLinecap="round"
+                      opacity="0.6"
+                    />
+                    {pts.map(([x, y], i) => (
+                      <circle key={i} cx={x} cy={y} r="1.5" fill="#7CB518" />
+                    ))}
+                  </g>
+                ))}
               </svg>
               <span className="absolute bottom-2 left-3 font-mono text-[11px] text-zinc-500">
                 デモ用のダミー画像（骨格点オーバーレイ）
@@ -141,7 +171,7 @@ export function RawImageViewer({
           </div>
           <div className="border-b py-1 sm:col-span-2">
             <dt className="text-muted-foreground">申請理由（監査に記録）</dt>
-            <dd className="mt-0.5">{grant.purpose}</dd>
+            <dd className="mt-0.5 break-words">{grant.purpose}</dd>
           </div>
         </dl>
 
