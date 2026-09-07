@@ -1,5 +1,6 @@
 import { renderToString } from "react-dom/server"
 import { MemoryRouter, Route, Routes } from "react-router-dom"
+import { NotificationsProvider } from "@/contexts/NotificationsContext"
 import { SessionProvider } from "@/contexts/SessionContext"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import DashboardPage from "@/pages/DashboardPage"
@@ -33,6 +34,7 @@ for (const [name, path, Page] of pages) {
   try {
     const html = renderToString(
       <SessionProvider>
+        <NotificationsProvider>
         <TooltipProvider>
           <MemoryRouter initialEntries={[path]}>
             <Routes>
@@ -41,6 +43,7 @@ for (const [name, path, Page] of pages) {
             </Routes>
           </MemoryRouter>
         </TooltipProvider>
+        </NotificationsProvider>
       </SessionProvider>
     )
     const len = html.length

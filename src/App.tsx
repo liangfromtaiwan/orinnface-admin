@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom"
 import { Layout } from "@/components/Layout"
 import { Toaster } from "@/components/ui/sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { NotificationsProvider } from "@/contexts/NotificationsContext"
 import { SessionProvider } from "@/contexts/SessionContext"
 import AccountPage from "./pages/AccountPage"
 import AnalysisPage from "./pages/AnalysisPage"
@@ -25,6 +26,7 @@ import RequireScreen from "./components/RequireScreen"
 export default function App() {
   return (
     <SessionProvider>
+      <NotificationsProvider>
       <TooltipProvider>
         <BrowserRouter>
           <Routes>
@@ -111,6 +113,7 @@ export default function App() {
         </BrowserRouter>
         <Toaster />
       </TooltipProvider>
+      </NotificationsProvider>
     </SessionProvider>
   )
 }

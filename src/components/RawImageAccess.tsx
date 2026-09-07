@@ -21,11 +21,9 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { useNotifications, VIEW_TOKEN_TTL_SECONDS } from "@/contexts/notifications"
 import { useSession } from "@/contexts/session-context"
 import { can } from "@/lib/domain/scope"
-
-/** 署名 URL の有効秒数 (§11)。 */
-export const VIEW_TOKEN_TTL_SECONDS = 300
 
 export function RawImagePlaceholder({ label }: { label?: string }) {
   return (
@@ -51,7 +49,9 @@ export function RawImageViewButton({
   disabledReason?: string
 }) {
   const { scope, account } = useSession()
+  const { grantView } = useNotifications()
   const [open, setOpen] = useState(false)
+  const [pending, setPending] = useState(false)
   const [reason, setReason] = useState("")
 
   const allowed = can(scope, "raw_image.view_token")
@@ -65,19 +65,38 @@ export function RawImageViewButton({
 
   function issue() {
     // 実装時は POST /admin/v1/raw-image-assets/{id}/view-tokens を呼ぶ (§12)。
-    // reason / actor / target / request_id は image_access_logs へ記録される。
-    toast.success(`一時閲覧 token を発行しました (有効 ${VIEW_TOKEN_TTL_SECONDS} 秒)`, {
-      description: `対象 ${rawImageAssetId} / 閲覧者 ${account.displayName} / 理由は監査に記録されます`,
-    })
+    // §11 のとおり権限・所有・active link・目的・理由を検証してから発行される。
+    const trimmed = reason.trim()
     setOpen(false)
     setReason("")
+    setPending(true)
+    toast.info("一時閲覧を申請しました", {
+      description: "権限と理由を検証しています",
+    })
+    // 検証は非同期。承認されたらヘッダーの通知に届く。
+    window.setTimeout(() => {
+      setPending(false)
+      grantView({
+        rawImageAssetId,
+        reason: trimmed,
+        viewerName: account.displayName,
+      })
+      toast.success("承認されました", {
+        description: `通知から閲覧できます（有効 ${VIEW_TOKEN_TTL_SECONDS / 60} 分）`,
+      })
+    }, 1200)
   }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" disabled={disabled} title={disabledReason}>
-          <EyeIcon /> 一時閲覧
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={disabled || pending}
+          title={disabledReason}
+        >
+          <EyeIcon /> {pending ? "検証中…" : "一時閲覧"}
         </Button>
       </DialogTrigger>
       <DialogContent>
@@ -86,6 +105,7 @@ export function RawImageViewButton({
           <DialogDescription>
             対象 {rawImageAssetId} の署名 URL を {VIEW_TOKEN_TTL_SECONDS} 秒だけ発行します。
             閲覧者・対象・理由・日時・request ID が image_access_logs に記録されます。
+            承認されるとヘッダーの通知に届きます。
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-2">
