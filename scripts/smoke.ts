@@ -8,7 +8,7 @@
 
 import { adminAccounts, analysisSessions, carePlaybacks, customers, storeDataLinks, stores, rawImageAssets, handoffTokens, recommendationRuns, NOW } from "@/lib/mock/seed"
 import { resolveScope, canViewCustomer, visibleCustomerIds, can, visibleScreens, usesB2bDisplay } from "@/lib/domain/scope"
-import { CARE_VIDEO_SLOTS, careEntitlement, assertCareSlotInvariant, effectivePlan } from "@/lib/domain/care-catalog"
+import { CARE_VIDEO_SLOTS, careEntitlement, assertCareSlotInvariant, canPlaySlot, careSlotFor } from "@/lib/domain/care-catalog"
 import { customerStatus, CUSTOMER_STATUS_LABEL, CUSTOMER_STATUS_ORDER } from "@/lib/domain/plans"
 import { monthlyActiveUsers, totalAnalyses, continuingUsers, churnRiskUsers, improvementRate, careCompletionRate, isEligible, isChurnRisk } from "@/lib/domain/kpi"
 import { buildPeriod } from "@/lib/domain/periods"
@@ -30,14 +30,10 @@ check("handoff tokens seeded", handoffTokens.length > 0, `(${handoffTokens.lengt
 check("每人 active link <= 1 (V1 制約)",
   customers.every(c => storeDataLinks.filter(l => l.dataSubjectId === c.dataSubjectId && l.status === "active").length <= 1))
 check("推奨は 2 件 (AI推奨 v1.2)", recommendationRuns.every(r => r.items.length === 2))
-check("実効プランが Guest の人には care playback が無い",
-  carePlaybacks.every(p => {
-    const c = customers.find(c => c.dataSubjectId === p.dataSubjectId)
-    if (!c) return false
-    const linked = storeDataLinks.some(l => l.dataSubjectId === c.dataSubjectId && l.status === "active")
-    return effectivePlan(c.plan, linked) !== "guest"
-  }),
-  "(連携済みの Guest は Premium 相当なので再生できる)")
+check("契約 Guest には care playback が無い",
+  carePlaybacks.every(p =>
+    customers.find(c => c.dataSubjectId === p.dataSubjectId)?.plan !== "guest"),
+  "(標準動画は本人のプランで判定するため)")
 
 console.log("── 顧客一覧の状態区分 ──")
 {
@@ -111,17 +107,36 @@ console.log("── entitlement ──")
 check("Guest 再生不可 + lock表示", careEntitlement("guest").canPlay === false && careEntitlement("guest").showLockedWithCta === true)
 check("Member 月10回", careEntitlement("member").monthlyLimit === 10)
 check("Premium 上限なし", careEntitlement("premium").monthlyLimit === null)
-check("連携済みは契約プランに関わらず Premium 相当",
-  (["guest","member","premium"] as const).every(p => effectivePlan(p, true) === "premium"))
-check("連携なしは契約プランのまま",
-  (["guest","member","premium"] as const).every(p => effectivePlan(p, false) === p))
 {
-  const linkedIds = new Set(storeDataLinks.filter(l => l.status === "active").map(l => l.dataSubjectId))
+  // 🔴 店舗提供動画は連携中ならプランを問わない / 標準動画は本人のプランで判定
+  const slot1m = careSlotFor("smile", "1m")!
+  const slot3m = careSlotFor("smile", "3m")!
+  check("店舗提供動画は連携中ならプランを問わず再生できる",
+    (["guest","member","premium"] as const).every(p => canPlaySlot(slot3m, "store", p, true)))
+  check("店舗提供動画も連携がなければ再生できない",
+    (["guest","member","premium"] as const).every(p => !canPlaySlot(slot3m, "store", p, false)))
+  check("標準動画は連携していても Member は 3分を再生できない",
+    !canPlaySlot(slot3m, "standard", "member", true))
+  check("標準動画は Member でも 1分なら再生できる",
+    canPlaySlot(slot1m, "standard", "member", true))
+  check("標準動画は Guest は再生できない",
+    !canPlaySlot(slot1m, "standard", "guest", true))
+}
+{
+  // 🔴 推奨されるのは標準動画なので、尺は本人のプランで決まる(連携は関係ない)
   const byId = new Map(analysisSessions.map(s => [s.id, s.dataSubjectId]))
-  const linkedRuns = recommendationRuns.filter(r => linkedIds.has(byId.get(r.analysisSessionId) ?? ""))
-  check("連携済みへの推奨は 3分枠",
-    linkedRuns.length > 0 && linkedRuns.every(r => r.items.every(i => i.videoCode.includes("_3m_"))),
-    `(${linkedRuns.length} run)`)
+  const planOf = (id: string) => customers.find(c => c.dataSubjectId === id)?.plan
+  let ok3 = 0, ok1 = 0, bad = 0
+  for (const r of recommendationRuns) {
+    const plan = planOf(byId.get(r.analysisSessionId) ?? "")
+    if (!plan) continue
+    const all3 = r.items.every(i => i.videoCode.includes("_3m_"))
+    const all1 = r.items.every(i => i.videoCode.includes("_1m_"))
+    if (plan === "premium" ? all3 : all1) (plan === "premium" ? ok3++ : ok1++)
+    else bad++
+  }
+  check("推奨の尺は本人のプランで決まる", bad === 0,
+    `(Premium→3分 ${ok3} run / それ以外→1分 ${ok1} run / 不一致 ${bad})`)
 }
 
 console.log("── B2B / B2C の切り分け ──")

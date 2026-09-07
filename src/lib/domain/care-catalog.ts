@@ -9,7 +9,14 @@
  * ユーザー向け機能名は「顔トレ」を維持し、内部総称は care video とする。
  */
 
-import type { CareVideoSlot, PlanCode, PoseCode } from "./types"
+import type {
+  CareAssignment,
+  CareVideoSlot,
+  CompanyId,
+  PlanCode,
+  PoseCode,
+  StoreId,
+} from "./types"
 
 const MEMBER_UP: PlanCode[] = ["member", "premium"]
 const PREMIUM_ONLY: PlanCode[] = ["premium"]
@@ -103,32 +110,39 @@ export type CareEntitlement = {
   specialist: boolean
 }
 
-/**
- * 実効プラン = 機能の可否を決めるときに使うプラン。
+/* ------------------------------------------------------------------ *
+ * 店舗提供動画と標準動画の権限は別軸 (吉田さん確定 2026-09-07)
  *
- * 🔴 active な店舗連携がある顧客は、契約プランに関わらず **Premium 相当**として扱う。
- *    根拠: 全確定事項 v1 の解約フロー「サロン連携解除(ユーザー側) → 解除完了 →
- *    Member 扱いに移行」。解除で Member に落ちるということは、連携中は Member より
- *    上の扱い、つまり Premium 相当だと読める。
- *    費用は店舗が負担するため本人課金は発生しない(同 v1「エンドユーザーの課金:
- *    カード登録不要 / Stripe と無関係 / 契約・課金は全てサロン側で完結」)。
+ * 🔴 連携ユーザーは本人の B2C プランに関係なく、その店舗が提供する
+ *    承認済み care 動画を再生できる(月額2万円の「care込み」は店舗側の B2B 契約)。
+ * 🔴 orinnFACE 標準動画は、従来どおり本人の Guest / Member / Premium 権限で判定する。
  *
- * ⚠️ 管理画面仕様書 v1.0 §7.2 は Guest/Member/Premium でしか権限を規定しておらず、
- *    連携状態が出てこない。この扱いは上記 v1(2026年4月版)からの読み取りなので、
- *    docs/QUESTIONS_FOR_YOSHIDA.md の項目 8 で確認中。
- *
- * 🔴 課金の集計(プラン構成比・営収シグナル)には使わない。
- *    連携済みの顧客は本人課金がないため、契約プランのままで数える。
- */
-export function effectivePlan(plan: PlanCode, linked: boolean): PlanCode {
-  return linked ? "premium" : plan
-}
+ * つまり「連携済みだから全部 Premium 相当」ではない。
+ * 判定は「その枠に店舗提供の asset が入っているか」で分岐する。
+ * ------------------------------------------------------------------ */
+
+/** その枠が誰の提供か。 */
+export type SlotProvider = "standard" | "store"
 
 /**
- * 🔴 実際の判定は Backend entitlement が正 (§15 受入条件)。
- *    ここは管理画面で「その顧客に何が見えているはずか」を説明表示するためのもの。
- *    連携済みの顧客は effectivePlan() を通した値を渡すこと。
+ * その顧客がその枠を再生できるか。
+ *
+ * @param provider その枠で公開されている asset の提供元
+ * @param plan     本人の契約プラン(実効プランではない)
+ * @param linked   active な店舗連携があるか
  */
+export function canPlaySlot(
+  slot: CareVideoSlot,
+  provider: SlotProvider,
+  plan: PlanCode,
+  linked: boolean
+): boolean {
+  // 店舗提供動画は連携中ならプランを問わない
+  if (provider === "store") return linked
+  // 標準動画は従来どおり本人のプランで判定する
+  return planCanUseSlot(plan, slot) && careEntitlement(plan).canPlay
+}
+
 export function careEntitlement(plan: PlanCode): CareEntitlement {
   switch (plan) {
     case "guest":
@@ -160,4 +174,44 @@ export function careEntitlement(plan: PlanCode): CareEntitlement {
 
 export function planCanUseSlot(plan: PlanCode, slot: CareVideoSlot): boolean {
   return slot.requiredPlans.includes(plan)
+}
+
+/* ------------------------------------------------------------------ *
+ * 公開中の assignment の解決
+ * ------------------------------------------------------------------ */
+
+/**
+ * その顧客・その枠で「いま公開されている」assignment を返す。
+ *
+ * 🔴 同じ枠に店舗動画と標準動画を重複表示しない(吉田さん確定 2026-09-07)。
+ *    店舗 > 会社 > 本部デフォルト の順に、より狭い scope を優先して 1 件だけ選ぶ。
+ * 🔴 本部承認前(pending_approval / draft / rejected)の asset は公開しない。
+ */
+export function resolveAssignment(
+  assignments: CareAssignment[],
+  videoCode: string,
+  target: { storeId?: StoreId; companyId?: CompanyId },
+  atIso: string
+): CareAssignment | undefined {
+  const usable = assignments.filter((a) => {
+    if (a.videoCode !== videoCode) return false
+    if (a.status !== "active") return false
+    if (a.startAt && a.startAt > atIso) return false
+    if (a.endAt && a.endAt < atIso) return false
+    if (a.scope.storeId) return a.scope.storeId === target.storeId
+    if (a.scope.companyId) return a.scope.companyId === target.companyId
+    return true // 本部デフォルト
+  })
+  // 狭い scope を優先
+  return (
+    usable.find((a) => a.scope.storeId) ??
+    usable.find((a) => a.scope.companyId) ??
+    usable.find((a) => !a.scope.storeId && !a.scope.companyId)
+  )
+}
+
+/** その assignment が店舗提供か(本部デフォルト以外か)。 */
+export function providerOf(assignment: CareAssignment | undefined): SlotProvider {
+  if (!assignment) return "standard"
+  return assignment.scope.storeId || assignment.scope.companyId ? "store" : "standard"
 }

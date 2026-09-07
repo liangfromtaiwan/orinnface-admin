@@ -32,7 +32,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { useSession, useStoreName } from "@/contexts/session-context"
-import { careEntitlement, effectivePlan } from "@/lib/domain/care-catalog"
+import { careEntitlement } from "@/lib/domain/care-catalog"
 import {
   CUSTOMER_STATUS_LABEL,
   CUSTOMER_STATUS_ORDER,
@@ -141,9 +141,8 @@ export default function CustomersPage() {
           careStarted: plays.length,
           careMonthly: monthlyCompleted,
           careLastDoneAt: lastDoneAt,
-          // 連携済みは Premium 相当(上限なし)
-          careLimit: careEntitlement(effectivePlan(c.plan, !!activeLink))
-            .monthlyLimit,
+          // 標準動画の上限は本人のプランで決まる(店舗提供動画は別枠)
+          careLimit: careEntitlement(c.plan).monthlyLimit,
           retention,
           // ダッシュボードの KPI と同じ関数で判定する(種別を問わない)
           atRisk: isChurnRisk(
@@ -298,7 +297,7 @@ export default function CustomersPage() {
                     )}
                     <div className="text-[11px] text-muted-foreground tabular-nums">
                       推奨 {r.careRecommended}
-                      {effectivePlan(r.customer.plan, !!r.activeLink) === "guest" ? (
+                      {r.customer.plan === "guest" ? (
                         <span className="ml-1">(ロック表示)</span>
                       ) : (
                         <>

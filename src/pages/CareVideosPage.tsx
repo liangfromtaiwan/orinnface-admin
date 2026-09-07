@@ -27,6 +27,8 @@ import { useSession } from "@/contexts/session-context"
 import {
   CARE_CATEGORY_LABEL,
   CARE_VIDEO_SLOTS,
+  providerOf,
+  resolveAssignment,
 } from "@/lib/domain/care-catalog"
 import { formatDate } from "@/lib/domain/kpi"
 import { can } from "@/lib/domain/scope"
@@ -47,13 +49,29 @@ export default function CareVideosPage() {
     []
   )
 
+  /**
+   * 🔴 同じ枠に店舗動画と標準動画を重複表示しない(吉田さん確定 2026-09-07)。
+   *    店舗 > 会社 > 本部デフォルト の順に 1 件だけ解決する。
+   *    ここでは本部視点なので、差し替えが入っている枠は「店舗提供」として見せる。
+   */
+  const now = new Date().toISOString()
   const activeAssignmentByCode = useMemo(() => {
     const map = new Map<string, CareAssignment>()
-    for (const a of careAssignments) {
-      if (a.status === "active") map.set(a.videoCode, a)
+    for (const slot of CARE_VIDEO_SLOTS) {
+      // 差し替えが設定されている枠は、その scope を優先して解決する
+      const scoped = careAssignments.find(
+        (a) =>
+          a.videoCode === slot.videoCode &&
+          a.status === "active" &&
+          (a.scope.storeId || a.scope.companyId)
+      )
+      const resolved =
+        scoped ??
+        resolveAssignment(careAssignments, slot.videoCode, {}, now)
+      if (resolved) map.set(slot.videoCode, resolved)
     }
     return map
-  }, [])
+  }, [now])
 
   const requests = careAssignments.filter(
     (a) => a.status !== "active" || a.scope.companyId || a.scope.storeId
@@ -98,9 +116,20 @@ export default function CareVideosPage() {
                     <TableCell className="text-sm">
                       {asset ? (
                         <>
-                          {asset.title}
+                          <span className="flex flex-wrap items-center gap-1.5">
+                            {asset.title}
+                            {providerOf(assignment) === "store" ? (
+                              <Badge variant="secondary" className="px-1 py-0 text-[10px]">
+                                {asset.provider}提供
+                              </Badge>
+                            ) : null}
+                          </span>
                           <div className="text-xs text-muted-foreground">
-                            {asset.provider} / {asset.durationSeconds}秒
+                            {providerOf(assignment) === "store"
+                              ? "標準動画を差し替え中"
+                              : "本部標準"}
+                            {" / "}
+                            {asset.durationSeconds}秒
                           </div>
                         </>
                       ) : (

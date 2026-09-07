@@ -13,6 +13,7 @@ import { Link, useParams } from "react-router-dom"
 import { AlertTriangleIcon, ArrowLeftIcon } from "lucide-react"
 
 import { CustomerBadges } from "@/components/CustomerBadges"
+import { Badge } from "@/components/ui/badge"
 import { InfoHint } from "@/components/InfoHint"
 import { PageHeader, SpecNote } from "@/components/PageHeader"
 import { RawImagePlaceholder, RawImageViewButton } from "@/components/RawImageAccess"
@@ -47,11 +48,7 @@ import {
   planVisibility,
 } from "@/lib/domain/plans"
 import { usesB2bDisplay } from "@/lib/domain/scope"
-import {
-  careEntitlement,
-  effectivePlan,
-  getCareSlot,
-} from "@/lib/domain/care-catalog"
+import { careEntitlement, getCareSlot } from "@/lib/domain/care-catalog"
 import { getMetric, isImproved, METRIC_GROUP_LABEL, metricsByGroup } from "@/lib/domain/metrics"
 import {
   ANALYSIS_STATUS_LABEL,
@@ -61,7 +58,12 @@ import {
   RETENTION_STATE_LABEL,
   type AnalysisSession,
 } from "@/lib/domain/types"
-import { consentEvents, rawImageAssets, recommendationRuns } from "@/lib/mock/seed"
+import {
+  careAssets,
+  consentEvents,
+  rawImageAssets,
+  recommendationRuns,
+} from "@/lib/mock/seed"
 
 export default function CustomerDetailPage() {
   const { dataSubjectId = "" } = useParams()
@@ -119,9 +121,10 @@ export default function CustomerDetailPage() {
   )
   const plays = carePlaybacks.filter((p) => p.dataSubjectId === dataSubjectId)
   // 連携済みは Premium 相当として扱う
-  const shownPlan = effectivePlan(customer.plan, !!activeLink)
-  const entitlement = careEntitlement(shownPlan)
-  const visibility = planVisibility(shownPlan)
+  // 🔴 標準動画・比較権限は本人のプランで判定する(吉田さん確定 2026-09-07)。
+  //    店舗提供動画だけが「連携中はプランを問わない」。
+  const entitlement = careEntitlement(customer.plan)
+  const visibility = planVisibility(customer.plan)
   const assets = rawImageAssets.filter((a) => a.dataSubjectId === dataSubjectId)
   const consents = consentEvents.filter((c) => c.dataSubjectId === dataSubjectId)
 
@@ -269,25 +272,39 @@ export default function CustomerDetailPage() {
                   実際の判定は Backend entitlement が正です。ここは「その顧客の画面に
                   何が見えているはずか」を説明するための表示です。
                   管理画面の閲覧可否は plan では決まりません(§5.2)。
+                  🔴 店舗提供の care 動画は連携中なら本人のプランを問わず再生できます。
+                  標準動画は従来どおり本人のプランで判定します(吉田さん確定 2026-09-07)。
                 </InfoHint>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-1 text-sm">
-              <div>
+              <div className="font-medium">
+                orinnFACE 標準動画（本人のプランで判定）
+              </div>
+              <div className="pl-3">
                 再生: {entitlement.canPlay ? "可" : "不可"}
                 {entitlement.showLockedWithCta
                   ? "(推奨2件は lock 表示 + 登録 CTA。非表示にはしない)"
                   : ""}
               </div>
-              <div>
+              <div className="pl-3">
                 月間上限:{" "}
                 {entitlement.monthlyLimit === null
                   ? "商品上の上限なし"
                   : `JST暦月 ${entitlement.monthlyLimit} 回`}
               </div>
-              <div>
+              <div className="pl-3">
                 尺: {entitlement.durations.length ? entitlement.durations.join(" / ") : "—"}
                 {entitlement.specialist ? " + リンパ・神経" : ""}
+              </div>
+
+              <div className="border-t pt-1 font-medium">
+                店舗提供の care 動画（店舗の B2B 契約で判定）
+              </div>
+              <div className="pl-3">
+                {activeLink
+                  ? `再生: 可（本人のプランを問わない・${storeName(activeLink.storeId)}提供）`
+                  : "該当なし（店舗連携がありません）"}
               </div>
               <div className="border-t pt-1">
                 結果の見え方: {describePlanVisibility(visibility)}
@@ -309,6 +326,7 @@ export default function CustomerDetailPage() {
                     <TableHead>開始</TableHead>
                     <TableHead>video_code</TableHead>
                     <TableHead>対象</TableHead>
+                    <TableHead>提供</TableHead>
                     <TableHead>完了</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -318,6 +336,20 @@ export default function CustomerDetailPage() {
                       <TableCell className="tabular-nums">{formatDate(p.startedAt)}</TableCell>
                       <TableCell className="font-mono text-xs">{p.videoCode}</TableCell>
                       <TableCell>{getCareSlot(p.videoCode)?.targetLabel ?? "—"}</TableCell>
+                      <TableCell className="text-xs">
+                        {(() => {
+                          const asset = careAssets.find((a) => a.id === p.careAssetId)
+                          if (!asset) return "—"
+                          const isStore = asset.provider !== "FitWayWorld"
+                          return isStore ? (
+                            <Badge variant="secondary" className="px-1 py-0 text-[10px]">
+                              {asset.provider}提供
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground">標準</span>
+                          )
+                        })()}
+                      </TableCell>
                       <TableCell>
                         {p.completedAt ? (
                           formatDate(p.completedAt)
@@ -329,11 +361,9 @@ export default function CustomerDetailPage() {
                   ))}
                   {plays.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="py-8 text-center text-sm text-muted-foreground">
+                      <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
                         care 再生の記録はありません
-                        {effectivePlan(customer.plan, !!activeLink) === "guest"
-                          ? "(Guest は再生不可)"
-                          : ""}
+                        {customer.plan === "guest" ? "(Guest は標準動画を再生不可)" : ""}
                       </TableCell>
                     </TableRow>
                   ) : null}
