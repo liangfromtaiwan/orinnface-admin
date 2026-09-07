@@ -133,14 +133,69 @@ export function visibleCustomerIds(
 }
 
 /* ------------------------------------------------------------------ *
+ * 生画像の閲覧可否 (吉田さん確定 2026-09-07)
+ *
+ * 🔴 店舗が閲覧できるのは「**当該店舗で撮影した**顔画像のみ」。
+ *    本人が自宅で撮影した画像も、他店舗で撮影した画像も表示しない。
+ * 🔴 要件は「有効な店舗連携 + スタッフ権限 + 本人同意」の 3 つ。
+ * 🔴 通常の店舗閲覧では**理由入力を求めない**。ただしアクセス履歴は自動保存する。
+ *    (§2 の「理由入力と監査付き token」は本部の横断閲覧に対する規定)
+ * ------------------------------------------------------------------ */
+
+export type RawImageViewDecision =
+  /** 押せば即発行。理由入力なし。アクセス履歴は自動保存 */
+  | { kind: "direct" }
+  /** 理由の入力が必要(本部の横断閲覧) */
+  | { kind: "needs_reason" }
+  /** 表示しない。理由つき */
+  | { kind: "denied"; reason: "self_captured" | "other_store" | "no_consent" | "no_permission" }
+
+export function decideRawImageView(
+  scope: Scope,
+  input: {
+    /** その画像を撮影した店舗。本人が自宅で撮った場合は undefined */
+    captureStoreId?: StoreId
+    /** 本人が撮影・保存に同意しているか */
+    hasConsent: boolean
+  }
+): RawImageViewDecision {
+  if (!input.hasConsent) return { kind: "denied", reason: "no_consent" }
+
+  // 本部は横断して見られるが、§2 のとおり理由入力と監査が必要
+  if (scope.crossCompany) return { kind: "needs_reason" }
+
+  if (!can(scope, "raw_image.view")) {
+    return { kind: "denied", reason: "no_permission" }
+  }
+  if (input.captureStoreId === undefined) {
+    return { kind: "denied", reason: "self_captured" }
+  }
+  if (!scope.storeIds.includes(input.captureStoreId)) {
+    return { kind: "denied", reason: "other_store" }
+  }
+  // 自店で撮影した画像 → 理由入力なしで閲覧できる
+  return { kind: "direct" }
+}
+
+export const RAW_IMAGE_DENIED_LABEL: Record<
+  Extract<RawImageViewDecision, { kind: "denied" }>["reason"],
+  string
+> = {
+  self_captured: "ご本人撮影・画像非表示",
+  other_store: "他店舗で撮影・画像非表示",
+  no_consent: "本人同意なし・画像非表示",
+  no_permission: "閲覧権限なし",
+}
+
+/* ------------------------------------------------------------------ *
  * 操作権限 (§4, §8, §11)
  * ------------------------------------------------------------------ */
 
 export type Capability =
-  /** 生画像の一時閲覧を自分で発行できる(＝承認者) */
+  /** 生画像を横断して一時閲覧できる(本部。理由入力と監査が必要) */
   | "raw_image.view_token"
-  /** 生画像の閲覧を本部へ申請できる */
-  | "raw_image.request"
+  /** 自店で撮影した生画像を閲覧できる(理由入力なし・履歴は自動保存) */
+  | "raw_image.view"
   /** care 差し替えを申請できる */
   | "care.request_replacement"
   /** care 差し替えを承認・公開できる */
@@ -170,10 +225,10 @@ const CAPABILITIES: Record<RoleCode, Capability[]> = {
     "retention.operate",
   ],
   // 差し替え申請はできるが、承認・公開と slot 新設はできない (§4.2)
-  company_admin: ["care.request_replacement", "org.manage", "raw_image.request"],
-  store_admin: ["care.request_replacement", "org.manage", "raw_image.request"],
+  company_admin: ["care.request_replacement", "org.manage", "raw_image.view"],
+  store_admin: ["care.request_replacement", "org.manage", "raw_image.view"],
   // B2B 撮影・分析実行・結果表示・staff note・handoff (§4.4)
-  store_staff: ["session.capture", "raw_image.request"],
+  store_staff: ["session.capture", "raw_image.view"],
   customer: [],
 }
 

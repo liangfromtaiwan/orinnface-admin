@@ -38,7 +38,7 @@ import {
   RETENTION_STATE_LABEL,
   type RetentionState,
 } from "@/lib/domain/types"
-import { handoffTokens, NOW, rawImageAssets } from "@/lib/mock/seed"
+import { analysisSessions, handoffTokens, NOW, rawImageAssets } from "@/lib/mock/seed"
 
 /** 満了 30 日前に通知する (§10)。 */
 const NOTICE_DAYS_BEFORE_EXPIRY = 30
@@ -47,6 +47,13 @@ export default function RetentionPage() {
   const { scope, customers } = useSession()
   const canOperate = can(scope, "retention.operate")
   const [state, setState] = useState<RetentionState | "all">("all")
+
+  /** 画像を撮影した店舗。undefined = 本人が自宅で撮影した分。 */
+  const captureStoreById = useMemo(() => {
+    const map = new Map<string, string | undefined>()
+    for (const s of analysisSessions) map.set(s.id, s.storeId)
+    return map
+  }, [])
 
   const codeById = useMemo(
     () => new Map(customers.map((c) => [c.dataSubjectId, c.displayCode])),
@@ -175,6 +182,7 @@ export default function RetentionPage() {
                       ) : null}
                       <RawImageViewButton
                         rawImageAssetId={a.id}
+                        captureStoreId={captureStoreById.get(a.analysisSessionId)}
                         disabled={a.state === "deleted"}
                         disabledReason="削除済みのため閲覧できません"
                       />

@@ -67,7 +67,8 @@ import {
 
 export default function CustomerDetailPage() {
   const { dataSubjectId = "" } = useParams()
-  const { customers, analysisSessions, carePlaybacks, storeDataLinks } = useSession()
+  const { scope, customers, analysisSessions, carePlaybacks, storeDataLinks } =
+    useSession()
   const storeName = useStoreName()
 
   const customer = customers.find((c) => c.dataSubjectId === dataSubjectId)
@@ -126,7 +127,18 @@ export default function CustomerDetailPage() {
   const entitlement = careEntitlement(customer.plan)
   const visibility = planVisibility(customer.plan)
   const assets = rawImageAssets.filter((a) => a.dataSubjectId === dataSubjectId)
+  /**
+   * その画像を撮影した店舗。分析セッションの storeId から引く。
+   * undefined = 本人が自宅で撮影した分。
+   * 🔴 店舗は自店で撮影した画像だけを見られる(吉田さん確定 2026-09-07)。
+   */
+  const captureStoreOf = (analysisSessionId: string) =>
+    allOwnSessions.find((x) => x.id === analysisSessionId)?.storeId
   const consents = consentEvents.filter((c) => c.dataSubjectId === dataSubjectId)
+  /** 本人が撮影・保存に同意しているか。未同意では撮影自体できない (§10)。 */
+  const hasCaptureConsent = consents.some(
+    (c) => c.kind === "raw_image_capture" && c.granted
+  )
 
   return (
     <div className="space-y-4">
@@ -381,7 +393,13 @@ export default function CustomerDetailPage() {
                 <CardTitle className="text-base">生画像</CardTitle>
               </CardHeader>
               <CardContent>
-                <RawImagePlaceholder />
+                <RawImagePlaceholder
+                  label={
+                    scope.crossCompany
+                      ? "生画像は一覧に表示しません"
+                      : "当店で撮影した画像のみ閲覧できます"
+                  }
+                />
               </CardContent>
             </Card>
 
@@ -391,6 +409,7 @@ export default function CustomerDetailPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>asset</TableHead>
+                      <TableHead>撮影元</TableHead>
                       <TableHead>policy</TableHead>
                       <TableHead>期限</TableHead>
                       <TableHead>状態</TableHead>
@@ -401,6 +420,11 @@ export default function CustomerDetailPage() {
                     {assets.map((a) => (
                       <TableRow key={a.id}>
                         <TableCell className="font-mono text-xs">{a.id}</TableCell>
+                        <TableCell className="text-sm">
+                          {captureStoreOf(a.analysisSessionId)
+                            ? storeName(captureStoreOf(a.analysisSessionId))
+                            : "ご本人撮影"}
+                        </TableCell>
                         <TableCell className="text-sm">
                           {RETENTION_POLICY_LABEL[a.policy]}
                         </TableCell>
@@ -413,6 +437,8 @@ export default function CustomerDetailPage() {
                         <TableCell className="text-right">
                           <RawImageViewButton
                             rawImageAssetId={a.id}
+                            captureStoreId={captureStoreOf(a.analysisSessionId)}
+                            hasConsent={hasCaptureConsent}
                             disabled={a.state === "deleted"}
                             disabledReason="削除済みのため閲覧できません"
                           />
@@ -421,7 +447,7 @@ export default function CustomerDetailPage() {
                     ))}
                     {assets.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
+                        <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
                           生画像 asset はありません
                         </TableCell>
                       </TableRow>

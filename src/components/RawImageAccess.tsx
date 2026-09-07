@@ -1,9 +1,11 @@
 /**
- * 生画像の一時閲覧 (仕様書 v1.0 §2, §11)
+ * 生画像の閲覧 (仕様書 v1.0 §2, §11 / 吉田さん確定 2026-09-07)
  *
- * 🔴 operator でも生画像は通常一覧へ表示しない。
- *    理由入力 + 監査付きの署名 URL 300 秒を「別操作」として発行する。
- * 🔴 権限・所有・active link・目的・理由を検証してから発行する。
+ * 🔴 一覧に生画像は出さない。閲覧は必ずこのボタン経由。
+ * 🔴 店舗は「自店で撮影した画像」だけを、**理由入力なし**で閲覧できる。
+ *    アクセス履歴は自動保存される。
+ * 🔴 本部は横断して閲覧できるが、§2 のとおり**理由入力と監査**が必要。
+ * 🔴 それ以外(本人撮影分・他店舗撮影分・同意なし)は表示しない。
  */
 
 import { useState } from "react"
@@ -23,7 +25,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { useNotifications, VIEW_TOKEN_TTL_SECONDS } from "@/contexts/notifications"
 import { useSession } from "@/contexts/session-context"
-import { can } from "@/lib/domain/scope"
+import { decideRawImageView, RAW_IMAGE_DENIED_LABEL } from "@/lib/domain/scope"
+import type { StoreId } from "@/lib/domain/types"
 
 export function RawImagePlaceholder({ label }: { label?: string }) {
   return (
@@ -33,7 +36,7 @@ export function RawImagePlaceholder({ label }: { label?: string }) {
         {label ?? "生画像は一覧に表示しません"}
       </p>
       <p className="text-[11px] text-muted-foreground">
-        閲覧には理由の入力と監査記録が必要です
+        閲覧するとアクセス履歴が記録されます
       </p>
     </div>
   )
@@ -41,91 +44,102 @@ export function RawImagePlaceholder({ label }: { label?: string }) {
 
 export function RawImageViewButton({
   rawImageAssetId,
+  captureStoreId,
+  hasConsent = true,
   disabled,
   disabledReason,
 }: {
   rawImageAssetId: string
+  /** その画像を撮影した店舗。本人が自宅で撮影した場合は undefined。 */
+  captureStoreId?: StoreId
+  /** 本人が撮影・保存に同意しているか。 */
+  hasConsent?: boolean
   disabled?: boolean
   disabledReason?: string
 }) {
   const { scope } = useSession()
-  const { submitRequest, issueDirect } = useNotifications()
+  const { issueDirect } = useNotifications()
   const [open, setOpen] = useState(false)
-  const [pending, setPending] = useState(false)
   const [reason, setReason] = useState("")
 
-  // 本部は承認者なので自分で発行できる。それ以外は本部へ申請する。
-  const isReviewer = can(scope, "raw_image.view_token")
-  const canAct = isReviewer || can(scope, "raw_image.request")
-  if (!canAct) {
+  const decision = decideRawImageView(scope, { captureStoreId, hasConsent })
+
+  if (decision.kind === "denied") {
     return (
-      <Button variant="outline" size="sm" disabled title="この権限では申請できません">
-        <LockIcon /> 閲覧不可
+      <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+        <LockIcon className="size-3.5" />
+        {RAW_IMAGE_DENIED_LABEL[decision.reason]}
+      </span>
+    )
+  }
+
+  // 店舗が自店で撮影した画像を見る場合 — 理由入力なしで即発行
+  if (decision.kind === "direct") {
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={disabled}
+        title={disabledReason}
+        onClick={() => {
+          issueDirect({
+            rawImageAssetId,
+            purpose: "自店で撮影した画像の通常閲覧（理由入力なし）",
+          })
+          toast.success("閲覧できます", {
+            description: `通知から開けます（有効 ${VIEW_TOKEN_TTL_SECONDS / 60} 分）`,
+          })
+        }}
+      >
+        <EyeIcon /> 閲覧する
       </Button>
     )
   }
 
-  function issue() {
-    // 実装時は POST /admin/v1/raw-image-assets/{id}/view-tokens を呼ぶ (§12)。
-    const trimmed = reason.trim()
-    setOpen(false)
-    setReason("")
-    if (isReviewer) {
-      issueDirect({ rawImageAssetId, purpose: trimmed })
-      toast.success("一時閲覧を発行しました", {
-        description: `通知から閲覧できます（有効 ${VIEW_TOKEN_TTL_SECONDS / 60} 分）`,
-      })
-      return
-    }
-    setPending(true)
-    submitRequest({ rawImageAssetId, purpose: trimmed })
-    window.setTimeout(() => setPending(false), 600)
-    toast.info("本部へ申請しました", {
-      description: "審査の結果は通知でお知らせします",
-    })
-  }
-
+  // 本部の横断閲覧 — §2 のとおり理由入力と監査が必要
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={disabled || pending}
-          title={disabledReason}
-        >
-          <EyeIcon /> {pending ? "送信中…" : isReviewer ? "一時閲覧" : "閲覧を申請"}
+        <Button variant="outline" size="sm" disabled={disabled} title={disabledReason}>
+          <EyeIcon /> 一時閲覧
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>
-            {isReviewer ? "生画像の一時閲覧" : "生画像の閲覧を申請"}
-          </DialogTitle>
+          <DialogTitle>生画像の一時閲覧（本部）</DialogTitle>
           <DialogDescription>
-            {isReviewer
-              ? `対象 ${rawImageAssetId} の署名 URL を ${VIEW_TOKEN_TTL_SECONDS} 秒だけ発行します。`
-              : `対象 ${rawImageAssetId} の閲覧を本部へ申請します。承認されると ${VIEW_TOKEN_TTL_SECONDS} 秒だけ閲覧できます。`}
-            閲覧者・対象・理由・日時・request ID が image_access_logs に記録されます。
+            対象 {rawImageAssetId} の署名 URL を {VIEW_TOKEN_TTL_SECONDS} 秒だけ発行します。
+            本部の横断閲覧には理由の入力が必要です。閲覧者・対象・理由・日時・request ID が
+            image_access_logs に記録されます。
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-2">
           <label className="text-sm font-medium" htmlFor="raw-image-reason">
-            {isReviewer ? "閲覧理由(必須)" : "申請理由(必須・本部が審査します)"}
+            閲覧理由（必須）
           </label>
           <Input
             id="raw-image-reason"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="例: 顧客からの問い合わせ対応 (品質確認)"
+            placeholder="例: 顧客からの問い合わせ対応（品質確認）"
           />
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>
             キャンセル
           </Button>
-          <Button onClick={issue} disabled={reason.trim().length < 4}>
-            {isReviewer ? "発行する" : "申請する"}
+          <Button
+            disabled={reason.trim().length < 4}
+            onClick={() => {
+              issueDirect({ rawImageAssetId, purpose: reason.trim() })
+              setOpen(false)
+              setReason("")
+              toast.success("一時閲覧を発行しました", {
+                description: `通知から開けます（有効 ${VIEW_TOKEN_TTL_SECONDS / 60} 分）`,
+              })
+            }}
+          >
+            発行する
           </Button>
         </DialogFooter>
       </DialogContent>

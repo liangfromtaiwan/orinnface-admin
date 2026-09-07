@@ -10,6 +10,7 @@ import { adminAccounts, analysisSessions, carePlaybacks, customers, storeDataLin
 import { resolveScope, canViewCustomer, visibleCustomerIds, can, visibleScreens, usesB2bDisplay } from "@/lib/domain/scope"
 import { CARE_VIDEO_SLOTS, careEntitlement, assertCareSlotInvariant, canPlaySlot, careSlotFor } from "@/lib/domain/care-catalog"
 import { matchesCustomerFilter, CUSTOMER_FILTER_ORDER } from "@/lib/domain/plans"
+import { decideRawImageView } from "@/lib/domain/scope"
 import { monthlyActiveUsers, totalAnalyses, continuingUsers, churnRiskUsers, improvementRate, careCompletionRate, isEligible, isChurnRisk } from "@/lib/domain/kpi"
 import { buildPeriod } from "@/lib/domain/periods"
 
@@ -106,6 +107,27 @@ console.log("── 姿勢分析は B2B のみ (§5.2) ──")
   check("解除済み顧客は B2C 表示形式になる",
     leaked.every(c => !usesB2bDisplay(c.dataSubjectId, storeDataLinks)),
     `(解除済みで姿勢データを持つ ${leaked.length}人)`)
+}
+
+console.log("── 生画像の閲覧可否 (吉田さん確定 2026-09-07) ──")
+{
+  const opScope = resolveScope(adminAccounts[0], stores)          // 本部
+  const staffScope = resolveScope(adminAccounts[3], stores)        // 銀座店スタッフ
+  const own = staffScope.storeIds[0]
+  const other = stores.find(s => !staffScope.storeIds.includes(s.id))!.id
+
+  check("店舗は自店で撮影した画像を理由入力なしで閲覧できる",
+    decideRawImageView(staffScope, { captureStoreId: own, hasConsent: true }).kind === "direct")
+  check("店舗は本人が自宅で撮影した画像を閲覧できない",
+    decideRawImageView(staffScope, { captureStoreId: undefined, hasConsent: true }).kind === "denied")
+  check("店舗は他店舗で撮影した画像を閲覧できない",
+    decideRawImageView(staffScope, { captureStoreId: other, hasConsent: true }).kind === "denied")
+  check("本人同意がなければ閲覧できない",
+    decideRawImageView(staffScope, { captureStoreId: own, hasConsent: false }).kind === "denied")
+  check("本部の横断閲覧は理由入力が必要 (§2)",
+    decideRawImageView(opScope, { captureStoreId: other, hasConsent: true }).kind === "needs_reason")
+  check("本部でも本人同意がなければ閲覧できない",
+    decideRawImageView(opScope, { captureStoreId: other, hasConsent: false }).kind === "denied")
 }
 
 console.log("── entitlement ──")
