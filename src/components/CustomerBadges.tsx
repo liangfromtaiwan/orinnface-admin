@@ -16,8 +16,11 @@
  */
 
 import { Badge } from "@/components/ui/badge"
+import {
+  CUSTOMER_STATUS_LABEL,
+  customerStatus,
+} from "@/lib/domain/plans"
 import type { Customer } from "@/lib/domain/types"
-import { PLAN_LABEL } from "@/lib/domain/types"
 import { cn } from "@/lib/utils"
 
 export function CustomerBadges({
@@ -30,21 +33,12 @@ export function CustomerBadges({
   linked: boolean
   className?: string
 }) {
-  if (customer.unregistered) {
-    return (
-      <Badge variant="secondary" className={cn("px-1 py-0 text-[10px]", className)}>
-        未連携分析
-      </Badge>
-    )
-  }
-  if (linked) {
-    return (
-      <Badge className={cn("px-1 py-0 text-[10px]", className)}>連携済み</Badge>
-    )
-  }
+  const status = customerStatus(customer, linked)
+  const variant =
+    status === "unregistered" ? "secondary" : status === "linked" ? "default" : "outline"
   return (
-    <Badge variant="outline" className={cn("px-1 py-0 text-[10px]", className)}>
-      {PLAN_LABEL[customer.plan]}
+    <Badge variant={variant} className={cn("px-1 py-0 text-[10px]", className)}>
+      {CUSTOMER_STATUS_LABEL[status]}
     </Badge>
   )
 }

@@ -9,6 +9,7 @@
 import { adminAccounts, analysisSessions, carePlaybacks, customers, storeDataLinks, stores, rawImageAssets, handoffTokens, recommendationRuns, NOW } from "@/lib/mock/seed"
 import { resolveScope, canViewCustomer, visibleCustomerIds, can, visibleScreens, usesB2bDisplay } from "@/lib/domain/scope"
 import { CARE_VIDEO_SLOTS, careEntitlement, assertCareSlotInvariant, effectivePlan } from "@/lib/domain/care-catalog"
+import { customerStatus, CUSTOMER_STATUS_LABEL, CUSTOMER_STATUS_ORDER } from "@/lib/domain/plans"
 import { monthlyActiveUsers, totalAnalyses, continuingUsers, churnRiskUsers, improvementRate, careCompletionRate, isEligible, isChurnRisk } from "@/lib/domain/kpi"
 import { buildPeriod } from "@/lib/domain/periods"
 
@@ -37,6 +38,22 @@ check("実効プランが Guest の人には care playback が無い",
     return effectivePlan(c.plan, linked) !== "guest"
   }),
   "(連携済みの Guest は Premium 相当なので再生できる)")
+
+console.log("── 顧客一覧の状態区分 ──")
+{
+  const st = (c: typeof customers[0]) => customerStatus(c,
+    storeDataLinks.some(l => l.dataSubjectId === c.dataSubjectId && l.status === "active"))
+  const counts = new Map<string, number>()
+  for (const c of customers) counts.set(st(c), (counts.get(st(c)) ?? 0) + 1)
+  check("全顧客がどれか 1 つの区分に入る",
+    CUSTOMER_STATUS_ORDER.reduce((a, k) => a + (counts.get(k) ?? 0), 0) === customers.length,
+    `(${CUSTOMER_STATUS_ORDER.map(k => `${CUSTOMER_STATUS_LABEL[k]} ${counts.get(k) ?? 0}`).join(" / ")})`)
+  check("未登録はプラン名にならない (§3)",
+    customers.filter(c => c.unregistered).every(c => st(c) === "unregistered"))
+  check("連携済みはプラン名にならない",
+    customers.filter(c => storeDataLinks.some(l => l.dataSubjectId === c.dataSubjectId && l.status === "active"))
+      .every(c => st(c) === "linked"))
+}
 
 console.log("── scope ──")
 const allIds = customers.map(c => c.dataSubjectId)

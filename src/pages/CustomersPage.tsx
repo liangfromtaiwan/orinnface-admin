@@ -34,6 +34,12 @@ import {
 import { useSession, useStoreName } from "@/contexts/session-context"
 import { careEntitlement, effectivePlan } from "@/lib/domain/care-catalog"
 import {
+  CUSTOMER_STATUS_LABEL,
+  CUSTOMER_STATUS_ORDER,
+  customerStatus,
+  type CustomerStatus,
+} from "@/lib/domain/plans"
+import {
   isChurnRisk,
   isEligible,
   formatDate,
@@ -41,7 +47,7 @@ import {
   jstMonth,
   latestEligible,
 } from "@/lib/domain/kpi"
-import { RETENTION_STATE_LABEL, type PlanCode } from "@/lib/domain/types"
+import { RETENTION_STATE_LABEL } from "@/lib/domain/types"
 import { NOW, rawImageAssets, recommendationRuns } from "@/lib/mock/seed"
 
 export default function CustomersPage() {
@@ -56,13 +62,38 @@ export default function CustomersPage() {
   const storeName = useStoreName()
 
   const [query, setQuery] = useState("")
-  const [plan, setPlan] = useState<PlanCode | "all">("all")
+  const [status, setStatus] = useState<CustomerStatus | "all">("all")
 
   const currentMonth = jstMonth(NOW.toISOString())
 
+  /** filter の選択肢に出す件数。検索前の母数で数える。 */
+  const statusCounts = useMemo(() => {
+    const map = new Map<CustomerStatus, number>()
+    for (const c of customers) {
+      const k = customerStatus(
+        c,
+        storeDataLinks.some(
+          (l) => l.dataSubjectId === c.dataSubjectId && l.status === "active"
+        )
+      )
+      map.set(k, (map.get(k) ?? 0) + 1)
+    }
+    return map
+  }, [customers, storeDataLinks])
+
   const rows = useMemo(() => {
     return customers
-      .filter((c) => (plan === "all" ? true : c.plan === plan))
+      // 🔴 バッジと同じ判定で絞る。別々に書くと表示と食い違う
+      .filter((c) =>
+        status === "all"
+          ? true
+          : customerStatus(
+              c,
+              storeDataLinks.some(
+                (l) => l.dataSubjectId === c.dataSubjectId && l.status === "active"
+              )
+            ) === status
+      )
       .filter((c) => {
         if (!query.trim()) return true
         const q = query.trim().toLowerCase()
@@ -123,7 +154,7 @@ export default function CustomersPage() {
           ),
         }
       })
-  }, [customers, analysisSessions, carePlaybacks, storeDataLinks, plan, query, currentMonth])
+  }, [customers, analysisSessions, carePlaybacks, storeDataLinks, status, query, currentMonth])
 
   return (
     <div className="space-y-4">
@@ -145,15 +176,20 @@ export default function CustomersPage() {
                 className="h-9 w-56 pl-8"
               />
             </div>
-            <Select value={plan} onValueChange={(v) => setPlan(v as PlanCode | "all")}>
-              <SelectTrigger className="h-9 w-32">
-                <SelectValue placeholder="プラン" />
+            <Select
+              value={status}
+              onValueChange={(v) => setStatus(v as CustomerStatus | "all")}
+            >
+              <SelectTrigger className="h-9 w-40">
+                <SelectValue placeholder="状態" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">すべて</SelectItem>
-                <SelectItem value="guest">Guest</SelectItem>
-                <SelectItem value="member">Member</SelectItem>
-                <SelectItem value="premium">Premium</SelectItem>
+                <SelectItem value="all">すべて ({customers.length})</SelectItem>
+                {CUSTOMER_STATUS_ORDER.map((k) => (
+                  <SelectItem key={k} value={k}>
+                    {CUSTOMER_STATUS_LABEL[k]} ({statusCounts.get(k) ?? 0})
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </>

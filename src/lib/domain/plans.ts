@@ -208,3 +208,40 @@ export function describePlanVisibility(v: PlanVisibility): string {
   if (v.pastCompare) on.push("過去との比較(初回比・前回比・任意2件)")
   return on.length ? on.join(" / ") : "結果画面のみ"
 }
+
+/* ------------------------------------------------------------------ *
+ * 顧客一覧の状態区分
+ *
+ * 🔴 バッジの表示と filter の選択肢はこの 1 つの関数から導く。
+ *    別々に書くと「Premium で絞ったのに『連携済み』の行が出る」ような
+ *    表示と絞り込みの食い違いが起きる。
+ * ------------------------------------------------------------------ */
+
+export type CustomerStatus = "unregistered" | "linked" | PlanCode
+
+export const CUSTOMER_STATUS_ORDER: CustomerStatus[] = [
+  "linked",
+  "unregistered",
+  "guest",
+  "member",
+  "premium",
+]
+
+export const CUSTOMER_STATUS_LABEL: Record<CustomerStatus, string> = {
+  linked: "連携済み",
+  unregistered: "未連携分析",
+  guest: PLAN_LABEL.guest,
+  member: PLAN_LABEL.member,
+  premium: PLAN_LABEL.premium,
+}
+
+export function customerStatus(
+  customer: Customer,
+  linked: boolean
+): CustomerStatus {
+  // §3「B2B に Guest プランは存在しない」ため、未登録はプラン名を出さない
+  if (customer.unregistered) return "unregistered"
+  // 連携中は本人課金がないのでプラン名を出す意味がない
+  if (linked) return "linked"
+  return customer.plan
+}
