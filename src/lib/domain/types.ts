@@ -218,6 +218,13 @@ export type AnalysisSession = {
   storeId?: StoreId
   /** 新規撮影を伴うか。再解析・再スコアリングは false (§5「初回」定義)。 */
   newCapture: boolean
+  /**
+   * 未連携分析(未登録顧客の仮データ)の匿名識別子。
+   * 🔴 §9 のとおり未連携分析は data_subject_id を分離する。課金の計数は
+   *    この識別子で行い、handoff が claim されたら紐付け先へ寄せる。
+   *    画面上のグルーピングには dataSubjectId を使う(モックの簡略化)。
+   */
+  unlinkedAnonymousId?: string
   /** 品質判定。欠測 capture の有無。 */
   quality: "ok" | "warn" | "insufficient"
   metrics: MetricValue[]

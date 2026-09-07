@@ -29,12 +29,14 @@ import {
 } from "@/components/ui/select"
 import { useSession } from "@/contexts/session-context"
 import {
+  billableActiveUsers,
   careCompletionRate,
   careExecutionRate,
   churnRiskUsers,
   continuingUsers,
   dailySeries,
   improvementRate,
+  makeBillingIdentityResolver,
   monthlyActiveUsers,
   monthlySeries,
   totalAnalyses,
@@ -61,6 +63,7 @@ import {
 } from "@/lib/domain/plans"
 import {
   careAssets,
+  handoffTokens,
   NOW,
   planChangeEvents,
   recommendationRuns,
@@ -163,6 +166,16 @@ export default function DashboardPage() {
   }, [sessions, customers])
 
   const mau = monthlyActiveUsers(sessions, period)
+  /**
+   * 課金対象ユーザー数（吉田さん確定 2026-09-07）。
+   * 未連携分析を含み、claim 済みは紐付け先に寄せて二重計上しない。
+   * B2B タブでのみ意味を持つ指標なので、そこだけに出す。
+   */
+  const resolveBillingIdentity = useMemo(
+    () => makeBillingIdentityResolver(handoffTokens),
+    []
+  )
+  const billable = billableActiveUsers(sessions, period, resolveBillingIdentity)
   const total = totalAnalyses(sessions, period)
   const continuing = continuingUsers(sessions, period)
   const churn = churnRiskUsers(sessions, storeDataLinks, period)
@@ -341,6 +354,17 @@ export default function DashboardPage() {
               : (stores.find((s) => s.id === storeId)?.name ?? "すべての店舗")
         }
       />
+
+      {effectiveSegment === "b2b" ? (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <AggregateStat
+            title="課金対象ユーザー数"
+            aggregate={billable}
+            format="count"
+            unit="名"
+          />
+        </div>
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <AggregateStat title="月間アクティブユーザー" aggregate={mau} format="count" unit="名" />

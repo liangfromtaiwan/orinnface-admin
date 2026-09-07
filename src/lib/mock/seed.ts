@@ -341,6 +341,8 @@ customers.forEach((c, i) => {
       storeId: captureStoreId,
       // 再解析は新規撮影を伴わない → 適格分析ではない (§5「初回」定義)
       newCapture: !reanalysis,
+      // §9: 未連携分析は data_subject_id を分離する。課金はこの識別子で数える
+      unlinkedAnonymousId: c.unregistered ? `anon_${pad(i + 1)}` : undefined,
       quality: rand() < 0.08 ? "warn" : "ok",
       metrics: failed ? [] : metricValues(FACE_METRICS, s, i),
       versions: {

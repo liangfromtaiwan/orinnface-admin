@@ -217,6 +217,69 @@ export function monthlyActiveUsers(
   )
 }
 
+/* ------------------------------------------------------------------ *
+ * B2B 課金対象ユーザー数 (吉田さん確定 2026-09-07)
+ *
+ * > JST月内に分析が1回以上完了した一意顧客数を課金対象とします。
+ * > 登録前の未連携分析も含めますが、登録・連携後に二重計上しません。
+ *
+ * 🔴 §6 の月間アクティブユーザーは「一意 data_subject 数」だが、§9 のとおり
+ *    未連携分析は data_subject_id を分離する。そのままだと課金対象から漏れるため、
+ *    課金の計数単位は「**解決済みの本人**」とする。
+ * 🔴 二重計上の防止: handoff が claim された未連携分析は、匿名の識別子ではなく
+ *    紐付け先の data_subject に寄せて数える。同じ人が同じ月に
+ *    「未連携のまま 1 回」＋「登録後 1 回」分析しても 1 人として数える。
+ * ------------------------------------------------------------------ */
+
+export type BillingIdentityResolver = (session: AnalysisSession) => string
+
+/**
+ * 課金の計数に使う識別子を決める。
+ * claim 済みの未連携分析は紐付け先の data_subject に寄せる。
+ */
+export function makeBillingIdentityResolver(
+  claims: { anonymousId?: string; claimedByDataSubjectId?: string }[]
+): BillingIdentityResolver {
+  // 🔴 claim は「匿名識別子」単位で寄せる。session 単位で寄せると、同じ人の
+  //    別セッション(姿勢分析など)が匿名側に残って二重計上になる。
+  const byAnonymous = new Map<string, string>()
+  for (const c of claims) {
+    if (c.anonymousId && c.claimedByDataSubjectId) {
+      byAnonymous.set(c.anonymousId, c.claimedByDataSubjectId)
+    }
+  }
+  return (s) => {
+    if (!s.unlinkedAnonymousId) return s.dataSubjectId
+    // claim 済み → 紐付け先の data_subject / 未 claim → 匿名識別子のまま
+    return byAnonymous.get(s.unlinkedAnonymousId) ?? s.unlinkedAnonymousId
+  }
+}
+
+/**
+ * 課金対象ユーザー数。未連携分析も含み、claim 済みは紐付け先に寄せて重複を除く。
+ * 店舗別に出すときは事前に sessions を storeId で絞って渡す。
+ */
+export function billableActiveUsers(
+  sessions: AnalysisSession[],
+  period: Period,
+  resolveIdentity: BillingIdentityResolver
+): Aggregate {
+  const ids = new Set<string>()
+  let unlinkedIncluded = 0
+  for (const s of sessions) {
+    if (s.status !== "completed" || !inPeriod(s.completedAt, period)) continue
+    const key = resolveIdentity(s)
+    if (s.unlinkedAnonymousId) unlinkedIncluded += 1
+    ids.add(key)
+  }
+  return count(
+    ids.size,
+    period,
+    "JST 月内に分析が1回以上完了した一意顧客数（未連携分析を含む／登録・連携後は紐付け先に寄せて二重計上しない）" +
+      (unlinkedIncluded > 0 ? `。うち未連携分析 ${unlinkedIncluded} 件を含む` : "")
+  )
+}
+
 /** 総分析回数 = 期間内の completed analysis_session 数。失敗・取消を除外。 */
 export function totalAnalyses(
   sessions: AnalysisSession[],

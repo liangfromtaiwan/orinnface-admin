@@ -11,7 +11,7 @@ import { resolveScope, canViewCustomer, visibleCustomerIds, can, visibleScreens,
 import { CARE_VIDEO_SLOTS, careEntitlement, assertCareSlotInvariant, canPlaySlot, careSlotFor } from "@/lib/domain/care-catalog"
 import { matchesCustomerFilter, CUSTOMER_FILTER_ORDER } from "@/lib/domain/plans"
 import { decideRawImageView } from "@/lib/domain/scope"
-import { monthlyActiveUsers, totalAnalyses, continuingUsers, churnRiskUsers, improvementRate, careCompletionRate, isEligible, isChurnRisk } from "@/lib/domain/kpi"
+import { monthlyActiveUsers, totalAnalyses, continuingUsers, churnRiskUsers, improvementRate, careCompletionRate, isEligible, isChurnRisk, billableActiveUsers, makeBillingIdentityResolver } from "@/lib/domain/kpi"
 import { buildPeriod } from "@/lib/domain/periods"
 
 let failed = 0
@@ -186,6 +186,29 @@ console.log("── B2B / B2C の切り分け ──")
   check("Premium 会員数に連携済みも含める",
     linkedPremium > 0 && allPremium > linkedPremium,
     `(契約 Premium ${allPremium} 人 / うち連携済み ${linkedPremium} 人）`)
+}
+
+console.log("── B2B 課金対象 (吉田さん確定 2026-09-07) ──")
+{
+  const resolve = makeBillingIdentityResolver(handoffTokens)
+  const p12 = buildPeriod("last_12m")
+  const unlinked = analysisSessions.filter(s => s.unlinkedAnonymousId)
+  check("未連携分析にも課金用の識別子がある", unlinked.length > 0, `(${unlinked.length} 件)`)
+  check("未 claim の未連携分析は匿名識別子で数える",
+    unlinked.filter(s => resolve(s).startsWith("anon_")).length > 0)
+
+  // 🔴 二重計上の防止: claim 済みの人は識別子が 1 つに収束すること
+  const claimed = handoffTokens.filter(h => h.claimedByDataSubjectId)
+  check("claim 済みがある", claimed.length > 0, `(${claimed.length} 件)`)
+  const bad = claimed.filter(h => {
+    const own = analysisSessions.filter(s => s.dataSubjectId === h.claimedByDataSubjectId)
+    return new Set(own.map(resolve)).size !== 1
+  })
+  check("claim 済みの顧客は識別子が 1 つに収束する(二重計上しない)", bad.length === 0,
+    `(不正 ${bad.length} 件)`)
+
+  const billable = billableActiveUsers(analysisSessions, p12, resolve)
+  check("課金対象は母数つきで返る", billable.denominator > 0, `(${billable.value} 名)`)
 }
 
 console.log("── KPI ──")
