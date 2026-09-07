@@ -27,18 +27,87 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { useNotifications, type ViewRequest } from "@/contexts/notifications"
+import {
+  useNotifications,
+  VIEW_REQUEST_STATUS_LABEL,
+  type NotificationItem,
+  type ViewRequest,
+} from "@/contexts/notifications"
 import { formatDateTime } from "@/lib/domain/kpi"
+import { cn } from "@/lib/utils"
+
+/** 1 行。既読は点を落とし、文字を淡くする。 */
+function NotificationRow({
+  item,
+  onSelect,
+}: {
+  item: NotificationItem
+  onSelect: () => void
+}) {
+  const r = item.request
+  const needsAction = item.kind === "review" && r.status === "pending"
+  const title = needsAction
+    ? "生画像の一時閲覧の申請"
+    : r.status === "approved"
+      ? "承認されました"
+      : r.status === "rejected"
+        ? "却下されました"
+        : "審査待ちです"
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={cn(
+        "w-full border-b px-3 py-2.5 text-left transition-colors last:border-b-0 hover:bg-muted/50",
+        !item.unread && "opacity-70"
+      )}
+    >
+      <span className="flex items-start gap-2">
+        <span
+          aria-hidden
+          className={cn(
+            "mt-1.5 size-1.5 shrink-0 rounded-full",
+            item.unread ? "bg-destructive" : "bg-transparent"
+          )}
+        />
+        <span className="min-w-0 flex-1">
+          <span className="flex flex-wrap items-center gap-1.5 text-sm font-medium">
+            {title}
+            <Badge
+              variant={
+                r.status === "approved"
+                  ? "default"
+                  : r.status === "rejected"
+                    ? "secondary"
+                    : "outline"
+              }
+              className="px-1 py-0 text-[10px]"
+            >
+              {VIEW_REQUEST_STATUS_LABEL[r.status]}
+            </Badge>
+          </span>
+          <span className="mt-0.5 block text-xs break-words text-muted-foreground">
+            {needsAction
+              ? `${r.requesterName}（${r.requesterRole}）／対象 ${r.rawImageAssetId}`
+              : `対象 ${r.rawImageAssetId}${r.reviewerName ? `／審査 ${r.reviewerName}` : ""}`}
+          </span>
+          {r.status === "rejected" && r.rejectReason ? (
+            <span className="mt-0.5 block text-xs break-words text-destructive">
+              {r.rejectReason}
+            </span>
+          ) : null}
+          <span className="mt-0.5 block text-[11px] text-muted-foreground tabular-nums">
+            {formatDateTime(r.reviewedAt ?? r.requestedAt)}
+          </span>
+        </span>
+      </span>
+    </button>
+  )
+}
 
 export function NotificationBell() {
-  const {
-    pendingForReview,
-    resultsForMe,
-    unreadCount,
-    approve,
-    reject,
-    markResultRead,
-  } = useNotifications()
+  const { items, unreadCount, approve, reject, markResultRead } = useNotifications()
 
   const [open, setOpen] = useState(false)
   const [reviewing, setReviewing] = useState<ViewRequest | null>(null)
@@ -73,89 +142,35 @@ export function NotificationBell() {
         <PopoverContent align="end" className="w-[26rem] p-0">
           <div className="border-b px-3 py-2 text-sm font-medium">通知</div>
 
-          {unreadCount === 0 ? (
+          {items.length === 0 ? (
             <p className="px-3 py-8 text-center text-xs text-muted-foreground">
               通知はありません
             </p>
-          ) : null}
-
-          {pendingForReview.length > 0 ? (
-            <>
-              <p className="bg-muted/50 px-3 py-1.5 text-[11px] font-medium text-muted-foreground">
-                審査待ちの申請
-              </p>
-              <ul>
-                {pendingForReview.map((r) => (
-                  <li key={r.id}>
-                    <button type="button"
-                            className="w-full border-b px-3 py-2.5 text-left transition-colors hover:bg-muted/50"
-                            onClick={() => { setReviewing(r); setOpen(false) }}>
-                      <span className="flex items-start gap-2">
-                        <span aria-hidden className="mt-1.5 size-1.5 shrink-0 rounded-full bg-destructive" />
-                        <span className="min-w-0 flex-1">
-                          <span className="block text-sm font-medium">
-                            生画像の一時閲覧の申請
-                          </span>
-                          <span className="mt-0.5 block text-xs text-muted-foreground">
-                            {r.requesterName}（{r.requesterRole}）／対象 {r.rawImageAssetId}
-                          </span>
-                          <span className="mt-0.5 block text-[11px] text-muted-foreground tabular-nums">
-                            {formatDateTime(r.requestedAt)}
-                          </span>
-                        </span>
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </>
-          ) : null}
-
-          {resultsForMe.length > 0 ? (
-            <>
-              <p className="bg-muted/50 px-3 py-1.5 text-[11px] font-medium text-muted-foreground">
-                自分の申請の結果
-              </p>
-              <ul>
-                {resultsForMe.map((r) => (
-                  <li key={r.id}>
-                    <button type="button"
-                            className="w-full border-b px-3 py-2.5 text-left transition-colors hover:bg-muted/50"
-                            onClick={() => {
-                              markResultRead(r.id)
-                              setOpen(false)
-                              if (r.status === "approved") setViewing(r)
-                              else
-                                toast.error("申請は却下されました", {
-                                  description: `理由: ${r.rejectReason}`,
-                                })
-                            }}>
-                      <span className="flex items-start gap-2">
-                        <span aria-hidden className="mt-1.5 size-1.5 shrink-0 rounded-full bg-destructive" />
-                        <span className="min-w-0 flex-1">
-                          <span className="flex items-center gap-1.5 text-sm font-medium">
-                            {r.status === "approved" ? "承認されました" : "却下されました"}
-                            <Badge variant={r.status === "approved" ? "default" : "secondary"}
-                                   className="px-1 py-0 text-[10px]">
-                              {r.status === "approved" ? "閲覧できます" : "理由あり"}
-                            </Badge>
-                          </span>
-                          <span className="mt-0.5 block text-xs text-muted-foreground">
-                            対象 {r.rawImageAssetId}／審査 {r.reviewerName}
-                          </span>
-                          {r.status === "rejected" ? (
-                            <span className="mt-0.5 block text-xs text-destructive">
-                              {r.rejectReason}
-                            </span>
-                          ) : null}
-                        </span>
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </>
-          ) : null}
+          ) : (
+            <ul className="max-h-96 overflow-y-auto">
+              {items.map((item) => (
+                <li key={item.request.id}>
+                  <NotificationRow
+                    item={item}
+                    onSelect={() => {
+                      const r = item.request
+                      setOpen(false)
+                      if (item.kind === "review" && r.status === "pending") {
+                        setReviewing(r)
+                        return
+                      }
+                      markResultRead(r.id)
+                      if (r.status === "approved") setViewing(r)
+                      else if (r.status === "rejected")
+                        toast.error("申請は却下されました", {
+                          description: `理由: ${r.rejectReason}`,
+                        })
+                    }}
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
         </PopoverContent>
       </Popover>
 

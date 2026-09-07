@@ -50,13 +50,25 @@ export type ViewRequest = {
   readByRequester: boolean
 }
 
+/**
+ * ベルに出す 1 件。既読になっても一覧からは消さず、点だけ落とす。
+ *
+ * kind:
+ *   review … 本部が審査する側として見る。status が pending の間は
+ *             対応が必要なので、開いただけでは既読にしない
+ *   result … 自分が出した申請の結果として見る。開いたら既読
+ */
+export type NotificationItem = {
+  request: ViewRequest
+  kind: "review" | "result"
+  unread: boolean
+}
+
 export type NotificationsValue = {
-  /** すべての申請。表示側でアカウントごとに絞る。 */
+  /** すべての申請。 */
   requests: ViewRequest[]
-  /** 本部の審査待ち。 */
-  pendingForReview: ViewRequest[]
-  /** 自分が出した申請のうち、結果が出ていて未読のもの。 */
-  resultsForMe: ViewRequest[]
+  /** ベルに出す一覧(既読を含む・新しい順)。 */
+  items: NotificationItem[]
   unreadCount: number
 
   submitRequest: (input: {

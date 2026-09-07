@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState, type ReactNode } from "react"
 import {
   NotificationsContext,
   VIEW_TOKEN_TTL_SECONDS,
+  type NotificationItem,
   type NotificationsValue,
   type ViewRequest,
 } from "@/contexts/notifications"
@@ -124,21 +125,34 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo<NotificationsValue>(() => {
-    // 審査待ちは本部にだけ見せる
-    const pendingForReview =
-      scope.role === "operator" ? requests.filter((r) => r.status === "pending") : []
-    // 結果は申請した本人にだけ見せる
-    const resultsForMe = requests.filter(
-      (r) =>
-        r.requesterAccountId === account.id &&
-        r.status !== "pending" &&
-        !r.readByRequester
-    )
+    const isOperator = scope.role === "operator"
+
+    // 本部は全件(審査対象)、それ以外は自分が出した申請だけ。
+    // 既読になっても一覧からは消さない。
+    const items: NotificationItem[] = requests
+      .filter((r) => isOperator || r.requesterAccountId === account.id)
+      .map((r) => {
+        const mine = r.requesterAccountId === account.id
+        if (r.status === "pending") {
+          return {
+            request: r,
+            // 本部にとっては対応が必要な案件。開いただけでは既読にしない
+            // 本部は審査する側、申請者は自分の申請の状況として見る
+            kind: isOperator ? "review" : "result",
+            unread: isOperator,
+          }
+        }
+        return {
+          request: r,
+          kind: mine ? "result" : "review",
+          unread: mine ? !r.readByRequester : false,
+        }
+      })
+
     return {
       requests,
-      pendingForReview,
-      resultsForMe,
-      unreadCount: pendingForReview.length + resultsForMe.length,
+      items,
+      unreadCount: items.filter((i) => i.unread).length,
       submitRequest,
       issueDirect,
       approve,
