@@ -9,7 +9,7 @@
  */
 
 import { CARE_VIDEO_SLOTS, careSlotFor } from "../domain/care-catalog"
-import { METRIC_CATALOG } from "../domain/metrics"
+import { METRIC_CATALOG, type AgeBandAverages } from "../domain/metrics"
 import type {
   AdminAccount,
   AnalysisSession,
@@ -521,6 +521,30 @@ if (rawImageAssets.length > 12) {
     state: "failed",
     failureReason: "GCS generation 削除の一部が未確認 (再試行待ち)",
   }
+}
+
+/* ------------------------------------------------------------------ *
+ * 同年代平均 (§5.2 の neutral 欄「同年代比較・average_version」)
+ *
+ * ⚠️ 値は AI分析 v1.6 が正本。ここは画面確認用のモックで、根拠のある数値ではない。
+ *    年代が上がるにつれ僅かに変化する形にしてあるだけ。
+ * ------------------------------------------------------------------ */
+
+const NEUTRAL_METRICS = METRIC_CATALOG.filter((m) => m.group === "neutral")
+
+export const ageBandAverages: AgeBandAverages = {
+  version: AVERAGE_VERSION,
+  values: Object.fromEntries(
+    AGE_BANDS.map((band, bi) => [
+      band,
+      Object.fromEntries(
+        NEUTRAL_METRICS.map((m, mi) => [
+          m.code,
+          Number((4.6 + ((mi + bi) % 5) * 0.4 + bi * 0.18).toFixed(2)),
+        ])
+      ),
+    ])
+  ),
 }
 
 /* ------------------------------------------------------------------ *

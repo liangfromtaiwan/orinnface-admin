@@ -49,7 +49,13 @@ import {
 } from "@/lib/domain/plans"
 import { usesB2bDisplay } from "@/lib/domain/scope"
 import { careEntitlement, getCareSlot } from "@/lib/domain/care-catalog"
-import { getMetric, isImproved, METRIC_GROUP_LABEL, metricsByGroup } from "@/lib/domain/metrics"
+import {
+  compareWithAgeBand,
+  getMetric,
+  isImproved,
+  METRIC_GROUP_LABEL,
+  metricsByGroup,
+} from "@/lib/domain/metrics"
 import {
   ANALYSIS_STATUS_LABEL,
   ANALYSIS_TYPE_LABEL,
@@ -59,6 +65,7 @@ import {
   type AnalysisSession,
 } from "@/lib/domain/types"
 import {
+  ageBandAverages,
   careAssets,
   consentEvents,
   rawImageAssets,
@@ -260,7 +267,9 @@ export default function CustomerDetailPage() {
             </SpecNote>
           ) : null}
 
-          {selected ? <SessionDetail session={selected} /> : null}
+          {selected ? (
+            <SessionDetail session={selected} ageBand={customer.ageBand} />
+          ) : null}
         </TabsContent>
 
         {/* ---------------- 比較 ---------------- */}
@@ -513,7 +522,13 @@ export default function CustomerDetailPage() {
  * 分析詳細
  * ------------------------------------------------------------------ */
 
-function SessionDetail({ session }: { session: AnalysisSession }) {
+function SessionDetail({
+  session,
+  ageBand,
+}: {
+  session: AnalysisSession
+  ageBand?: string
+}) {
   const [showTech, setShowTech] = useState(false)
   const run = recommendationRuns.find((r) => r.analysisSessionId === session.id)
 
@@ -544,11 +559,7 @@ function SessionDetail({ session }: { session: AnalysisSession }) {
     <div className="space-y-4">
       {isFace ? (
         <>
-          <MetricGroupCard
-            session={session}
-            group="neutral"
-            note="無表情の6指標です。5動作の可動域とは別の指標なので混ぜて表示しません。"
-          />
+          <NeutralCard session={session} ageBand={ageBand} />
           <div className="grid gap-4 lg:grid-cols-3">
             <MetricGroupCard session={session} group="range" />
             <MetricGroupCard session={session} group="asymmetry" />
@@ -650,6 +661,98 @@ function SessionDetail({ session }: { session: AnalysisSession }) {
         ) : null}
       </Card>
     </div>
+  )
+}
+
+/**
+ * 無表情(neutral)6 指標。§5.2 の neutral 欄は「無表情6指標・同年代比較・average_version」。
+ *
+ * 🔴 5動作の可動域とは別の指標なので、同じ表に混ぜない。
+ * 🔴 平均値は AI分析 v1.6 が正本。average_version を併記して、どの版の平均かを示す。
+ * 🔴 同年代平均は AI の threshold_version や推奨基準 version とは別物 (§8)。
+ */
+function NeutralCard({
+  session,
+  ageBand,
+}: {
+  session: AnalysisSession
+  ageBand?: string
+}) {
+  const rows = compareWithAgeBand(session.metrics, ageBand, ageBandAverages)
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-1.5 text-base">
+          {METRIC_GROUP_LABEL.neutral}
+          <InfoHint label="無表情6指標と同年代比較について">
+            無表情の 6 指標です。5動作の可動域とは別の指標なので混ぜて表示しません。
+            同年代平均は {ageBandAverages.version} の値で、AI の threshold_version や
+            推奨基準の version とは別物です。
+          </InfoHint>
+        </CardTitle>
+        <CardDescription className="text-xs">
+          同年代比較（{ageBand ?? "年代不明"}）／ average_version{" "}
+          <span className="font-mono">{session.versions.averageVersion}</span>
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="px-0 pb-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>指標</TableHead>
+              <TableHead className="text-right">本人</TableHead>
+              <TableHead className="text-right">同年代平均</TableHead>
+              <TableHead className="text-right">差</TableHead>
+              <TableHead className="text-right">評価</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.map((r) => (
+              <TableRow key={r.metric.code}>
+                <TableCell className="text-sm">{r.metric.label}</TableCell>
+                <TableCell className="text-right text-sm tabular-nums">
+                  {r.value !== undefined ? (
+                    r.value.toFixed(2)
+                  ) : (
+                    <span className="text-muted-foreground">欠測</span>
+                  )}
+                </TableCell>
+                <TableCell className="text-right text-sm tabular-nums text-muted-foreground">
+                  {r.average !== undefined ? (
+                    r.average.toFixed(2)
+                  ) : (
+                    <span>—</span>
+                  )}
+                </TableCell>
+                <TableCell className="text-right text-sm tabular-nums">
+                  {r.diff !== undefined ? (
+                    <>
+                      {r.diff > 0 ? "+" : ""}
+                      {r.diff.toFixed(2)}
+                    </>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
+                </TableCell>
+                <TableCell className="text-right text-xs">
+                  {r.betterThanAverage === null ? (
+                    <span className="text-muted-foreground">判定不能</span>
+                  ) : r.betterThanAverage ? (
+                    <span className="text-emerald-700">平均より良い</span>
+                  ) : (
+                    <span className="text-muted-foreground">平均以下</span>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        <p className="border-t px-4 py-2 text-[11px] text-muted-foreground">
+          平均値は AI分析 v1.6 が正本です。metric_direction は §16 P1 の未決事項のため、
+          「平均より良い」の判定は暫定です。
+        </p>
+      </CardContent>
+    </Card>
   )
 }
 

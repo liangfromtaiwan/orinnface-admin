@@ -179,3 +179,59 @@ export function isImproved(
       return Math.abs(latestValue) < Math.abs(baselineValue)
   }
 }
+
+/* ------------------------------------------------------------------ *
+ * 同年代平均との比較 (仕様書 v1.0 §5.2)
+ *
+ * §5.2 の neutral 欄は「無表情6指標、**同年代比較**、average_version」。
+ *
+ * 🔴 平均値そのものは AI分析 v1.6 が正本。ここは管理画面が表示するための
+ *    参照インターフェースで、値はモックである。
+ * 🔴 §8 のとおり average_version（同年代平均）は AI の threshold_version や
+ *    推奨基準 version とは別物。同じ値として扱わない。
+ * 🔴 neutral のみに出す。5動作の可動域と混ぜない (§5.2)。
+ * ------------------------------------------------------------------ */
+
+export type AgeBandAverages = {
+  /** 同年代平均の版。分析結果に記録された averageVersion と一致するはず。 */
+  version: string
+  /** ageBand → metricCode → 平均値 */
+  values: Record<string, Record<string, number>>
+}
+
+export type AgeBandComparison = {
+  metric: MetricDef
+  value?: number
+  average?: number
+  /** value - average。符号は指標の意味で解釈すること。 */
+  diff?: number
+  /** metric_direction に沿って平均より良いか。判定不能なら null。 */
+  betterThanAverage: boolean | null
+}
+
+/**
+ * neutral 6 指標について、本人の値と同年代平均を並べる。
+ * 平均が無い/値が無い指標は average / diff が undefined になる（欠測として出す）。
+ */
+export function compareWithAgeBand(
+  metrics: { metricCode: string; value: number }[],
+  ageBand: string | undefined,
+  averages: AgeBandAverages
+): AgeBandComparison[] {
+  const table = ageBand ? averages.values[ageBand] : undefined
+  return metricsByGroup("neutral").map((metric) => {
+    const value = metrics.find((m) => m.metricCode === metric.code)?.value
+    const average = table?.[metric.code]
+    const diff =
+      value !== undefined && average !== undefined
+        ? Number((value - average).toFixed(2))
+        : undefined
+    return {
+      metric,
+      value,
+      average,
+      diff,
+      betterThanAverage: isImproved(metric.code, average, value),
+    }
+  })
+}

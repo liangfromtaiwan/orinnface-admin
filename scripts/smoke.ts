@@ -11,6 +11,8 @@ import { resolveScope, canViewCustomer, visibleCustomerIds, can, visibleScreens,
 import { CARE_VIDEO_SLOTS, careEntitlement, assertCareSlotInvariant, canPlaySlot, careSlotFor } from "@/lib/domain/care-catalog"
 import { matchesCustomerFilter, CUSTOMER_FILTER_ORDER } from "@/lib/domain/plans"
 import { decideRawImageView, isAwaitingReconsent, usesB2bDisplay } from "@/lib/domain/scope"
+import { compareWithAgeBand, metricsByGroup } from "@/lib/domain/metrics"
+import { ageBandAverages } from "@/lib/mock/seed"
 import { monthlyActiveUsers, totalAnalyses, continuingUsers, churnRiskUsers, improvementRate, careCompletionRate, isEligible, isChurnRisk, billableActiveUsers, makeBillingIdentityResolver } from "@/lib/domain/kpi"
 import { buildPeriod } from "@/lib/domain/periods"
 
@@ -153,6 +155,26 @@ console.log("── 生画像の閲覧可否 (吉田さん確定 2026-09-07) ─
     decideRawImageView(opScope, { captureStoreId: other, hasConsent: true }).kind === "needs_reason")
   check("本部でも本人同意がなければ閲覧できない",
     decideRawImageView(opScope, { captureStoreId: other, hasConsent: false }).kind === "denied")
+}
+
+console.log("── 同年代比較 (§5.2 neutral) ──")
+{
+  const neutral = metricsByGroup("neutral")
+  check("無表情は 6 指標", neutral.length === 6, `(${neutral.length})`)
+  const withBand = customers.find(c => c.ageBand && !c.unregistered)!
+  const sess = analysisSessions.find(s =>
+    s.dataSubjectId === withBand.dataSubjectId && s.analysisType === "face" && s.metrics.length > 0)!
+  const rows = compareWithAgeBand(sess.metrics, withBand.ageBand, ageBandAverages)
+  check("neutral 6 指標すべてに行が出る", rows.length === 6)
+  check("同年代平均が引ける", rows.every(r => r.average !== undefined),
+    `(${withBand.ageBand})`)
+  check("差が計算される", rows.every(r => r.diff !== undefined))
+  check("average_version が分析結果と一致する",
+    ageBandAverages.version === sess.versions.averageVersion,
+    `(${ageBandAverages.version})`)
+  // 🔴 5動作と混ぜない: neutral の行に可動域の指標が混入していないこと
+  check("5動作の指標が混入していない",
+    rows.every(r => r.metric.group === "neutral"))
 }
 
 console.log("── entitlement ──")
