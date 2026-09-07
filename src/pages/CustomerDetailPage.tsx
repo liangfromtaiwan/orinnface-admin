@@ -104,6 +104,8 @@ export default function CustomerDetailPage() {
   const postureSessions = sessions.filter((s) => s.analysisType === "posture" && isEligible(s))
 
   const [selectedId, setSelectedId] = useState<string>(() => faceSessions[0]?.id ?? "")
+  /** 同年代比較は最新の適格な表情分析を基準に出す。 */
+  const latestFaceForAgeBand = faceSessions.find((s) => s.metrics.length > 0)
   const selected =
     sessions.find((s) => s.id === selectedId) ?? faceSessions[0] ?? sessions[0]
 
@@ -267,13 +269,23 @@ export default function CustomerDetailPage() {
             </SpecNote>
           ) : null}
 
-          {selected ? (
-            <SessionDetail session={selected} ageBand={customer.ageBand} />
-          ) : null}
+          {selected ? <SessionDetail session={selected} /> : null}
         </TabsContent>
 
         {/* ---------------- 比較 ---------------- */}
         <TabsContent value="compare" className="space-y-4">
+          {/*
+            同年代比較は Member でも見られる。過去との比較は Premium から。
+            2 つを並べて置くことで権限の差が分かるようにしている。
+          */}
+          {latestFaceForAgeBand ? (
+            <NeutralCard
+              session={latestFaceForAgeBand}
+              ageBand={customer.ageBand}
+              planAllows={visibility.ageBandCompare}
+            />
+          ) : null}
+
           {/*
             🔴 管理画面の閲覧可否は plan では決まらない (§5.2)。店舗は連携中の顧客の
                保存済み分析結果を閲覧できる(吉田さん確定 2026-09-07)。
@@ -522,13 +534,7 @@ export default function CustomerDetailPage() {
  * 分析詳細
  * ------------------------------------------------------------------ */
 
-function SessionDetail({
-  session,
-  ageBand,
-}: {
-  session: AnalysisSession
-  ageBand?: string
-}) {
+function SessionDetail({ session }: { session: AnalysisSession }) {
   const [showTech, setShowTech] = useState(false)
   const run = recommendationRuns.find((r) => r.analysisSessionId === session.id)
 
@@ -559,7 +565,11 @@ function SessionDetail({
     <div className="space-y-4">
       {isFace ? (
         <>
-          <NeutralCard session={session} ageBand={ageBand} />
+          <MetricGroupCard
+            session={session}
+            group="neutral"
+            note="無表情の6指標です。5動作の可動域とは別の指標なので混ぜて表示しません。同年代との比較は「比較」タブにあります。"
+          />
           <div className="grid gap-4 lg:grid-cols-3">
             <MetricGroupCard session={session} group="range" />
             <MetricGroupCard session={session} group="asymmetry" />
@@ -674,25 +684,31 @@ function SessionDetail({
 function NeutralCard({
   session,
   ageBand,
+  planAllows,
 }: {
   session: AnalysisSession
   ageBand?: string
+  /** 本人のプランで同年代比較が見られるか。 */
+  planAllows: boolean
 }) {
   const rows = compareWithAgeBand(session.metrics, ageBand, ageBandAverages)
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-1.5 text-base">
-          {METRIC_GROUP_LABEL.neutral}
-          <InfoHint label="無表情6指標と同年代比較について">
+          同年代比較（{METRIC_GROUP_LABEL.neutral}）
+          <InfoHint label="同年代比較について">
             無表情の 6 指標です。5動作の可動域とは別の指標なので混ぜて表示しません。
             同年代平均は {ageBandAverages.version} の値で、AI の threshold_version や
             推奨基準の version とは別物です。
           </InfoHint>
         </CardTitle>
         <CardDescription className="text-xs">
-          同年代比較（{ageBand ?? "年代不明"}）／ average_version{" "}
+          {ageBand ?? "年代不明"}の平均と比較 ／ 基準の分析{" "}
+          {session.completedAt ? formatDate(session.completedAt) : "—"} ／
+          average_version{" "}
           <span className="font-mono">{session.versions.averageVersion}</span>
+          {planAllows ? "（本人のアプリでも表示されます）" : ""}
         </CardDescription>
       </CardHeader>
       <CardContent className="px-0 pb-0">
