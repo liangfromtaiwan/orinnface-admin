@@ -109,6 +109,14 @@ export default function DashboardPage() {
   const period = useMemo(() => buildPeriod(periodKey), [periodKey])
 
   /**
+   * 🔴 B2B / B2C は FACE 本部の課金区分なので、タブは本部(operator)だけに出す。
+   *    店舗・契約企業から見れば自店の顧客しかいないため区分に意味がなく、
+   *    そもそもスコープが顧客を絞っている。本部以外は常に "all" で扱う。
+   */
+  const showSegmentTabs = scope.crossCompany
+  const effectiveSegment: DashboardSegment = showSegmentTabs ? segment : "all"
+
+  /**
    * 🔴 B2B / B2C は「その顧客に active な店舗連携があるか」で分ける。
    *    基準は「店舗に課金できるか」。連携がなければ店舗へ請求できないので、
    *    過去に店舗で撮った分析であっても B2C 側に入る。
@@ -125,17 +133,17 @@ export default function DashboardPage() {
 
   const sessions = useMemo(() => {
     const bySegment = analysisSessions.filter((s) => {
-      if (segment === "all") return true
+      if (effectiveSegment === "all") return true
       const linked = linkedSubjectIds.has(s.dataSubjectId)
-      return segment === "b2b" ? linked : !linked
+      return effectiveSegment === "b2b" ? linked : !linked
     })
     return storeId === "all"
       ? bySegment
       : bySegment.filter((s) => s.storeId === storeId)
-  }, [analysisSessions, storeId, segment, linkedSubjectIds])
+  }, [analysisSessions, storeId, effectiveSegment, linkedSubjectIds])
 
   /** B2C には店舗が存在しないので、店舗 filter は B2C タブでは意味を持たない。 */
-  const storeFilterEnabled = segment !== "b2c"
+  const storeFilterEnabled = effectiveSegment !== "b2c"
 
   /**
    * 課金の指標の母数。active な店舗連携がある顧客は費用を店舗が負担しており
@@ -213,14 +221,14 @@ export default function DashboardPage() {
    */
   const scopedPlaybacks = useMemo(() => {
     const bySegment = carePlaybacks.filter((p) => {
-      if (segment === "all") return true
+      if (effectiveSegment === "all") return true
       const linked = linkedSubjectIds.has(p.dataSubjectId)
-      return segment === "b2b" ? linked : !linked
+      return effectiveSegment === "b2b" ? linked : !linked
     })
     return storeId === "all"
       ? bySegment
       : bySegment.filter((p) => p.storeId === storeId)
-  }, [carePlaybacks, storeId, segment, linkedSubjectIds])
+  }, [carePlaybacks, storeId, effectiveSegment, linkedSubjectIds])
 
   const careExec = careExecutionRate(
     scopedPlaybacks,
@@ -303,23 +311,28 @@ export default function DashboardPage() {
         }
       />
 
-      <Tabs value={segment} onValueChange={(v) => setSegment(v as DashboardSegment)}>
-        <TabsList>
-          {(Object.keys(SEGMENT_LABEL) as DashboardSegment[]).map((k) => (
-            <TabsTrigger key={k} value={k}>
-              {SEGMENT_LABEL[k]}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
+      {showSegmentTabs ? (
+        <Tabs
+          value={segment}
+          onValueChange={(v) => setSegment(v as DashboardSegment)}
+        >
+          <TabsList>
+            {(Object.keys(SEGMENT_LABEL) as DashboardSegment[]).map((k) => (
+              <TabsTrigger key={k} value={k}>
+                {SEGMENT_LABEL[k]}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+      ) : null}
 
       <PeriodBanner
         period={period}
         scopeLabel={
-          segment === "b2c"
+          effectiveSegment === "b2c"
             ? "B2C(店舗連携なし)"
             : storeId === "all"
-              ? segment === "b2b"
+              ? effectiveSegment === "b2b"
                 ? "すべての店舗"
                 : "全体(B2B + B2C)"
               : (stores.find((s) => s.id === storeId)?.name ?? "すべての店舗")
@@ -396,7 +409,7 @@ export default function DashboardPage() {
         いて本人課金がないため、母数からも外す(混ぜると Premium の課金者数が
         実態より多く見える)。本部スコープ限定なのは B2C 顧客が店舗に紐づかないため。
       */}
-      {scope.crossCompany && segment === "b2c" ? (
+      {showSegmentTabs && effectiveSegment === "b2c" ? (
         <div className="grid gap-4 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <PremiumSignalCard

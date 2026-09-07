@@ -341,6 +341,12 @@ export const IMPROVEMENT_BASELINE_LABEL: Record<ImprovementBaseline, string> = {
  * 🔴 指標・比較基準・母数・欠測を必ず表示する。
  * 🔴 metric_direction は §16 P1 の未決事項。暫定値で出す場合は
  *    画面側で「暫定」を明示すること。
+ *
+ * ⚠️ 未決 (AI・分析ロジック側):
+ *    1. 集計期間との関係。基準が「全期間での初回」(§5)なので、期間を変えても
+ *       値が動かない。期間は最新値の締め日にしか効いていない。
+ *    2. 改善と判定する最小幅。閾値がないため測定ノイズ程度の差も改善に入る。
+ *    3. 複数指標をまとめた総合改善率の定義。現在は指標を 1 つずつ見る。
  */
 export function improvementRate(
   sessions: AnalysisSession[],
@@ -391,7 +397,10 @@ export function improvementRate(
     comparable,
     missing,
     period,
-    `指標 ${metricCode} / 基準 ${IMPROVEMENT_BASELINE_LABEL[baseline]}`,
+    `指標 ${metricCode} / 基準 ${IMPROVEMENT_BASELINE_LABEL[baseline]}。` +
+      "🔴 基準は本人の全期間での初回適格分析なので、上部の集計期間を変えても" +
+      "この値は変わりません(期間は最新値の締め日にのみ使います)。" +
+      "また改善の判定に最小幅の閾値はなく、わずかな差でも改善に数えます。",
     version
   )
 }

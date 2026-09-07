@@ -42,6 +42,10 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useSession, useStoreName } from "@/contexts/session-context"
 import { formatDate, isEligible } from "@/lib/domain/kpi"
+import {
+  describePlanVisibility,
+  planVisibility,
+} from "@/lib/domain/plans"
 import { usesB2bDisplay } from "@/lib/domain/scope"
 import {
   careEntitlement,
@@ -115,7 +119,9 @@ export default function CustomerDetailPage() {
   )
   const plays = carePlaybacks.filter((p) => p.dataSubjectId === dataSubjectId)
   // 連携済みは Premium 相当として扱う
-  const entitlement = careEntitlement(effectivePlan(customer.plan, !!activeLink))
+  const shownPlan = effectivePlan(customer.plan, !!activeLink)
+  const entitlement = careEntitlement(shownPlan)
+  const visibility = planVisibility(shownPlan)
   const assets = rawImageAssets.filter((a) => a.dataSubjectId === dataSubjectId)
   const consents = consentEvents.filter((c) => c.dataSubjectId === dataSubjectId)
 
@@ -260,8 +266,9 @@ export default function CustomerDetailPage() {
               <CardTitle className="flex items-center gap-1.5 text-base">
                 プラン別の見え方
                 <InfoHint label="プラン別の見え方について">
-                  実際の判定は Backend entitlement が正です。ここは「その顧客に何が
-                  見えているはずか」を説明するための表示です。
+                  実際の判定は Backend entitlement が正です。ここは「その顧客の画面に
+                  何が見えているはずか」を説明するための表示です。
+                  管理画面の閲覧可否は plan では決まりません(§5.2)。
                 </InfoHint>
               </CardTitle>
             </CardHeader>
@@ -282,6 +289,15 @@ export default function CustomerDetailPage() {
                 尺: {entitlement.durations.length ? entitlement.durations.join(" / ") : "—"}
                 {entitlement.specialist ? " + リンパ・神経" : ""}
               </div>
+              <div className="border-t pt-1">
+                結果の見え方: {describePlanVisibility(visibility)}
+              </div>
+              {!visibility.pastCompare ? (
+                <div className="text-xs text-muted-foreground">
+                  過去の自分との比較(初回比・前回比・任意2件)は Premium からです。
+                  同年代との比較は初回分析で開放されます。
+                </div>
+              ) : null}
             </CardContent>
           </Card>
 

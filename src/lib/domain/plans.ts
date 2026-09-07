@@ -161,3 +161,50 @@ function dailyPremiumSignal(
     }
   })
 }
+
+/* ------------------------------------------------------------------ *
+ * 本人画面で見られる範囲 (仕様書 v1.0 §5.2)
+ *
+ * §5.2: 本人画面の権限は Guest=履歴なし、Member=一覧・単体詳細、
+ *       Premium=初回・前回・任意2件比較。
+ *
+ * 🔴 Member は「同年代との比較」までで、**過去の自分とは比較できない**
+ *    (使用者確定 2026-09-07)。§5.2 の一文は過去比較が Premium からである
+ *    ことしか書いておらず、同年代比較の扱いが読み取れないため明示する。
+ *    同年代比較は課金ではなく初回分析で開放される。
+ *
+ * 🔴 管理画面の閲覧可否は plan では決まらない(§5.2)。ここは
+ *    「その顧客の画面に何が見えているはずか」を管理画面で説明するための値。
+ * ------------------------------------------------------------------ */
+
+export type PlanVisibility = {
+  /** 履歴一覧 */
+  history: boolean
+  /** 単体の分析詳細 */
+  detail: boolean
+  /** 同年代平均との比較 */
+  ageBandCompare: boolean
+  /** 過去の自分との比較(初回比・前回比・任意2件) */
+  pastCompare: boolean
+}
+
+export function planVisibility(plan: PlanCode): PlanVisibility {
+  switch (plan) {
+    case "guest":
+      // 履歴は持てないが、その 1 回の結果で同年代比較は見られる
+      return { history: false, detail: false, ageBandCompare: true, pastCompare: false }
+    case "member":
+      return { history: true, detail: true, ageBandCompare: true, pastCompare: false }
+    case "premium":
+      return { history: true, detail: true, ageBandCompare: true, pastCompare: true }
+  }
+}
+
+export function describePlanVisibility(v: PlanVisibility): string {
+  const on: string[] = []
+  if (v.history) on.push("履歴一覧")
+  if (v.detail) on.push("単体詳細")
+  if (v.ageBandCompare) on.push("同年代比較")
+  if (v.pastCompare) on.push("過去との比較(初回比・前回比・任意2件)")
+  return on.length ? on.join(" / ") : "結果画面のみ"
+}

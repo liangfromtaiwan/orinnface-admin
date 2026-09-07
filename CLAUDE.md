@@ -110,6 +110,7 @@
 - **「初回」定義**:同一人・同一分析種別的第一筆有效 completed 分析。含 Guest 移行 / B2B handoff。**不含**登録日、Premium 開始日、契約日、初回来店、failed/cancelled/invalid、以及沒有新撮影的再解析。**顔與姿勢分開算**。
 - 2 時點比較:**左 = 舊、右 = 新**。同 `analysis_type` / `metric_code` 全項目,維持當時 version。画像刪除後數值履歴仍保留,version 不相容要警告。
 - 本人畫面權限:Guest = 無履歴 / Member = 一覧・單筆詳細 / Premium = 初回・前回・任意 2 件比較。**管理畫面的可視性不看 plan**,看 operator / 店舗 scope 與監査要件。
+  - 🔴 **Member 只能跟「同年代」比較,不能跟過去的自己比較**(使用者確定 2026-09-07)。§5.2 只寫了過去比較是 Premium 起,沒寫同年代比較的歸屬,所以明確記在這裡。同年代比較是**初回分析**開放,不是付費開放。判定寫在 `planVisibility()`。
 
 ## 6. KPI 正式定義
 
