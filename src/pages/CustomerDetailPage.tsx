@@ -152,10 +152,10 @@ export default function CustomerDetailPage() {
   return (
     <div className="space-y-4">
       <PageHeader
-        title={`${customer.displayCode}`}
+        title={customer.displayName}
         description={
           <span className="flex flex-wrap items-center gap-2">
-            <span>{customer.displayName}</span>
+            <span className="font-mono tabular-nums">{customer.displayCode}</span>
             <CustomerBadges
               customer={customer}
               linked={!!activeLink && !!activeLink.consentedAt}

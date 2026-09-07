@@ -209,7 +209,7 @@ export default function CustomersPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>顧客</TableHead>
+                <TableHead>顧客(名前 / ID)</TableHead>
                 <TableHead>店舗</TableHead>
                 <TableHead>最新分析</TableHead>
                 <TableHead className="text-right">適格分析</TableHead>
@@ -247,14 +247,14 @@ export default function CustomersPage() {
                       ⌘+クリックで新しいタブ・右クリック・キーボード操作が効く。
                       この行に他のボタンを置くときは覆いを外すこと。
                     */}
-                    <Link
-                      to={`/customers/${r.customer.dataSubjectId}`}
-                      className="font-medium underline-offset-4 after:absolute after:inset-0 after:content-[''] hover:underline"
-                    >
-                      {r.customer.displayCode}
-                    </Link>
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <span>{r.customer.displayName}</span>
+                    {/* 探すときに見るのは名前なので、名前を上・ID を下に置く */}
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <Link
+                        to={`/customers/${r.customer.dataSubjectId}`}
+                        className="font-medium underline-offset-4 after:absolute after:inset-0 after:content-[''] hover:underline"
+                      >
+                        {r.customer.displayName}
+                      </Link>
                       <CustomerBadges
                         customer={r.customer}
                         linked={!!r.activeLink && !!r.activeLink.consentedAt}
@@ -262,6 +262,9 @@ export default function CustomersPage() {
                           !!r.activeLink && !r.activeLink.consentedAt
                         }
                       />
+                    </div>
+                    <div className="font-mono text-xs text-muted-foreground tabular-nums">
+                      {r.customer.displayCode}
                     </div>
                   </TableCell>
                   <TableCell className="text-sm">
