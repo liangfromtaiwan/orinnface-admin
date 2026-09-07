@@ -9,7 +9,7 @@
 import { adminAccounts, analysisSessions, carePlaybacks, customers, storeDataLinks, stores, rawImageAssets, handoffTokens, recommendationRuns, NOW } from "@/lib/mock/seed"
 import { resolveScope, canViewCustomer, visibleCustomerIds, can, visibleScreens, usesB2bDisplay } from "@/lib/domain/scope"
 import { CARE_VIDEO_SLOTS, careEntitlement, assertCareSlotInvariant, canPlaySlot, careSlotFor } from "@/lib/domain/care-catalog"
-import { customerStatus, CUSTOMER_STATUS_LABEL, CUSTOMER_STATUS_ORDER } from "@/lib/domain/plans"
+import { matchesCustomerFilter, CUSTOMER_FILTER_ORDER } from "@/lib/domain/plans"
 import { monthlyActiveUsers, totalAnalyses, continuingUsers, churnRiskUsers, improvementRate, careCompletionRate, isEligible, isChurnRisk } from "@/lib/domain/kpi"
 import { buildPeriod } from "@/lib/domain/periods"
 
@@ -35,20 +35,25 @@ check("契約 Guest には care playback が無い",
     customers.find(c => c.dataSubjectId === p.dataSubjectId)?.plan !== "guest"),
   "(標準動画は本人のプランで判定するため)")
 
-console.log("── 顧客一覧の状態区分 ──")
+console.log("── プランと店舗連携は別契約 ──")
 {
-  const st = (c: typeof customers[0]) => customerStatus(c,
-    storeDataLinks.some(l => l.dataSubjectId === c.dataSubjectId && l.status === "active"))
-  const counts = new Map<string, number>()
-  for (const c of customers) counts.set(st(c), (counts.get(st(c)) ?? 0) + 1)
-  check("全顧客がどれか 1 つの区分に入る",
-    CUSTOMER_STATUS_ORDER.reduce((a, k) => a + (counts.get(k) ?? 0), 0) === customers.length,
-    `(${CUSTOMER_STATUS_ORDER.map(k => `${CUSTOMER_STATUS_LABEL[k]} ${counts.get(k) ?? 0}`).join(" / ")})`)
-  check("未登録はプラン名にならない (§3)",
-    customers.filter(c => c.unregistered).every(c => st(c) === "unregistered"))
-  check("連携済みはプラン名にならない",
-    customers.filter(c => storeDataLinks.some(l => l.dataSubjectId === c.dataSubjectId && l.status === "active"))
-      .every(c => st(c) === "linked"))
+  const linked = (c: typeof customers[0]) =>
+    storeDataLinks.some(l => l.dataSubjectId === c.dataSubjectId && l.status === "active")
+  const registered = customers.filter(c => !c.unregistered)
+  const linkedPremium = registered.filter(c => linked(c) && c.plan === "premium")
+  check("連携済みでも Premium 契約が残る顧客がいる", linkedPremium.length > 0,
+    `(${linkedPremium.length} 人)`)
+  check("課金指標の母数は登録顧客すべて(連携済みを除外しない)",
+    registered.length === customers.filter(c => !c.unregistered).length,
+    `(${registered.length} 人 / うち連携済み ${registered.filter(linked).length} 人)`)
+  // filter はプラン軸と連携軸が混在するので排他ではない
+  const sumByFilter = CUSTOMER_FILTER_ORDER.reduce(
+    (a, k) => a + customers.filter(c => matchesCustomerFilter(c, linked(c), k)).length, 0)
+  check("filter の合計は顧客数を超える(排他ではない)", sumByFilter > customers.length,
+    `(合計 ${sumByFilter} / 顧客 ${customers.length})`)
+  check("未登録はプラン名で絞られない (§3)",
+    customers.filter(c => c.unregistered).every(c =>
+      (["guest","member","premium"] as const).every(p => !matchesCustomerFilter(c, linked(c), p))))
 }
 
 console.log("── scope ──")
@@ -132,8 +137,10 @@ check("Premium 上限なし", careEntitlement("premium").monthlyLimit === null)
     if (!plan) continue
     const all3 = r.items.every(i => i.videoCode.includes("_3m_"))
     const all1 = r.items.every(i => i.videoCode.includes("_1m_"))
-    if (plan === "premium" ? all3 : all1) (plan === "premium" ? ok3++ : ok1++)
-    else bad++
+    const expected = plan === "premium" ? all3 : all1
+    if (!expected) bad++
+    else if (plan === "premium") ok3++
+    else ok1++
   }
   check("推奨の尺は本人のプランで決まる", bad === 0,
     `(Premium→3分 ${ok3} run / それ以外→1分 ${ok1} run / 不一致 ${bad})`)
@@ -150,13 +157,13 @@ console.log("── B2B / B2C の切り分け ──")
   check("B2C 側に店舗で撮った分析が含まれうる",
     b2c.some(s => s.storeId),
     `(連携解除後は B2C 扱い: ${b2c.filter(s => s.storeId).length} 件)`)
-  const paying = customers.filter(c =>
-    !storeDataLinks.some(l => l.dataSubjectId === c.dataSubjectId && l.status === "active"))
-  const payingPremium = paying.filter(c => c.plan === "premium").length
-  const allPremium = customers.filter(c => c.plan === "premium").length
-  check("課金指標の母数から連携済みが除かれている",
-    payingPremium < allPremium,
-    `(課金 Premium ${payingPremium} 人 / 契約 Premium ${allPremium} 人)`)
+  const allPremium = customers.filter(c => c.plan === "premium" && !c.unregistered).length
+  const linkedPremium = customers.filter(c => c.plan === "premium" && !c.unregistered &&
+    storeDataLinks.some(l => l.dataSubjectId === c.dataSubjectId && l.status === "active")).length
+  // 🔴 連携済みを除外しない(別契約なので課金は継続する)
+  check("Premium 会員数に連携済みも含める",
+    linkedPremium > 0 && allPremium > linkedPremium,
+    `(契約 Premium ${allPremium} 人 / うち連携済み ${linkedPremium} 人）`)
 }
 
 console.log("── KPI ──")

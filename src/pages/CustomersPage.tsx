@@ -34,10 +34,10 @@ import {
 import { useSession, useStoreName } from "@/contexts/session-context"
 import { careEntitlement } from "@/lib/domain/care-catalog"
 import {
-  CUSTOMER_STATUS_LABEL,
-  CUSTOMER_STATUS_ORDER,
-  customerStatus,
-  type CustomerStatus,
+  CUSTOMER_FILTER_LABEL,
+  CUSTOMER_FILTER_ORDER,
+  matchesCustomerFilter,
+  type CustomerFilterKey,
 } from "@/lib/domain/plans"
 import {
   isChurnRisk,
@@ -62,21 +62,29 @@ export default function CustomersPage() {
   const storeName = useStoreName()
 
   const [query, setQuery] = useState("")
-  const [status, setStatus] = useState<CustomerStatus | "all">("all")
+  const [status, setStatus] = useState<CustomerFilterKey | "all">("all")
 
   const currentMonth = jstMonth(NOW.toISOString())
 
-  /** filter の選択肢に出す件数。検索前の母数で数える。 */
+  /**
+   * filter の選択肢に出す件数。検索前の母数で数える。
+   * 🔴 プラン軸と連携軸は別契約で排他ではないので、合計は顧客数を超える。
+   */
   const statusCounts = useMemo(() => {
-    const map = new Map<CustomerStatus, number>()
-    for (const c of customers) {
-      const k = customerStatus(
-        c,
-        storeDataLinks.some(
-          (l) => l.dataSubjectId === c.dataSubjectId && l.status === "active"
-        )
+    const map = new Map<CustomerFilterKey, number>()
+    for (const k of CUSTOMER_FILTER_ORDER) {
+      map.set(
+        k,
+        customers.filter((c) =>
+          matchesCustomerFilter(
+            c,
+            storeDataLinks.some(
+              (l) => l.dataSubjectId === c.dataSubjectId && l.status === "active"
+            ),
+            k
+          )
+        ).length
       )
-      map.set(k, (map.get(k) ?? 0) + 1)
     }
     return map
   }, [customers, storeDataLinks])
@@ -87,12 +95,13 @@ export default function CustomersPage() {
       .filter((c) =>
         status === "all"
           ? true
-          : customerStatus(
+          : matchesCustomerFilter(
               c,
               storeDataLinks.some(
                 (l) => l.dataSubjectId === c.dataSubjectId && l.status === "active"
-              )
-            ) === status
+              ),
+              status
+            )
       )
       .filter((c) => {
         if (!query.trim()) return true
@@ -177,16 +186,16 @@ export default function CustomersPage() {
             </div>
             <Select
               value={status}
-              onValueChange={(v) => setStatus(v as CustomerStatus | "all")}
+              onValueChange={(v) => setStatus(v as CustomerFilterKey | "all")}
             >
               <SelectTrigger className="h-9 w-40">
                 <SelectValue placeholder="状態" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">すべて ({customers.length})</SelectItem>
-                {CUSTOMER_STATUS_ORDER.map((k) => (
+                {CUSTOMER_FILTER_ORDER.map((k) => (
                   <SelectItem key={k} value={k}>
-                    {CUSTOMER_STATUS_LABEL[k]} ({statusCounts.get(k) ?? 0})
+                    {CUSTOMER_FILTER_LABEL[k]} ({statusCounts.get(k) ?? 0})
                   </SelectItem>
                 ))}
               </SelectContent>

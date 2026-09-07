@@ -146,12 +146,15 @@ export default function DashboardPage() {
   const storeFilterEnabled = effectiveSegment !== "b2c"
 
   /**
-   * 課金の指標の母数。active な店舗連携がある顧客は費用を店舗が負担しており
-   * 本人課金が発生しないため除く。
+   * 課金の指標の母数。
+   *
+   * 🔴 プランと店舗連携は**別契約**（吉田さん確定 2026-09-07）。
+   *    既に Premium を契約している人が店舗連携しても本人の課金は継続し、
+   *    Premium 会員数にも引き続き含める。よって連携済みを除外しない。
    */
-  const payingCustomers = useMemo(
-    () => customers.filter((c) => !linkedSubjectIds.has(c.dataSubjectId)),
-    [customers, linkedSubjectIds]
+  const contractCustomers = useMemo(
+    () => customers.filter((c) => !c.unregistered),
+    [customers]
   )
 
   const subjectIds = useMemo(() => {
@@ -405,16 +408,17 @@ export default function DashboardPage() {
       </div>
 
       {/*
-        課金の指標なので B2C タブでのみ出す。連携済みの顧客は費用を店舗が負担して
-        いて本人課金がないため、母数からも外す(混ぜると Premium の課金者数が
-        実態より多く見える)。本部スコープ限定なのは B2C 顧客が店舗に紐づかないため。
+        B2C 契約(¥980)は店舗連携とは別契約なので、B2B / B2C のタブ区分と直交する。
+        どちらか片方のタブに置くと誤読されるため「全体」タブに出す。
+        本部スコープ限定なのは、B2C 顧客が店舗に紐づかず店舗スコープでは
+        母数が欠けるため。
       */}
-      {showSegmentTabs && effectiveSegment === "b2c" ? (
+      {showSegmentTabs && effectiveSegment === "all" ? (
         <div className="grid gap-4 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <PremiumSignalCard
               points={premiumSignal(
-                payingCustomers,
+                contractCustomers,
                 planChangeEvents,
                 NOW,
                 periodDays(period)
@@ -423,7 +427,7 @@ export default function DashboardPage() {
               granularity={granularityFor(periodDays(period))}
             />
           </div>
-          <PlanCompositionCard composition={planComposition(payingCustomers)} />
+          <PlanCompositionCard composition={planComposition(contractCustomers)} />
         </div>
       ) : null}
 

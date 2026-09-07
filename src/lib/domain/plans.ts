@@ -212,36 +212,56 @@ export function describePlanVisibility(v: PlanVisibility): string {
 /* ------------------------------------------------------------------ *
  * 顧客一覧の状態区分
  *
- * 🔴 バッジの表示と filter の選択肢はこの 1 つの関数から導く。
- *    別々に書くと「Premium で絞ったのに『連携済み』の行が出る」ような
- *    表示と絞り込みの食い違いが起きる。
+ * 🔴 プランと店舗連携は**別契約**（吉田さん確定 2026-09-07）。
+ *    既に Premium を契約している人が店舗連携しても、本人の Premium 契約と課金は
+ *    継続し、Premium 会員数にも引き続き含める。
+ *    したがって「連携済み」と「Premium」は排他ではなく**同時に成り立つ**ので、
+ *    バッジは両方出し、filter も排他の区分としては扱わない。
+ *
+ * 🔴 未登録(未連携分析のみ)だけは §3「B2B に Guest プランは存在しない」により
+ *    プラン名を出さない。
  * ------------------------------------------------------------------ */
 
-export type CustomerStatus = "unregistered" | "linked" | PlanCode
+/** 顧客一覧の filter の軸。プラン軸と連携軸が混在するため排他ではない。 */
+export type CustomerFilterKey =
+  | "linked"
+  | "unlinked"
+  | "unregistered"
+  | PlanCode
 
-export const CUSTOMER_STATUS_ORDER: CustomerStatus[] = [
+export const CUSTOMER_FILTER_ORDER: CustomerFilterKey[] = [
   "linked",
+  "unlinked",
   "unregistered",
   "guest",
   "member",
   "premium",
 ]
 
-export const CUSTOMER_STATUS_LABEL: Record<CustomerStatus, string> = {
+export const CUSTOMER_FILTER_LABEL: Record<CustomerFilterKey, string> = {
   linked: "連携済み",
+  unlinked: "連携なし",
   unregistered: "未連携分析",
   guest: PLAN_LABEL.guest,
   member: PLAN_LABEL.member,
   premium: PLAN_LABEL.premium,
 }
 
-export function customerStatus(
+/** filter の 1 つに合致するか。プラン軸と連携軸は独立して判定する。 */
+export function matchesCustomerFilter(
   customer: Customer,
-  linked: boolean
-): CustomerStatus {
-  // §3「B2B に Guest プランは存在しない」ため、未登録はプラン名を出さない
-  if (customer.unregistered) return "unregistered"
-  // 連携中は本人課金がないのでプラン名を出す意味がない
-  if (linked) return "linked"
-  return customer.plan
+  linked: boolean,
+  key: CustomerFilterKey
+): boolean {
+  switch (key) {
+    case "linked":
+      return linked
+    case "unlinked":
+      return !linked && !customer.unregistered
+    case "unregistered":
+      return customer.unregistered
+    default:
+      // 未登録はプラン名で絞らない (§3)
+      return !customer.unregistered && customer.plan === key
+  }
 }

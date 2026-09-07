@@ -69,8 +69,8 @@ export function PremiumSignalCard({
               新規 = Guest / Member から Premium へ。離脱 = Premium から Guest / Member へ。
             </p>
             <p className="mt-1">
-              🔴 店舗連携済みの顧客は機能面では Premium 相当ですが、費用は店舗負担で
-              本人課金がないため、この指標には含めていません(契約プランで数えます)。
+              店舗連携とは別契約なので、連携済みの顧客も Premium 契約が続いている
+              限りこの指標に含めます(吉田さん確定 2026-09-07)。
             </p>
             <p className="mt-2 border-t pt-2 text-muted-foreground">
               会員数(ストック)と新規・離脱(フロー)は桁が違うため、二軸にせず
