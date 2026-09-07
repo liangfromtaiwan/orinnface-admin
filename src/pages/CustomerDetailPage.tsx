@@ -265,6 +265,24 @@ export default function CustomerDetailPage() {
 
         {/* ---------------- 比較 ---------------- */}
         <TabsContent value="compare" className="space-y-4">
+          {/*
+            🔴 管理画面の閲覧可否は plan では決まらない (§5.2)。店舗は連携中の顧客の
+               保存済み分析結果を閲覧できる(吉田さん確定 2026-09-07)。
+               一方、本人のアプリでの過去比較は Premium からなので、Member 以下の
+               顧客にこの画面を見せて「ご自宅でも確認できます」と案内しないよう注記する。
+          */}
+          {!visibility.pastCompare ? (
+            <SpecNote>
+              この画面では過去との比較を表示していますが、
+              <b className="text-foreground">
+                この顧客の
+                {customer.plan === "guest" ? "Guest" : "Member"}
+                プランでは、ご本人のアプリで過去との比較は表示されません
+              </b>
+              （同年代との比較のみ）。過去との比較は Premium からです。
+              ご案内の際はご注意ください。
+            </SpecNote>
+          ) : null}
           <ComparePanel sessions={faceSessions} title="表情分析" />
           {postureSessions.length > 0 ? (
             <ComparePanel sessions={postureSessions} title="姿勢分析(B2B)" />
