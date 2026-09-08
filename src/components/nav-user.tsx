@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { ChevronsUpDownIcon, LogOutIcon, UserIcon } from "lucide-react"
+import { CheckIcon, ChevronsUpDownIcon, LogOutIcon, UserIcon } from "lucide-react"
 
 import {
   AlertDialog,
@@ -31,6 +31,15 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 
+/** デモ用のアカウント切替 1 件分。実認証実装時に削除する。 */
+export type SwitchableAccount = {
+  id: string
+  name: string
+  detail: string
+  /** 2FA 必須ロールなのに未設定 */
+  missingTwoFactor: boolean
+}
+
 export type NavUserData = {
   name: string
   role: string // 視点を示す副題(例:OEM 管理者 / BtoB HR)
@@ -40,10 +49,20 @@ export type NavUserData = {
 
 export function NavUser({
   user,
+  accounts,
+  currentAccountId,
+  onSwitchAccount,
   onAccountClick,
   onLogoutClick,
 }: {
   user: NavUserData
+  /**
+   * デモ用のログインアカウント切替。実認証実装時に削除する。
+   * 視点(組織)の切替はヘッダー側にあり、ここは「誰でログインしているか」だけを変える。
+   */
+  accounts: SwitchableAccount[]
+  currentAccountId: string
+  onSwitchAccount: (accountId: string) => void
   onAccountClick: () => void
   onLogoutClick: () => void
 }) {
@@ -77,7 +96,7 @@ export function NavUser({
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
+            className="w-(--radix-dropdown-menu-trigger-width) min-w-64 rounded-lg"
             side={isMobile ? "bottom" : "right"}
             align="end"
             sideOffset={4}
@@ -100,6 +119,28 @@ export function NavUser({
                 </div>
               </div>
             </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+              ログインアカウント(デモ切替)
+            </DropdownMenuLabel>
+            {accounts.map((a) => (
+              <DropdownMenuItem
+                key={a.id}
+                onClick={() => onSwitchAccount(a.id)}
+                className="gap-2"
+              >
+                <div className="grid flex-1">
+                  <span className="text-sm">{a.name}</span>
+                  <span className="text-xs text-muted-foreground">{a.detail}</span>
+                  {a.missingTwoFactor ? (
+                    <span className="text-[11px] text-destructive">
+                      2FA 必須ロールですが未設定
+                    </span>
+                  ) : null}
+                </div>
+                {a.id === currentAccountId ? <CheckIcon className="size-4" /> : null}
+              </DropdownMenuItem>
+            ))}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onAccountClick}>
               <UserIcon />

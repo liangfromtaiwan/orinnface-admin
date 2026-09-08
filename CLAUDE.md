@@ -113,6 +113,19 @@
 - メインカラー 會當按鈕底色,所以 `validateBranding()` 會擋掉白字黑字都讀不了的中間色
   (最大對比 < 4.5:1),並自動決定該配白字還是黑字。
 
+### 4.2 視点切替(組織単位)
+
+サイドバー上部は**組織**を切り替える。人ではない——誰でログインしているかで
+見える範囲はすでに `membership` で決まっているため、切替の主語は組織にする。
+(デモ用のアカウント切替は footer の使用者選單に降ろしてある)
+
+- 本部だけが「全社横断 ⇄ 各契約企業」を行き来できる。それ以外は自社に固定。
+- 🔴 視点は**表示の絞り込みであって権限ではない**。本部が 1 社に絞っても
+  operator の capability は保つ → `viewScopeFor()` は role を持ち越す。
+- 1 社に絞ると B2C は集計対象から外れるため、segment tabs(全体/B2B/B2C)と
+  営収シグナル・プラン構成比は**全社横断のときだけ**出す。
+- ヘッダーは選択中の企業のブランドで描く(§4.1)。本部視点は orinnFACE。
+
 ## 5. 顧客・分析結果
 
 ### 顧客一覧欄位
@@ -314,6 +327,7 @@ scripts/              仕様不変条件の smoke test
 - `scope.ts` の `canViewCustomer()` は active な `store_data_link` + membership の両方を要求
 - `care-catalog.ts` は 13 枠固定。`assertCareSlotInvariant()` が `npm run smoke` で検証
 - 生画像は `RawImagePlaceholder` / `RawImageViewButton` 経由のみ(理由入力 + 300秒 token)
+- `scope.ts` の `viewScopeFor()` は role を持ち越す → 視点を絞っても権限が落ちない
 - `branding.ts` の `resolveBranding()` は `surface` 必須。B2C は企業設定を受けず、
   未反映の `draft` は店舗側に出ない(どちらも `npm run smoke` で検証)
 

@@ -5,9 +5,11 @@
 
 import { createContext, useContext } from "react"
 
+import type { Branding } from "@/lib/domain/branding"
 import type { Scope } from "@/lib/domain/scope"
 import type {
   AdminAccount,
+  CompanyId,
   AnalysisSession,
   CarePlayback,
   Company,
@@ -23,6 +25,21 @@ export type SessionValue = {
   /** デモ用のアカウント切替。実認証実装時に削除する。 */
   accounts: AdminAccount[]
   switchAccount: (accountId: string) => void
+
+  /* ---- 視点(どの組織を見ているか) ---- */
+
+  /**
+   * 現在の視点となっている企業。undefined = 全社横断(本部のみ)。
+   * 🔴 これは「見え方の絞り込み」であって権限ではない。権限は scope が持つ。
+   *    本部が 1 社に絞っても operator の capability は失われない。
+   */
+  viewCompanyId?: CompanyId
+  /** 視点として選べる企業。本部は全契約企業、それ以外は自社 1 件のみ。 */
+  viewableCompanies: Company[]
+  /** 視点を切り替える。undefined で全社横断へ戻す。 */
+  setViewCompany: (companyId?: CompanyId) => void
+  /** 現在の視点で表示するブランド。本部視点は常に orinnFACE。 */
+  branding: Branding
 
   companies: Company[]
   stores: Store[]

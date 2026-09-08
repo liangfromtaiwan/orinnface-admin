@@ -7,7 +7,7 @@
  */
 
 import { adminAccounts, analysisSessions, carePlaybacks, customers, storeDataLinks, stores, rawImageAssets, handoffTokens, recommendationRuns, NOW } from "@/lib/mock/seed"
-import { resolveScope, canViewCustomer, visibleCustomerIds, can, visibleScreens, canAccessScreen } from "@/lib/domain/scope"
+import { resolveScope, canViewCustomer, visibleCustomerIds, can, visibleScreens, canAccessScreen, viewScopeFor } from "@/lib/domain/scope"
 import { CARE_VIDEO_SLOTS, careEntitlement, assertCareSlotInvariant, canPlaySlot, careSlotFor } from "@/lib/domain/care-catalog"
 import { matchesCustomerFilter, CUSTOMER_FILTER_ORDER } from "@/lib/domain/plans"
 import { decideRawImageView, isAwaitingReconsent, usesB2bDisplay } from "@/lib/domain/scope"
@@ -337,6 +337,31 @@ console.log("── ブランド設定 (吉田さん確定 2026-09-08) ──")
   check("契約企業管理者は自社ブランドを受ける",
     brandingCompanyIdFor(caScope, stores) === caScope.companyId)
   check("本部は企業に属さないので標準表示", brandingCompanyIdFor(opScope, stores) === undefined)
+  // 視点切替(組織単位)。表示は絞るが権限は変えない
+  {
+    const allIds = customers.map(c => c.dataSubjectId)
+    const wide = visibleCustomerIds(opScope, allIds, storeDataLinks)
+    const narrowed = viewScopeFor(opScope, "co_lumiere", stores)
+    const narrowIds = visibleCustomerIds(narrowed, allIds, storeDataLinks)
+    const lumiereStores = stores.filter(s => s.companyId === "co_lumiere").map(s => s.id)
+
+    check("本部は全社横断で全顧客が見える", wide.length === customers.length, `(${wide.length} 名)`)
+    check("1 社に絞ると顧客が減る", narrowIds.length < wide.length,
+      `(${wide.length} → ${narrowIds.length} 名)`)
+    check("絞った先はその企業の連携顧客だけ",
+      narrowIds.every(id => storeDataLinks.some(l =>
+        l.dataSubjectId === id && l.status === "active" && !!l.consentedAt &&
+        lumiereStores.includes(l.storeId))))
+    check("視点を絞っても本部の権限は変わらない",
+      can(narrowed, "branding.manage") && can(narrowed, "audit.search"),
+      "(視点は表示の絞り込みであって権限ではない)")
+    check("全社横断へ戻すと元に戻る",
+      visibleCustomerIds(viewScopeFor(opScope, undefined, stores), allIds, storeDataLinks).length
+        === wide.length)
+    check("本部以外は視点を絞れない(自分のスコープが視点)",
+      viewScopeFor(caScope, "co_lumiere", stores) === caScope)
+  }
+
   check("担当店舗が複数企業にまたがると標準表示に倒す",
     brandingCompanyIdFor(
       { role: "store_admin", crossCompany: false,

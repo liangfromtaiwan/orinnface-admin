@@ -97,7 +97,16 @@ const trendConfig = {
 } satisfies ChartConfig
 
 export default function DashboardPage() {
-  const { scope, customers, analysisSessions, carePlaybacks, storeDataLinks, stores } =
+  const {
+    scope,
+    customers,
+    analysisSessions,
+    carePlaybacks,
+    storeDataLinks,
+    stores,
+    viewCompanyId,
+    viewableCompanies,
+  } =
     useSession()
 
   const [segment, setSegment] = useState<DashboardSegment>("all")
@@ -116,7 +125,12 @@ export default function DashboardPage() {
    *    店舗・契約企業から見れば自店の顧客しかいないため区分に意味がなく、
    *    そもそもスコープが顧客を絞っている。本部以外は常に "all" で扱う。
    */
-  const showSegmentTabs = scope.crossCompany
+  /*
+    B2C は特定の企業に属さないため、1 社に視点を絞ったら segment 分割は成立しない。
+    営収シグナル・プラン構成比も同じ理由で全社横断のときだけ出す。
+  */
+  const viewingCompany = viewableCompanies.find((c) => c.id === viewCompanyId)
+  const showSegmentTabs = scope.crossCompany && !viewCompanyId
   const effectiveSegment: DashboardSegment = showSegmentTabs ? segment : "all"
 
   /**
@@ -284,9 +298,9 @@ export default function DashboardPage() {
         description={
           <>
             {ROLE_LABEL[scope.role]} のスコープで集計しています
-            {scope.crossCompany
+            {scope.crossCompany && !viewCompanyId
               ? "(全会社・全店舗を横断)"
-              : `(${stores.length} 店舗 / 顧客 ${customers.length} 名)`}
+              : `(${viewingCompany ? `${viewingCompany.name} / ` : ""}${stores.length} 店舗 / 顧客 ${customers.length} 名)`}
           </>
         }
         actions={

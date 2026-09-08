@@ -83,6 +83,27 @@ export function resolveScope(
   return { role: "customer", crossCompany: false, storeIds: [] }
 }
 
+/**
+ * 視点(どの企業を見ているか)で絞った表示用スコープ。
+ *
+ * 🔴 これは**表示の絞り込み**であって権限ではない。role はそのまま持ち越すので、
+ *    本部が 1 社に絞っても operator の capability は失われない。
+ * 🔴 絞れるのは全社横断できる本部だけ。それ以外は自分のスコープがそのまま視点になる。
+ */
+export function viewScopeFor(
+  scope: Scope,
+  viewCompanyId: CompanyId | undefined,
+  stores: Store[]
+): Scope {
+  if (!scope.crossCompany || !viewCompanyId) return scope
+  return {
+    role: scope.role,
+    crossCompany: false,
+    companyId: viewCompanyId,
+    storeIds: stores.filter((s) => s.companyId === viewCompanyId).map((s) => s.id),
+  }
+}
+
 export function canSeeStore(scope: Scope, storeId: StoreId): boolean {
   return scope.crossCompany || scope.storeIds.includes(storeId)
 }
