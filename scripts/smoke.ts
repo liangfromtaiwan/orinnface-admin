@@ -7,12 +7,13 @@
  */
 
 import { adminAccounts, analysisSessions, carePlaybacks, customers, storeDataLinks, stores, rawImageAssets, handoffTokens, recommendationRuns, NOW } from "@/lib/mock/seed"
-import { resolveScope, canViewCustomer, visibleCustomerIds, can, visibleScreens, usesB2bDisplay } from "@/lib/domain/scope"
+import { resolveScope, canViewCustomer, visibleCustomerIds, can, visibleScreens, canAccessScreen } from "@/lib/domain/scope"
 import { CARE_VIDEO_SLOTS, careEntitlement, assertCareSlotInvariant, canPlaySlot, careSlotFor } from "@/lib/domain/care-catalog"
 import { matchesCustomerFilter, CUSTOMER_FILTER_ORDER } from "@/lib/domain/plans"
 import { decideRawImageView, isAwaitingReconsent, usesB2bDisplay } from "@/lib/domain/scope"
 import { compareWithAgeBand, metricsByGroup } from "@/lib/domain/metrics"
-import { ageBandAverages } from "@/lib/mock/seed"
+import { ageBandAverages, companyBrandings } from "@/lib/mock/seed"
+import { resolveBranding, hasUnappliedDraft, isStandard, readableTextOn, validateBranding, STANDARD_BRANDING } from "@/lib/domain/branding"
 import { monthlyActiveUsers, totalAnalyses, continuingUsers, churnRiskUsers, improvementRate, careCompletionRate, isEligible, isChurnRisk, billableActiveUsers, makeBillingIdentityResolver } from "@/lib/domain/kpi"
 import { buildPeriod } from "@/lib/domain/periods"
 
@@ -279,6 +280,48 @@ check("離脱リスクは一覧のバッジと KPI が一致する",
   "(同じ関数を使っていること)")
 check("適格分析は再解析を除外",
   analysisSessions.filter(s => !s.newCapture).every(s => !isEligible(s)))
+
+console.log("── ブランド設定 (吉田さん確定 2026-09-08) ──")
+{
+  const lumiere = companyBrandings.find(b => b.companyId === "co_lumiere")!
+  const aoyama = companyBrandings.find(b => b.companyId === "co_aoyama")!
+  const name = (surface: Parameters<typeof resolveBranding>[0], id?: string) =>
+    resolveBranding(surface, id, companyBrandings).displayName
+  const STD = STANDARD_BRANDING.displayName
+
+  check("B2C は反映済みの企業でも orinnFACE のまま", name("b2c_app", "co_lumiere") === STD)
+  check("B2B 結果画面には反映済みブランドが出る", name("b2b_result", "co_lumiere") === "Lumière Beauty")
+  check("管理画面にも反映済みブランドが出る", name("admin", "co_lumiere") === "Lumière Beauty")
+
+  check("未反映の draft は店舗側に出ない", name("admin", "co_aoyama") === STD)
+  check("未反映の変更があると検出できる", hasUnappliedDraft(aoyama))
+  check("反映済みだけの企業は未反映扱いにならない", !hasUnappliedDraft(lumiere))
+  check("draft だけの企業は標準表示のまま", isStandard(aoyama))
+  check("反映済みの企業は標準表示ではない", !isStandard(lumiere))
+
+  check("設定のない企業は標準表示", name("admin", "co_kansai") === STD)
+  check("企業が定まらない場合は標準表示", name("admin", undefined) === STD)
+
+  check("濃い色には白文字を載せる", readableTextOn("#8E44AD") === "#ffffff")
+  check("淡い色には黒文字を載せる", readableTextOn("#FFF176") === "#111111")
+  check("妥当な設定は反映できる",
+    validateBranding({ displayName: "A", mainColor: "#8E44AD" }).length === 0)
+  check("表示名が空だと反映できない",
+    validateBranding({ displayName: "", mainColor: "#8E44AD" }).some(i => i.field === "displayName"))
+  check("# のない色は弾く",
+    validateBranding({ displayName: "A", mainColor: "8E44AD" }).some(i => i.field === "mainColor"))
+  check("白も黒も載らない中間の灰は弾く (#797979 は白 4.35・黒 4.34)",
+    validateBranding({ displayName: "A", mainColor: "#797979" }).some(i => i.field === "mainColor"))
+
+  const opScope = resolveScope(adminAccounts.find(a => a.id === "acc_operator")!, stores)
+  const caScope = resolveScope(
+    adminAccounts.find(a => a.organizationMemberships.some(m => m.role === "company_admin"))!,
+    stores)
+  check("V1 は本部がブランド設定を編集できる", can(opScope, "branding.manage"))
+  check("V1 では契約企業管理者は編集できない", !can(caScope, "branding.manage"), "(V2 で開放)")
+  check("本部のメニューにブランド設定が出る", canAccessScreen(opScope, "branding"))
+  check("契約企業管理者のメニューには出ない", !canAccessScreen(caScope, "branding"))
+}
 
 console.log(failed === 0 ? "\n✅ 全部 pass" : `\n❌ ${failed} 件 fail`)
 process.exit(failed === 0 ? 0 : 1)

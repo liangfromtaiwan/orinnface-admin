@@ -83,12 +83,31 @@
 | care動画 | 固定13枠、asset、差し替え申請、承認、公開、rollback |
 | 推奨設定 | 基準値 set、policy、preview、承認、有効化、rollback |
 | 画像・保持 | 理由付き一時閲覧、期限、通知、削除 state、失敗重試 |
-| 監査 | 權限變更、画像閲覧、export、care 差し替え、基準値變更、削除 |
+| 監査 | 權限變更、画像閲覧、export、care 差し替え、基準値變更、削除、ブランド設定變更 |
+| ブランド設定 | 契約企業ごとの表示名・ロゴ・メインカラー。編集・プレビュー・反映・標準表示へ戻す |
 
 - `company_admin`:企業內全店舗橫斷 KPI/顧客/スタッフ/分析/care。可提差し替え申請,**不可新設 slot・pose・video_code**。本部承認前的 asset 不可公開。生画像顯示標準 OFF。
 - `store_admin`:同上但限自己 membership 的店舗;**不可自動擴權到整個企業**。
 - `store_staff`:只搜尋/檢視所屬店舗的 active 連携顧客。做 B2B 撮影、確認本人同意、分析実行、結果表示、staff note、handoff link 發行。
   - 🔴 **「スタッフ代替顧客勾選必須同意」不可做成標準流程。**
+
+### 4.1 契約企業ごとのオリジナル UI(吉田さん確定 2026-09-08)
+
+變更項目只有 **ブランド表示名 / ロゴ / メインカラー** 三項。
+
+| | 誰設定 | 畫面 |
+|---|---|---|
+| **V1** | `operator` | `/branding`。編集・プレビュー・反映・標準表示へ戻す |
+| **V2** | `company_admin` 設定自社分 | 同一編集畫面,企業固定為自社(V1 只放參考 tab,不可操作) |
+
+- 🔴 設定單位是**企業**,配下店舗共通適用。**不做店舗別覆寫**。
+- 🔴 **B2C 畫面永遠是 orinnFACE**,不吃企業設定。`resolveBranding()` 必須收 `surface`,
+  `b2c_app` 直接回標準值——不要繞過它去讀 `applied`。
+- 🔴 `draft` 在「反映」之前**不會出現在店舗側**。`resolveBranding()` 只看 `applied`,
+  preview 才用 `previewBranding()`。
+- 反映 / 標準表示へ戻す 會變動店舗側的外觀 → 要確認 dialog,並記入監査 `branding_change`。
+- メインカラー 會當按鈕底色,所以 `validateBranding()` 會擋掉白字黑字都讀不了的中間色
+  (最大對比 < 4.5:1),並自動決定該配白字還是黑字。
 
 ## 5. 顧客・分析結果
 
@@ -291,6 +310,8 @@ scripts/              仕様不変条件の smoke test
 - `scope.ts` の `canViewCustomer()` は active な `store_data_link` + membership の両方を要求
 - `care-catalog.ts` は 13 枠固定。`assertCareSlotInvariant()` が `npm run smoke` で検証
 - 生画像は `RawImagePlaceholder` / `RawImageViewButton` 経由のみ(理由入力 + 300秒 token)
+- `branding.ts` の `resolveBranding()` は `surface` 必須。B2C は企業設定を受けず、
+  未反映の `draft` は店舗側に出ない(どちらも `npm run smoke` で検証)
 
 ### 検証コマンド
 ```bash
@@ -304,7 +325,8 @@ npm run smoke:render  # 全ページを SSR して実行時エラーを検出
 
 ### 未実装(意図的)
 実 API 接続(`src/lib/api/` は未作成。現在は `src/lib/mock/seed.ts` を直接参照)、実認証と 2FA、
-差し替え申請・承認の永続化(現在は toast のみ)、CSV export、管理画面のビジュアル(§16 P2)。
+差し替え申請・承認の永続化(現在は toast のみ)、CSV export、管理画面のビジュアル(§16 P2)、
+ブランド設定の保存(ロゴは画面内の preview のみ。反映も画面内 state で backend 未接続)。
 
 ## 17. 未決事項(動工前確認)
 

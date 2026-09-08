@@ -232,6 +232,12 @@ export type Capability =
   | "session.capture"
   /** 保持・削除の運用操作 */
   | "retention.operate"
+  /**
+   * 契約企業のブランド設定(表示名・ロゴ・メインカラー)を編集・反映できる。
+   * 🔴 V1 は operator のみ。V2 で company_admin に自社分を開放する
+   *    (吉田さん確定 2026-09-08)。
+   */
+  | "branding.manage"
 
 const CAPABILITIES: Record<RoleCode, Capability[]> = {
   operator: [
@@ -243,6 +249,7 @@ const CAPABILITIES: Record<RoleCode, Capability[]> = {
     "audit.search",
     "org.manage",
     "retention.operate",
+    "branding.manage",
   ],
   // 差し替え申請はできるが、承認・公開と slot 新設はできない (§4.2)
   company_admin: ["care.request_replacement", "org.manage", "raw_image.view"],
@@ -276,6 +283,7 @@ export type ScreenKey =
   | "recommendation"
   | "retention"
   | "audit"
+  | "branding"
 
 export const SCREEN_LABEL: Record<ScreenKey, string> = {
   dashboard: "ダッシュボード",
@@ -286,6 +294,7 @@ export const SCREEN_LABEL: Record<ScreenKey, string> = {
   recommendation: "推奨設定",
   retention: "画像・保持",
   audit: "監査",
+  branding: "ブランド設定",
 }
 
 const SCREENS_BY_ROLE: Record<RoleCode, ScreenKey[]> = {
@@ -298,6 +307,7 @@ const SCREENS_BY_ROLE: Record<RoleCode, ScreenKey[]> = {
     "recommendation",
     "retention",
     "audit",
+    "branding",
   ],
   company_admin: ["dashboard", "organizations", "customers", "analysis", "care"],
   store_admin: ["dashboard", "organizations", "customers", "analysis", "care"],

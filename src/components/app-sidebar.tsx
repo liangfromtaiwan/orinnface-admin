@@ -4,6 +4,7 @@ import {
   ClipboardListIcon,
   ImageIcon,
   LayoutDashboardIcon,
+  PaletteIcon,
   ScanFaceIcon,
   SlidersHorizontalIcon,
   UsersIcon,
@@ -36,6 +37,7 @@ const SCREEN_ROUTES: Record<ScreenKey, { url: string; icon: React.ReactNode }> =
   recommendation: { url: "/recommendation", icon: <SlidersHorizontalIcon /> },
   retention: { url: "/retention", icon: <ImageIcon /> },
   audit: { url: "/audit", icon: <ClipboardListIcon /> },
+  branding: { url: "/branding", icon: <PaletteIcon /> },
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {

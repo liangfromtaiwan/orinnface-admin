@@ -508,6 +508,7 @@ export type AuditCategory =
   | "policy_change"
   | "deletion"
   | "rollback"
+  | "branding_change"
 
 export const AUDIT_CATEGORY_LABEL: Record<AuditCategory, string> = {
   role_change: "権限変更",
@@ -518,6 +519,7 @@ export const AUDIT_CATEGORY_LABEL: Record<AuditCategory, string> = {
   policy_change: "方針変更",
   deletion: "削除",
   rollback: "rollback",
+  branding_change: "ブランド設定変更",
 }
 
 export type AuditEvent = {

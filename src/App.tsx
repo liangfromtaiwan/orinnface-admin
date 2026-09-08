@@ -8,6 +8,7 @@ import { SessionProvider } from "@/contexts/SessionContext"
 import AccountPage from "./pages/AccountPage"
 import AnalysisPage from "./pages/AnalysisPage"
 import AuditPage from "./pages/AuditPage"
+import BrandingPage from "./pages/BrandingPage"
 import CareVideosPage from "./pages/CareVideosPage"
 import CustomerDetailPage from "./pages/CustomerDetailPage"
 import CustomersPage from "./pages/CustomersPage"
@@ -103,6 +104,14 @@ export default function App() {
                 element={
                   <RequireScreen screen="audit">
                     <AuditPage />
+                  </RequireScreen>
+                }
+              />
+              <Route
+                path="/branding"
+                element={
+                  <RequireScreen screen="branding">
+                    <BrandingPage />
                   </RequireScreen>
                 }
               />

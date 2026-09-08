@@ -12,6 +12,7 @@ import CareVideosPage from "@/pages/CareVideosPage"
 import RecommendationPage from "@/pages/RecommendationPage"
 import RetentionPage from "@/pages/RetentionPage"
 import AuditPage from "@/pages/AuditPage"
+import BrandingPage from "@/pages/BrandingPage"
 import AccountPage from "@/pages/AccountPage"
 import LoginPage from "@/pages/LoginPage"
 
@@ -25,6 +26,7 @@ const pages: [string, string, React.ComponentType][] = [
   ["推奨設定", "/recommendation", RecommendationPage],
   ["画像・保持", "/retention", RetentionPage],
   ["監査", "/audit", AuditPage],
+  ["ブランド設定", "/branding", BrandingPage],
   ["アカウント", "/account", AccountPage],
   ["ログイン", "/login", LoginPage],
 ]

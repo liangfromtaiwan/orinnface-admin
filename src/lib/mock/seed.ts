@@ -10,6 +10,7 @@
 
 import { CARE_VIDEO_SLOTS, careSlotFor } from "../domain/care-catalog"
 import { METRIC_CATALOG, type AgeBandAverages } from "../domain/metrics"
+import type { CompanyBranding } from "@/lib/domain/branding"
 import type {
   AdminAccount,
   AnalysisSession,
@@ -111,6 +112,29 @@ export const stores: Store[] = [
   { id: "st_aoyama_main", companyId: "co_aoyama", name: "青山ビューティー 本店", status: "active", openedAt: "2026-04-10T00:00:00+09:00" },
   { id: "st_aoyama_omote", companyId: "co_aoyama", name: "青山ビューティー 表参道店", status: "active", openedAt: "2026-06-01T00:00:00+09:00" },
   { id: "st_kansai_umeda", companyId: "co_kansai", name: "関西ヘルスケア 梅田店", status: "closed", openedAt: "2026-05-25T00:00:00+09:00" },
+]
+
+/* ------------------------------------------------------------------ *
+ * 契約企業ごとのブランド設定 (吉田さん確定 2026-09-08)
+ *
+ * 3 社を別々の状態にして、状態ごとの見え方を確認できるようにしている。
+ *   ルミエール : 反映済み(店舗に出ている)
+ *   青山       : 編集中・未反映(店舗にはまだ出ていない)
+ *   関西       : 標準表示のまま
+ * ------------------------------------------------------------------ */
+
+export const companyBrandings: CompanyBranding[] = [
+  {
+    companyId: "co_lumiere",
+    applied: { displayName: "Lumière Beauty", mainColor: "#8E44AD" },
+    appliedAt: "2026-08-20T14:30:00+09:00",
+    appliedBy: "acc_operator",
+  },
+  {
+    // 反映していないので、店舗側はまだ標準表示のまま
+    companyId: "co_aoyama",
+    draft: { displayName: "AOYAMA BEAUTY", mainColor: "#1F6F8B" },
+  },
 ]
 
 /* ------------------------------------------------------------------ *
