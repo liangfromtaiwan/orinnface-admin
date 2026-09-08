@@ -10,7 +10,7 @@ import { adminAccounts, analysisSessions, carePlaybacks, customers, storeDataLin
 import { resolveScope, canViewCustomer, visibleCustomerIds, can, visibleScreens, canAccessScreen, viewScopeFor, companyAdminsOf } from "@/lib/domain/scope"
 import { CARE_VIDEO_SLOTS, careEntitlement, assertCareSlotInvariant, canPlaySlot, careSlotFor } from "@/lib/domain/care-catalog"
 import { matchesCustomerFilter, CUSTOMER_FILTER_ORDER } from "@/lib/domain/plans"
-import { decideRawImageView, isAwaitingReconsent, usesB2bDisplay } from "@/lib/domain/scope"
+import { decideRawImageView, usesB2bDisplay } from "@/lib/domain/scope"
 import { compareWithAgeBand, metricsByGroup } from "@/lib/domain/metrics"
 import { ageBandAverages, companyBrandings, customerIdentities } from "@/lib/mock/seed"
 import { HISTORY_PREVIEW_LIMIT } from "@/components/AnalysisHistoryTable"
@@ -114,29 +114,33 @@ console.log("── 姿勢分析は B2B のみ (§5.2) ──")
     `(解除済みで姿勢データを持つ ${leaked.length}人)`)
 }
 
-console.log("── 再連携は再同意が必要 (吉田さん確定 2026-09-07) ──")
+console.log("── 同意は連携より先に取る ──")
 {
   const active = storeDataLinks.filter(l => l.status === "active")
-  const pending = active.filter(l => !l.consentedAt)
-  check("再同意待ちの連携がある", pending.length > 0, `(${pending.length} 件 / active ${active.length} 件)`)
+  const revoked = storeDataLinks.filter(l => l.status === "revoked")
   const staffScope = resolveScope(adminAccounts[3], stores)
-  const opScope = resolveScope(adminAccounts[0], stores)
   const ids = customers.map(c => c.dataSubjectId)
-  for (const l of pending) {
-    check("再同意待ちの顧客は店舗から閲覧できない",
-      !canViewCustomer(staffScope, l.dataSubjectId, storeDataLinks) ||
-      !staffScope.storeIds.includes(l.storeId))
-    check("再同意待ちでも本部からは閲覧できる",
-      canViewCustomer(opScope, l.dataSubjectId, storeDataLinks))
-    check("再同意待ちは B2B 表示形式にならない(姿勢を出さない)",
+
+  // 同意なしに連携は作られない。型でも consentedAt を必須にしている
+  check("すべての連携に同意日時がある",
+    storeDataLinks.every(l => !!l.consentedAt),
+    `(active ${active.length} 件 / 解除済み ${revoked.length} 件)`)
+  check("同意日時が連携日時より後になっていない",
+    storeDataLinks.every(l => l.consentedAt <= l.linkedAt))
+  check("解除済みの連携も当時の同意日時を残す",
+    revoked.length > 0 && revoked.every(l => !!l.consentedAt))
+
+  // 解除の効果は同意ではなく status で決まる
+  check("active な連携があれば店舗から閲覧できる",
+    visibleCustomerIds(staffScope, ids, storeDataLinks).length > 0)
+  for (const l of revoked) {
+    if (!staffScope.storeIds.includes(l.storeId)) continue
+    check("解除済みの顧客は店舗から閲覧できない",
+      !canViewCustomer(staffScope, l.dataSubjectId, storeDataLinks))
+    check("解除済みは B2B 表示形式にならない(姿勢を出さない)",
       !usesB2bDisplay(l.dataSubjectId, storeDataLinks))
-    check("再同意待ちとして識別できる",
-      isAwaitingReconsent(l.dataSubjectId, storeDataLinks))
     break
   }
-  check("同意済みの連携は閲覧できる",
-    active.filter(l => l.consentedAt).length > 0 &&
-    visibleCustomerIds(staffScope, ids, storeDataLinks).length > 0)
 }
 
 console.log("── 生画像の閲覧可否 (吉田さん確定 2026-09-07) ──")
@@ -385,7 +389,7 @@ console.log("── ブランド設定 (吉田さん確定 2026-09-08) ──")
       `(${wide.length} → ${narrowIds.length} 名)`)
     check("絞った先はその企業の連携顧客だけ",
       narrowIds.every(id => storeDataLinks.some(l =>
-        l.dataSubjectId === id && l.status === "active" && !!l.consentedAt &&
+        l.dataSubjectId === id && l.status === "active" &&
         lumiereStores.includes(l.storeId))))
     check("視点を絞っても本部の権限は変わらない",
       can(narrowed, "branding.manage") && can(narrowed, "audit.search"),

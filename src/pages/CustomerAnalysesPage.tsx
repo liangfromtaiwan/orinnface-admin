@@ -26,7 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useSession } from "@/contexts/session-context"
-import { isAwaitingReconsent, usesB2bDisplay } from "@/lib/domain/scope"
+import { usesB2bDisplay } from "@/lib/domain/scope"
 import {
   ANALYSIS_TYPE_LABEL,
   type AnalysisType,
@@ -100,8 +100,7 @@ export default function CustomerAnalysesPage() {
             <span className="font-mono tabular-nums">{customer.displayCode}</span>
             <CustomerBadges
               customer={customer}
-              linked={!!activeLink && !!activeLink.consentedAt}
-              awaitingReconsent={isAwaitingReconsent(dataSubjectId, storeDataLinks)}
+              linked={!!activeLink}
               className="px-1.5 py-0.5 text-[11px]"
             />
             <span className="text-xs">全 {sessions.length} 件</span>

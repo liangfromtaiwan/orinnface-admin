@@ -260,10 +260,7 @@ export default function CustomersPage() {
                       </Link>
                       <CustomerBadges
                         customer={r.customer}
-                        linked={!!r.activeLink && !!r.activeLink.consentedAt}
-                        awaitingReconsent={
-                          !!r.activeLink && !r.activeLink.consentedAt
-                        }
+                        linked={!!r.activeLink}
                       />
                     </div>
                     <div className="font-mono text-xs text-muted-foreground tabular-nums">

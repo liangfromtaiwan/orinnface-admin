@@ -12,8 +12,6 @@
  * 有料の Premium だけが塗りを持つので、塗りの有無が Member との境界になる。
  */
 
-import { BADGE_HINT } from "@/components/badge-hints"
-import { HintBadge } from "@/components/HintBadge"
 import { PLAN_STEP, TIER_BADGE } from "@/components/tier-badge"
 import { Badge } from "@/components/ui/badge"
 import type { Customer } from "@/lib/domain/types"
@@ -23,14 +21,11 @@ import { cn } from "@/lib/utils"
 export function CustomerBadges({
   customer,
   linked,
-  awaitingReconsent = false,
   className,
 }: {
   customer: Customer
   /** active な店舗連携があり、本人の同意も取れているか。 */
   linked: boolean
-  /** 連携は active だが本人の再同意を待っている状態。 */
-  awaitingReconsent?: boolean
   className?: string
 }) {
   const size = cn("px-1 py-0 text-[10px]", className)
@@ -52,11 +47,6 @@ export function CustomerBadges({
         {PLAN_LABEL[customer.plan]}
       </Badge>
       {linked ? <Badge className={size}>連携済み</Badge> : null}
-      {awaitingReconsent ? (
-        <HintBadge hint={BADGE_HINT.awaiting_reconsent} className={size}>
-          再同意待ち
-        </HintBadge>
-      ) : null}
     </>
   )
 }

@@ -176,8 +176,7 @@ export default function CustomerDetailPage() {
             <span className="font-mono tabular-nums">{customer.displayCode}</span>
             <CustomerBadges
               customer={customer}
-              linked={!!activeLink && !!activeLink.consentedAt}
-              awaitingReconsent={!!activeLink && !activeLink.consentedAt}
+              linked={!!activeLink}
               className="px-1.5 py-0.5 text-[11px]"
             />
             {customer.ageBand ? (

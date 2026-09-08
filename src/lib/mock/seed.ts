@@ -255,9 +255,6 @@ customers.forEach((c, i) => {
   // 一部は連携解除済みにして「解除後は閲覧不可・履歴は保持」を再現する。
   const revoked = i % 11 === 3
   const linkedAt = daysAgo(Math.floor(rand() * 150) + 10)
-  // 一部は「再連携したが本人の再同意を待っている」状態にする。
-  // 吉田さん確定のとおり、再連携だけでは閲覧できない。
-  const awaitingReconsent = !revoked && i % 17 === 8
   storeDataLinks.push({
     id: `sdl_${pad(i + 1)}`,
     dataSubjectId: c.dataSubjectId,
@@ -265,7 +262,8 @@ customers.forEach((c, i) => {
     status: revoked ? "revoked" : "active",
     linkedAt,
     revokedAt: revoked ? daysAgo(Math.floor(rand() * 20) + 1) : undefined,
-    consentedAt: revoked || awaitingReconsent ? undefined : linkedAt,
+    // 同意は連携より先に取るので、解除済みでも当時の同意日時は残る
+    consentedAt: linkedAt,
   })
   const visitCount = 1 + Math.floor(rand() * 3)
   for (let v = 0; v < visitCount; v++) {
