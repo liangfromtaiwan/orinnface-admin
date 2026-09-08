@@ -11,7 +11,8 @@
  * 🔴 draft は「反映」するまで店舗側に出さない。resolve は applied しか見ない。
  */
 
-import type { AccountId, CompanyId } from "./types"
+import type { Scope } from "./scope"
+import type { AccountId, CompanyId, Store } from "./types"
 
 export type Branding = {
   /** ブランド表示名。ロゴ未設定時はこの文字を出す */
@@ -74,6 +75,30 @@ export function resolveBranding(
   if (!companyId) return STANDARD_BRANDING
   const found = brandings.find((b) => b.companyId === companyId)
   return found?.applied ?? STANDARD_BRANDING
+}
+
+/**
+ * ログイン中のアカウントに、どの企業のブランドを出すかを決める。
+ *
+ * 🔴 scope が companyId を持つのは company_admin だけ。店舗管理者・店舗スタッフは
+ *    storeIds しか持たないため、店舗から企業を引き直す必要がある。
+ *    これを忘れると店舗側が標準表示のままになる。
+ * 🔴 本部(operator)は特定の企業に属さないので常に標準表示(orinnFACE)。
+ * 🔴 担当店舗が複数企業にまたがる場合はどちらのブランドか決まらないため標準表示に倒す。
+ */
+export function brandingCompanyIdFor(
+  scope: Scope,
+  stores: Store[]
+): CompanyId | undefined {
+  if (scope.crossCompany) return undefined
+  if (scope.companyId) return scope.companyId
+
+  const companyIds = new Set(
+    scope.storeIds
+      .map((id) => stores.find((s) => s.id === id)?.companyId)
+      .filter((id): id is CompanyId => !!id)
+  )
+  return companyIds.size === 1 ? [...companyIds][0] : undefined
 }
 
 /** 編集画面の preview 用。draft があれば draft、なければ反映済み、なければ標準。 */

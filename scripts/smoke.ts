@@ -13,7 +13,7 @@ import { matchesCustomerFilter, CUSTOMER_FILTER_ORDER } from "@/lib/domain/plans
 import { decideRawImageView, isAwaitingReconsent, usesB2bDisplay } from "@/lib/domain/scope"
 import { compareWithAgeBand, metricsByGroup } from "@/lib/domain/metrics"
 import { ageBandAverages, companyBrandings } from "@/lib/mock/seed"
-import { resolveBranding, hasUnappliedDraft, isStandard, readableTextOn, validateBranding, STANDARD_BRANDING } from "@/lib/domain/branding"
+import { resolveBranding, brandingCompanyIdFor, hasUnappliedDraft, isStandard, readableTextOn, validateBranding, STANDARD_BRANDING } from "@/lib/domain/branding"
 import { monthlyActiveUsers, totalAnalyses, continuingUsers, churnRiskUsers, improvementRate, careCompletionRate, isEligible, isChurnRisk, billableActiveUsers, makeBillingIdentityResolver } from "@/lib/domain/kpi"
 import { buildPeriod } from "@/lib/domain/periods"
 
@@ -321,6 +321,28 @@ console.log("── ブランド設定 (吉田さん確定 2026-09-08) ──")
   check("V1 では契約企業管理者は編集できない", !can(caScope, "branding.manage"), "(V2 で開放)")
   check("本部のメニューにブランド設定が出る", canAccessScreen(opScope, "branding"))
   check("契約企業管理者のメニューには出ない", !canAccessScreen(caScope, "branding"))
+
+  // 店舗側は scope に companyId を持たないので、店舗から引き直せているか
+  const scopeOf = (accountId: string) =>
+    resolveScope(adminAccounts.find(a => a.id === accountId)!, stores)
+  const storeAdmin = adminAccounts.find(a => a.storeMemberships.some(m => m.role === "store_admin"))!
+  const storeStaff = adminAccounts.find(a => a.storeMemberships.some(m => m.role === "store_staff"))!
+  const companyOfStore = (accountId: string) =>
+    stores.find(s => s.id === scopeOf(accountId).storeIds[0])!.companyId
+
+  check("店長は自店の企業ブランドを受ける",
+    brandingCompanyIdFor(scopeOf(storeAdmin.id), stores) === companyOfStore(storeAdmin.id))
+  check("店員も同じ企業ブランドを受ける",
+    brandingCompanyIdFor(scopeOf(storeStaff.id), stores) === companyOfStore(storeStaff.id))
+  check("契約企業管理者は自社ブランドを受ける",
+    brandingCompanyIdFor(caScope, stores) === caScope.companyId)
+  check("本部は企業に属さないので標準表示", brandingCompanyIdFor(opScope, stores) === undefined)
+  check("担当店舗が複数企業にまたがると標準表示に倒す",
+    brandingCompanyIdFor(
+      { role: "store_admin", crossCompany: false,
+        storeIds: ["st_lumiere_ginza", "st_aoyama_main"] },
+      stores) === undefined,
+    "(どちらのブランドか決まらないため)")
 }
 
 console.log(failed === 0 ? "\n✅ 全部 pass" : `\n❌ ${failed} 件 fail`)

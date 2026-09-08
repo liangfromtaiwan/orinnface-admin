@@ -103,6 +103,10 @@
 - 🔴 設定單位是**企業**,配下店舗共通適用。**不做店舗別覆寫**。
 - 🔴 **B2C 畫面永遠是 orinnFACE**,不吃企業設定。`resolveBranding()` 必須收 `surface`,
   `b2c_app` 直接回標準值——不要繞過它去讀 `applied`。
+- 🔴 適用對象是**該企業底下所有登入者**:契約企業管理者・店舗管理者・店舗スタッフ 都套用,
+  店員給客人看的結果畫面也套用。**本部(operator)永遠 orinnFACE**。
+  `scope` 只有 `company_admin` 才帶 `companyId`,店舗側要用 `brandingCompanyIdFor()`
+  從 storeIds 反查企業——直接讀 `scope.companyId` 會讓店舗側掉回標準表示。
 - 🔴 `draft` 在「反映」之前**不會出現在店舗側**。`resolveBranding()` 只看 `applied`,
   preview 才用 `previewBranding()`。
 - 反映 / 標準表示へ戻す 會變動店舗側的外觀 → 要確認 dialog,並記入監査 `branding_change`。
