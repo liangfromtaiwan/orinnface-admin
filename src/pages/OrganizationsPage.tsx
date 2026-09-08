@@ -19,8 +19,8 @@
 import { useMemo, useState } from "react"
 import { ChevronRightIcon, SearchIcon } from "lucide-react"
 
+import { ContractBadge } from "@/components/ContractBadge"
 import { PageHeader, SpecNote } from "@/components/PageHeader"
-import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import {
   Collapsible,
@@ -46,14 +46,13 @@ import {
 import { useSession } from "@/contexts/session-context"
 import { isEligible } from "@/lib/domain/kpi"
 import { companyAdminsOf } from "@/lib/domain/scope"
-import { ROLE_LABEL, type Company, type Store } from "@/lib/domain/types"
+import {
+  CONTRACT_STATUS_LABEL,
+  ROLE_LABEL,
+  type Company,
+  type Store,
+} from "@/lib/domain/types"
 import { adminAccounts } from "@/lib/mock/seed"
-
-const CONTRACT_LABEL: Record<Company["contractStatus"], string> = {
-  active: "契約中",
-  suspended: "停止中",
-  terminated: "解約",
-}
 
 type StoreStats = { customers: number; eligible: number }
 
@@ -163,10 +162,10 @@ export default function OrganizationsPage() {
               <SelectContent>
                 <SelectItem value="all">すべて ({partnerCompanies.length})</SelectItem>
                 {(
-                  Object.keys(CONTRACT_LABEL) as Company["contractStatus"][]
+                  Object.keys(CONTRACT_STATUS_LABEL) as Company["contractStatus"][]
                 ).map((status) => (
                   <SelectItem key={status} value={status}>
-                    {CONTRACT_LABEL[status]} ({contractCounts.get(status) ?? 0})
+                    {CONTRACT_STATUS_LABEL[status]} ({contractCounts.get(status) ?? 0})
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -179,7 +178,7 @@ export default function OrganizationsPage() {
         <Card>
           <CardContent className="py-12 text-center text-sm text-muted-foreground">
             {q ? `「${query}」に一致する会社・店舗はありません` : "該当する会社はありません"}
-            {contract !== "all" ? `(契約状態: ${CONTRACT_LABEL[contract]})` : ""}
+            {contract !== "all" ? `(契約状態: ${CONTRACT_STATUS_LABEL[contract]})` : ""}
           </CardContent>
         </Card>
       ) : null}
@@ -221,14 +220,7 @@ export default function OrganizationsPage() {
 
                   <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
                     <span className="font-medium">{company.name}</span>
-                    <Badge
-                      variant={
-                        company.contractStatus === "active" ? "outline" : "secondary"
-                      }
-                      className="text-[10px]"
-                    >
-                      {CONTRACT_LABEL[company.contractStatus]}
-                    </Badge>
+                    <ContractBadge status={company.contractStatus} />
                   </div>
 
                   {/* 閉じたままでも規模が分かるよう、要約は常に出す */}

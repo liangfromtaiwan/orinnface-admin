@@ -85,6 +85,12 @@ export type Company = {
   contractedAt: string
 }
 
+export const CONTRACT_STATUS_LABEL: Record<Company["contractStatus"], string> = {
+  active: "契約中",
+  suspended: "停止中",
+  terminated: "解約",
+}
+
 export type Store = {
   id: StoreId
   companyId: CompanyId

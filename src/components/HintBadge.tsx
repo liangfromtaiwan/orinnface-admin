@@ -9,6 +9,7 @@
 
 import type { ReactNode } from "react"
 
+import type { BadgeHint } from "@/components/badge-hints"
 import { Badge } from "@/components/ui/badge"
 import {
   Tooltip,
@@ -22,7 +23,7 @@ export function HintBadge({
   children,
   className,
 }: {
-  hint: ReactNode
+  hint: BadgeHint
   children: ReactNode
   className?: string
 }) {
@@ -45,8 +46,21 @@ export function HintBadge({
           {children}
         </Badge>
       </TooltipTrigger>
-      <TooltipContent className="max-w-xs text-xs leading-relaxed">
-        {hint}
+      {/*
+        TooltipContent の基底は「一行の短いラベル」向けに inline-flex +
+        items-center で組まれている。段落を直接置くと flex item が横に並び、
+        見出しが 1 文字ずつ折り返して読めなくなる。
+        中身は必ず 1 つの block で包んでから縦に積む。
+      */}
+      <TooltipContent className="max-w-72">
+        <div className="space-y-1 py-0.5">
+          <p className="font-semibold">{hint.title}</p>
+          {hint.lines.map((line) => (
+            <p key={line} className="leading-relaxed text-background/80">
+              {line}
+            </p>
+          ))}
+        </div>
       </TooltipContent>
     </Tooltip>
   )

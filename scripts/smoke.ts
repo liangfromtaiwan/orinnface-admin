@@ -14,6 +14,7 @@ import { decideRawImageView, isAwaitingReconsent, usesB2bDisplay } from "@/lib/d
 import { compareWithAgeBand, metricsByGroup } from "@/lib/domain/metrics"
 import { ageBandAverages, companyBrandings, customerIdentities } from "@/lib/mock/seed"
 import { HISTORY_PREVIEW_LIMIT } from "@/components/AnalysisHistoryTable"
+import { TIER_BADGE, PLAN_STEP, CONTRACT_STEP } from "@/components/tier-badge"
 import { resolveBranding, brandingCompanyIdFor, hasUnappliedDraft, isStandard, readableTextOn, validateBranding, STANDARD_BRANDING } from "@/lib/domain/branding"
 import { monthlyActiveUsers, totalAnalyses, continuingUsers, churnRiskUsers, improvementRate, careCompletionRate, isEligible, isChurnRisk, billableActiveUsers, makeBillingIdentityResolver } from "@/lib/domain/kpi"
 import { buildPeriod } from "@/lib/domain/periods"
@@ -281,6 +282,19 @@ check("離脱リスクは一覧のバッジと KPI が一致する",
   "(同じ関数を使っていること)")
 check("適格分析は再解析を除外",
   analysisSessions.filter(s => !s.newCapture).every(s => !isEligible(s)))
+
+console.log("── 段階バッジ (プランと契約状態で共用) ──")
+{
+  // 見た目を 2 箇所で書くと必ずずれるので、同じ定義を使っていることを確かめる
+  check("プランと契約状態が同じ語彙を使っている",
+    Object.values(PLAN_STEP).every(s => s in TIER_BADGE) &&
+    Object.values(CONTRACT_STEP).every(s => s in TIER_BADGE))
+  check("塗りを持つのは最上位だけ",
+    Object.values(PLAN_STEP).filter(s => s === "fill").length === 1 &&
+    Object.values(CONTRACT_STEP).filter(s => s === "fill").length === 1,
+    "(Premium / 契約中)")
+  check("3 段がすべて違う見た目", new Set(Object.values(TIER_BADGE)).size === 3)
+}
 
 console.log("── 顧客の連絡先と分析履歴 ──")
 {

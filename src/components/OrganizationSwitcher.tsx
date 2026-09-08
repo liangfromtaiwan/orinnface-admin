@@ -29,14 +29,9 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
+import { ContractBadge } from "@/components/ContractBadge"
 import { useSession } from "@/contexts/session-context"
 import { readableTextOn } from "@/lib/domain/branding"
-
-const CONTRACT_LABEL = {
-  active: "契約中",
-  suspended: "停止中",
-  terminated: "解約",
-} as const
 
 export function OrganizationSwitcher() {
   const {
@@ -135,12 +130,16 @@ export function OrganizationSwitcher() {
                   className="gap-2"
                 >
                   <BuildingIcon className="size-4 text-muted-foreground" />
-                  <div className="grid flex-1">
-                    <span className="text-sm">{c.name}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {CONTRACT_LABEL[c.contractStatus]}
-                      {c.id === viewCompanyId ? ` / ${count} 店舗` : ""}
+                  <div className="grid flex-1 gap-0.5">
+                    <span className="flex items-center gap-1.5 text-sm">
+                      {c.name}
+                      <ContractBadge status={c.contractStatus} />
                     </span>
+                    {c.id === viewCompanyId ? (
+                      <span className="text-xs text-muted-foreground">
+                        {count} 店舗
+                      </span>
+                    ) : null}
                   </div>
                   {c.id === viewCompanyId ? <CheckIcon className="size-4" /> : null}
                 </DropdownMenuItem>
