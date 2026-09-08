@@ -45,6 +45,7 @@ import {
 } from "@/components/ui/table"
 import { useSession } from "@/contexts/session-context"
 import { isEligible } from "@/lib/domain/kpi"
+import { companyAdminsOf } from "@/lib/domain/scope"
 import { ROLE_LABEL, type Company, type Store } from "@/lib/domain/types"
 import { adminAccounts } from "@/lib/mock/seed"
 
@@ -186,11 +187,7 @@ export default function OrganizationsPage() {
       {rows.map(({ company, own, hitStores }) => {
         // 検索中は一致した会社を自動で開く。それ以外は既定で閉じる。
         const open = q ? true : manuallyOpen.has(company.id)
-        const companyAdmins = adminAccounts.filter((a) =>
-          a.organizationMemberships.some(
-            (m) => m.companyId === company.id && m.role === "company_admin"
-          )
-        )
+        const companyAdmins = companyAdminsOf(adminAccounts, company.id)
         const totals = own.reduce(
           (acc, s) => {
             const st = statsByStore.get(s.id)
@@ -261,11 +258,15 @@ export default function OrganizationsPage() {
 
               <CollapsibleContent>
                 <div className="border-t">
-                  {companyAdmins.length > 0 ? (
-                    <p className="pt-3 pr-4 pl-11 text-xs text-muted-foreground">
-                      契約企業管理者: {companyAdmins.map((a) => a.displayName).join(" / ")}
-                    </p>
-                  ) : null}
+                  {/* 契約はあるのに管理者が居ない状態は運用上の問題なので黙って隠さない */}
+                  <p className="pt-3 pr-4 pl-11 text-xs text-muted-foreground">
+                    契約企業管理者:{" "}
+                    {companyAdmins.length > 0 ? (
+                      companyAdmins.map((a) => a.displayName).join(" / ")
+                    ) : (
+                      <span className="text-amber-700">未設定</span>
+                    )}
+                  </p>
 
                   {listed.length === 0 ? (
                     <p className="py-6 pr-4 pl-11 text-sm text-muted-foreground">

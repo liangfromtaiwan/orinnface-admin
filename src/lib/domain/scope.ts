@@ -84,6 +84,24 @@ export function resolveScope(
 }
 
 /**
+ * その企業の責任者(契約企業管理者)。
+ *
+ * 契約はあるのに管理者アカウントが無い状態は運用上の問題なので、
+ * 呼び出し側は空配列を「未設定」として出す(黙って隠さない)。
+ * ダッシュボードと会社・店舗画面で同じ結果になるよう、判定はここに 1 つだけ置く。
+ */
+export function companyAdminsOf(
+  accounts: AdminAccount[],
+  companyId: CompanyId
+): AdminAccount[] {
+  return accounts.filter((a) =>
+    a.organizationMemberships.some(
+      (m) => m.companyId === companyId && m.role === "company_admin"
+    )
+  )
+}
+
+/**
  * 視点(どの企業を見ているか)で絞った表示用スコープ。
  *
  * 🔴 これは**表示の絞り込み**であって権限ではない。role はそのまま持ち越すので、

@@ -7,7 +7,7 @@
  */
 
 import { adminAccounts, analysisSessions, carePlaybacks, customers, storeDataLinks, stores, rawImageAssets, handoffTokens, recommendationRuns, NOW } from "@/lib/mock/seed"
-import { resolveScope, canViewCustomer, visibleCustomerIds, can, visibleScreens, canAccessScreen, viewScopeFor } from "@/lib/domain/scope"
+import { resolveScope, canViewCustomer, visibleCustomerIds, can, visibleScreens, canAccessScreen, viewScopeFor, companyAdminsOf } from "@/lib/domain/scope"
 import { CARE_VIDEO_SLOTS, careEntitlement, assertCareSlotInvariant, canPlaySlot, careSlotFor } from "@/lib/domain/care-catalog"
 import { matchesCustomerFilter, CUSTOMER_FILTER_ORDER } from "@/lib/domain/plans"
 import { decideRawImageView, isAwaitingReconsent, usesB2bDisplay } from "@/lib/domain/scope"
@@ -358,7 +358,16 @@ console.log("── ブランド設定 (吉田さん確定 2026-09-08) ──")
     check("全社横断へ戻すと元に戻る",
       visibleCustomerIds(viewScopeFor(opScope, undefined, stores), allIds, storeDataLinks).length
         === wide.length)
-    check("本部以外は視点を絞れない(自分のスコープが視点)",
+      check("視点の企業に責任者が引ける",
+      companyAdminsOf(adminAccounts, "co_lumiere").length === 1,
+      `(${companyAdminsOf(adminAccounts, "co_lumiere").map(a => a.displayName).join("/")})`)
+    check("責任者が未登録の企業は空で返る(隠さず未設定と出す側の責任)",
+      companyAdminsOf(adminAccounts, "co_kansai").length === 0)
+    check("責任者に他社の管理者が混ざらない",
+      companyAdminsOf(adminAccounts, "co_lumiere").every(a =>
+        a.organizationMemberships.some(m => m.companyId === "co_lumiere" && m.role === "company_admin")))
+
+  check("本部以外は視点を絞れない(自分のスコープが視点)",
       viewScopeFor(caScope, "co_lumiere", stores) === caScope)
   }
 

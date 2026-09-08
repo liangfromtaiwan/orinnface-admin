@@ -61,7 +61,9 @@ import {
   type DashboardSegment,
   type SignalGranularity,
 } from "@/lib/domain/plans"
+import { companyAdminsOf } from "@/lib/domain/scope"
 import {
+  adminAccounts,
   careAssets,
   handoffTokens,
   NOW,
@@ -130,6 +132,9 @@ export default function DashboardPage() {
     営収シグナル・プラン構成比も同じ理由で全社横断のときだけ出す。
   */
   const viewingCompany = viewableCompanies.find((c) => c.id === viewCompanyId)
+  const companyAdmins = viewCompanyId
+    ? companyAdminsOf(adminAccounts, viewCompanyId)
+    : []
   const showSegmentTabs = scope.crossCompany && !viewCompanyId
   const effectiveSegment: DashboardSegment = showSegmentTabs ? segment : "all"
 
@@ -301,6 +306,19 @@ export default function DashboardPage() {
             {scope.crossCompany && !viewCompanyId
               ? "(全会社・全店舗を横断)"
               : `(${viewingCompany ? `${viewingCompany.name} / ` : ""}${stores.length} 店舗 / 顧客 ${customers.length} 名)`}
+            {viewingCompany ? (
+              <span className="mt-0.5 block">
+                契約企業管理者{" "}
+                {companyAdmins.length > 0 ? (
+                  <span className="font-medium text-foreground">
+                    {companyAdmins.map((a) => a.displayName).join(" / ")}
+                  </span>
+                ) : (
+                  // 契約はあるのに管理者が居ない状態は運用上の問題なので黙って隠さない
+                  <span className="text-amber-700">未設定</span>
+                )}
+              </span>
+            ) : null}
           </>
         }
         actions={
