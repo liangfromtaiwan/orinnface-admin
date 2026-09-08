@@ -376,14 +376,18 @@ export default function DashboardPage() {
 
       <PeriodBanner
         period={period}
+        /*
+          全体を見ているときは上のタブと店舗 filter で対象が分かるため、
+          ここに見出しは出さない(同じことを二度書かない)。
+        */
         scopeLabel={
           effectiveSegment === "b2c"
             ? "B2C(店舗連携なし)"
-            : storeId === "all"
-              ? effectiveSegment === "b2b"
+            : storeId !== "all"
+              ? (stores.find((s) => s.id === storeId)?.name ?? "すべての店舗")
+              : effectiveSegment === "b2b"
                 ? "すべての店舗"
-                : "全体(B2B + B2C)"
-              : (stores.find((s) => s.id === storeId)?.name ?? "すべての店舗")
+                : undefined
         }
       />
 

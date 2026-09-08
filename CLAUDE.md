@@ -128,6 +128,18 @@
 
 ## 5. 顧客・分析結果
 
+### 顧客の連絡先
+
+- 🔴 メールアドレスは **identity 側**(`CustomerIdentity`)に置く。`Customer` 型に持たせない
+  (§5「analytics へ PII を混入しない」)。画面では `dataSubjectId` で join して出す。
+- 未登録(未連携分析のみ)の顧客は登録していないので連絡先を持たない → 「メールアドレスなし（未登録）」。
+
+### 分析履歴の件数
+
+- 顧客詳細は**最新 10 件**で打ち切り(`HISTORY_PREVIEW_LIMIT`)、
+  `/customers/:id/analyses` で全件を見る。行の描画は `AnalysisHistoryTable` に集約。
+- 全件ページの「詳細」は `?session=` を付けて顧客詳細へ戻し、その回を開く。
+
 ### 顧客一覧欄位
 顧客識別(最小必要,**analytics 不得混入 PII**)/ active 店舗與連携狀態 / 最新分析(`completed_at`、face・posture、品質、有無結果)/ 継続(初回・前回・最新適格分析日時、分析回數、離脱風險)/ care(推奨表示、再生開始、完了、直近実施、月次回數)/ 保持(retention policy、期限、通知・削除 state — 僅有權限者)
 

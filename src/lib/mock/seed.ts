@@ -21,6 +21,7 @@ import type {
   Company,
   ConsentEvent,
   Customer,
+  CustomerIdentity,
   DataSubjectId,
   HandoffToken,
   PlanChangeEvent,
@@ -215,6 +216,23 @@ export const customers: Customer[] = Array.from({ length: CUSTOMER_COUNT }, (_, 
 })
 
 /* ------------------------------------------------------------------ *
+ * 本人の連絡先 (identity 側)
+ *
+ * 🔴 analytics 側の customers とは別配列で持つ。§5 のとおり Customer に
+ *    PII を混ぜないため、必要な画面でだけ dataSubjectId で join する。
+ * 未登録(未連携分析のみ)の顧客は登録していないので作らない。
+ * ドメインは RFC で文書用に予約されている example.jp を使う。
+ * ------------------------------------------------------------------ */
+
+export const customerIdentities: CustomerIdentity[] = customers
+  .filter((c) => !c.unregistered)
+  .map((c) => ({
+    dataSubjectId: c.dataSubjectId,
+    accountId: `uacc_${c.displayCode.replace("-", "").toLowerCase()}`,
+    email: `${c.displayCode.replace("-", "").toLowerCase()}@example.jp`,
+  }))
+
+/* ------------------------------------------------------------------ *
  * 店舗連携 / 来店履歴
  *
  * 🔴 閲覧権限は store_data_links(active) + membership の両方。
@@ -336,7 +354,13 @@ customers.forEach((c, i) => {
   const captureStoreId =
     link?.storeId ??
     (c.unregistered ? activeStores[i % activeStores.length].id : undefined)
-  const sessionCount = c.unregistered ? 1 : 1 + Math.floor(rand() * 5)
+  const randomCount = c.unregistered ? 1 : 1 + Math.floor(rand() * 5)
+  /*
+    1 人だけ長期利用者にする。履歴が 10 件を超える顧客が居ないと、
+    顧客詳細で「最新 10 件だけ出して全件ページへ送る」表示が確認できない。
+    rand() の呼び出し回数は変えていないので、他の顧客のデータは動かない。
+  */
+  const sessionCount = i === 11 ? 14 : randomCount
 
   // 約 3 割を「離脱した顧客」にし、残りは直近まで継続しているものとする。
   // 全員の履歴が古いと今月の KPI が 0 になり、逆に全員が直近だと

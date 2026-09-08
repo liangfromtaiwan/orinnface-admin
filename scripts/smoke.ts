@@ -12,7 +12,8 @@ import { CARE_VIDEO_SLOTS, careEntitlement, assertCareSlotInvariant, canPlaySlot
 import { matchesCustomerFilter, CUSTOMER_FILTER_ORDER } from "@/lib/domain/plans"
 import { decideRawImageView, isAwaitingReconsent, usesB2bDisplay } from "@/lib/domain/scope"
 import { compareWithAgeBand, metricsByGroup } from "@/lib/domain/metrics"
-import { ageBandAverages, companyBrandings } from "@/lib/mock/seed"
+import { ageBandAverages, companyBrandings, customerIdentities } from "@/lib/mock/seed"
+import { HISTORY_PREVIEW_LIMIT } from "@/components/AnalysisHistoryTable"
 import { resolveBranding, brandingCompanyIdFor, hasUnappliedDraft, isStandard, readableTextOn, validateBranding, STANDARD_BRANDING } from "@/lib/domain/branding"
 import { monthlyActiveUsers, totalAnalyses, continuingUsers, churnRiskUsers, improvementRate, careCompletionRate, isEligible, isChurnRisk, billableActiveUsers, makeBillingIdentityResolver } from "@/lib/domain/kpi"
 import { buildPeriod } from "@/lib/domain/periods"
@@ -280,6 +281,26 @@ check("離脱リスクは一覧のバッジと KPI が一致する",
   "(同じ関数を使っていること)")
 check("適格分析は再解析を除外",
   analysisSessions.filter(s => !s.newCapture).every(s => !isEligible(s)))
+
+console.log("── 顧客の連絡先と分析履歴 ──")
+{
+  check("email は identity 側に持ち、Customer 型には無い",
+    !("email" in customers[0]), "(§5 analytics へ PII を混入しない)")
+  check("登録済みの顧客には連絡先がある",
+    customers.filter(c => !c.unregistered)
+      .every(c => customerIdentities.some(x => x.dataSubjectId === c.dataSubjectId)))
+  check("未登録(未連携分析のみ)には連絡先が無い",
+    customers.filter(c => c.unregistered)
+      .every(c => !customerIdentities.some(x => x.dataSubjectId === c.dataSubjectId)),
+    `(未登録 ${customers.filter(c => c.unregistered).length} 名)`)
+
+  const perCustomer = new Map<string, number>()
+  for (const s of analysisSessions)
+    perCustomer.set(s.dataSubjectId, (perCustomer.get(s.dataSubjectId) ?? 0) + 1)
+  const over = [...perCustomer.values()].filter(n => n > HISTORY_PREVIEW_LIMIT)
+  check("上限を超える履歴を持つ顧客が居る", over.length > 0,
+    `(最大 ${Math.max(...perCustomer.values())} 件 / 上限 ${HISTORY_PREVIEW_LIMIT} 件)`)
+}
 
 console.log("── ブランド設定 (吉田さん確定 2026-09-08) ──")
 {

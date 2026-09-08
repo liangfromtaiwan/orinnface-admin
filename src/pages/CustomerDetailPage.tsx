@@ -9,9 +9,10 @@
  */
 
 import { useMemo, useState } from "react"
-import { Link, useParams } from "react-router-dom"
-import { AlertTriangleIcon, ArrowLeftIcon } from "lucide-react"
+import { Link, useParams, useSearchParams } from "react-router-dom"
+import { AlertTriangleIcon, ArrowLeftIcon, ChevronRightIcon } from "lucide-react"
 
+import { AnalysisHistoryTable, HISTORY_PREVIEW_LIMIT } from "@/components/AnalysisHistoryTable"
 import { CustomerBadges } from "@/components/CustomerBadges"
 import { Badge } from "@/components/ui/badge"
 import { InfoHint } from "@/components/InfoHint"
@@ -57,20 +58,12 @@ import {
   metricsByGroup,
 } from "@/lib/domain/metrics"
 import {
-  ANALYSIS_STATUS_LABEL,
-  ANALYSIS_TYPE_LABEL,
   CONSENT_KIND_LABEL,
   RETENTION_POLICY_LABEL,
   RETENTION_STATE_LABEL,
   type AnalysisSession,
 } from "@/lib/domain/types"
-import {
-  ageBandAverages,
-  careAssets,
-  consentEvents,
-  rawImageAssets,
-  recommendationRuns,
-} from "@/lib/mock/seed"
+import { ageBandAverages, careAssets, consentEvents, customerIdentities, rawImageAssets, recommendationRuns } from "@/lib/mock/seed"
 
 export default function CustomerDetailPage() {
   const { dataSubjectId = "" } = useParams()
@@ -103,11 +96,28 @@ export default function CustomerDetailPage() {
   const faceSessions = sessions.filter((s) => s.analysisType === "face" && isEligible(s))
   const postureSessions = sessions.filter((s) => s.analysisType === "posture" && isEligible(s))
 
-  const [selectedId, setSelectedId] = useState<string>(() => faceSessions[0]?.id ?? "")
+  /*
+    全件ページから ?session= で戻ってきたときはその回を開く。
+    存在しない id が来た場合は既定(最新の適格な表情分析)に落とす。
+  */
+  const [searchParams] = useSearchParams()
+  const requestedId = searchParams.get("session")
+  const [selectedId, setSelectedId] = useState<string>(
+    () =>
+      (requestedId && sessions.some((s) => s.id === requestedId)
+        ? requestedId
+        : faceSessions[0]?.id) ?? ""
+  )
+  /** 詳細画面に出すのは最新の一部だけ。残りは全件ページで見る。 */
+  const visibleSessions = sessions.slice(0, HISTORY_PREVIEW_LIMIT)
   /** 同年代比較は最新の適格な表情分析を基準に出す。 */
   const latestFaceForAgeBand = faceSessions.find((s) => s.metrics.length > 0)
   const selected =
     sessions.find((s) => s.id === selectedId) ?? faceSessions[0] ?? sessions[0]
+
+  const identity = customerIdentities.find(
+    (x) => x.dataSubjectId === dataSubjectId
+  )
 
   if (!customer) {
     return (
@@ -156,6 +166,16 @@ export default function CustomerDetailPage() {
         description={
           <span className="flex flex-wrap items-center gap-2">
             <span className="font-mono tabular-nums">{customer.displayCode}</span>
+            {/* 🔴 email は identity 側。Customer には持たせず dataSubjectId で join する (§5) */}
+            <span className="text-xs">
+              {identity ? (
+                identity.email
+              ) : (
+                <span className="text-muted-foreground">
+                  メールアドレスなし（未登録）
+                </span>
+              )}
+            </span>
             <CustomerBadges
               customer={customer}
               linked={!!activeLink && !!activeLink.consentedAt}
@@ -190,72 +210,25 @@ export default function CustomerDetailPage() {
         {/* ---------------- 分析 ---------------- */}
         <TabsContent value="analysis" className="space-y-4">
           <Card className="py-0">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>完了日</TableHead>
-                    <TableHead>種別</TableHead>
-                    <TableHead>状態</TableHead>
-                    <TableHead>品質</TableHead>
-                    <TableHead>撮影</TableHead>
-                    <TableHead>店舗</TableHead>
-                    <TableHead />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sessions.map((s) => (
-                    <TableRow
-                      key={s.id}
-                      data-state={s.id === selected?.id ? "selected" : undefined}
-                    >
-                      <TableCell className="tabular-nums">
-                        {s.completedAt ? (
-                          formatDate(s.completedAt)
-                        ) : (
-                          <span className="text-muted-foreground">
-                            {formatDate(s.startedAt)}
-                            <span className="ml-1 text-[10px]">開始</span>
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell>{ANALYSIS_TYPE_LABEL[s.analysisType]}</TableCell>
-                      <TableCell>
-                        {s.status === "failed" ? (
-                          <span className="text-destructive">
-                            {ANALYSIS_STATUS_LABEL[s.status]}
-                          </span>
-                        ) : (
-                          ANALYSIS_STATUS_LABEL[s.status]
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {s.quality === "ok" ? (
-                          "—"
-                        ) : (
-                          <span className="text-amber-700">
-                            {s.quality === "warn" ? "注意" : "不足"}
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {s.newCapture ? "新規撮影" : "再解析(適格外)"}
-                      </TableCell>
-                      <TableCell className="text-sm">{storeName(s.storeId)}</TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setSelectedId(s.id)}
-                        >
-                          詳細
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+            <AnalysisHistoryTable
+              sessions={visibleSessions}
+              selectedId={selected?.id}
+              onSelect={setSelectedId}
+            />
+            {/* 履歴は使うほど増えるので、詳細では打ち切って全件ページへ送る */}
+            {sessions.length > HISTORY_PREVIEW_LIMIT ? (
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t px-4 py-3">
+                <span className="text-sm text-muted-foreground">
+                  最新 {HISTORY_PREVIEW_LIMIT} 件を表示（全 {sessions.length} 件）
+                </span>
+                <Button variant="outline" size="sm" asChild>
+                  <Link to={`/customers/${customer.dataSubjectId}/analyses`}>
+                    すべての分析履歴を見る
+                    <ChevronRightIcon />
+                  </Link>
+                </Button>
+              </div>
+            ) : null}
           </Card>
 
           {hiddenPostureCount > 0 ? (

@@ -10,6 +10,7 @@ import AnalysisPage from "./pages/AnalysisPage"
 import AuditPage from "./pages/AuditPage"
 import BrandingPage from "./pages/BrandingPage"
 import CareVideosPage from "./pages/CareVideosPage"
+import CustomerAnalysesPage from "./pages/CustomerAnalysesPage"
 import CustomerDetailPage from "./pages/CustomerDetailPage"
 import CustomersPage from "./pages/CustomersPage"
 import DashboardPage from "./pages/DashboardPage"
@@ -64,6 +65,14 @@ export default function App() {
                 element={
                   <RequireScreen screen="customers">
                     <CustomerDetailPage />
+                  </RequireScreen>
+                }
+              />
+              <Route
+                path="/customers/:dataSubjectId/analyses"
+                element={
+                  <RequireScreen screen="customers">
+                    <CustomerAnalysesPage />
                   </RequireScreen>
                 }
               />

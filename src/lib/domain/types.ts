@@ -149,6 +149,19 @@ export type Customer = {
 }
 
 /**
+ * 本人の連絡先。
+ *
+ * 🔴 analytics 側の Customer には混ぜない (§5)。Customer は表示名・顧客番号までで、
+ *    メールアドレスは identity 側に置き、必要な画面でだけ join して出す。
+ * 🔴 未登録(未連携分析のみ)の顧客は登録していないので存在しない。
+ */
+export type CustomerIdentity = {
+  dataSubjectId: DataSubjectId
+  accountId: AccountId
+  email: string
+}
+
+/**
  * プラン変更の履歴。
  *
  * ℹ️ 仕様書 v1.0 §6 の KPI 一覧には含まれない。運営(本部)が B2C を含む
