@@ -22,8 +22,8 @@ const pages: [string, string, React.ComponentType][] = [
   ["顧客一覧", "/customers", CustomersPage],
   ["顧客詳細", "/customers/ds_010", CustomerDetailPage],
   // 履歴が上限を超える顧客。打ち切り表示と全件への導線を通す
-  ["顧客詳細(長期利用者)", "/customers/ds_012", CustomerDetailPage],
-  ["分析履歴(全件)", "/customers/ds_012/analyses", CustomerAnalysesPage],
+  ["顧客詳細(履歴12件)", "/customers/ds_036", CustomerDetailPage],
+  ["分析履歴(全件)", "/customers/ds_036/analyses", CustomerAnalysesPage],
   ["分析", "/analysis", AnalysisPage],
   ["会社・店舗", "/organizations", OrganizationsPage],
   ["care動画", "/care", CareVideosPage],

@@ -356,11 +356,15 @@ customers.forEach((c, i) => {
     (c.unregistered ? activeStores[i % activeStores.length].id : undefined)
   const randomCount = c.unregistered ? 1 : 1 + Math.floor(rand() * 5)
   /*
-    1 人だけ長期利用者にする。履歴が 10 件を超える顧客が居ないと、
-    顧客詳細で「最新 10 件だけ出して全件ページへ送る」表示が確認できない。
-    rand() の呼び出し回数は変えていないので、他の顧客のデータは動かない。
+    1 人だけ履歴を多くする。10 件を超える顧客が居ないと、顧客詳細で
+    「最新 10 件だけ出して全件ページへ送る」表示が確認できない。
+
+    C-0036 佐藤 翔太 (i=35) を上限のすぐ上に置く。姿勢分析は s % 2 === 0 の回に
+    足されるので、face 8 回 → 姿勢 4 回 = 画面上 12 件になる。
+    連携あり・最近も分析している・failed も再解析も無い並びなので確認しやすい。
+    rand() の呼び出し回数は変えていないので、この顧客より前のデータは動かない。
   */
-  const sessionCount = i === 11 ? 14 : randomCount
+  const sessionCount = i === 35 ? 8 : randomCount
 
   // 約 3 割を「離脱した顧客」にし、残りは直近まで継続しているものとする。
   // 全員の履歴が古いと今月の KPI が 0 になり、逆に全員が直近だと
