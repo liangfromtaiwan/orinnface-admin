@@ -14,6 +14,8 @@
  * 文字の太さも normal → medium → semibold と変えて、色以外の手がかりも残す。
  */
 
+import { BADGE_HINT } from "@/components/badge-hints"
+import { HintBadge } from "@/components/HintBadge"
 import { Badge } from "@/components/ui/badge"
 import type { Customer } from "@/lib/domain/types"
 import { PLAN_LABEL } from "@/lib/domain/types"
@@ -62,12 +64,9 @@ export function CustomerBadges({
       </Badge>
       {linked ? <Badge className={size}>連携済み</Badge> : null}
       {awaitingReconsent ? (
-        <Badge
-          variant="outline"
-          className={cn(size, "border-amber-300 text-amber-700")}
-        >
+        <HintBadge hint={BADGE_HINT.awaiting_reconsent} className={size}>
           再同意待ち
-        </Badge>
+        </HintBadge>
       ) : null}
     </>
   )

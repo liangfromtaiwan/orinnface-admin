@@ -11,9 +11,10 @@ import { Link } from "react-router-dom"
 import { SearchIcon } from "lucide-react"
 
 import { CustomerBadges } from "@/components/CustomerBadges"
+import { BADGE_HINT } from "@/components/badge-hints"
+import { HintBadge } from "@/components/HintBadge"
 import { InfoHint } from "@/components/InfoHint"
 import { PageHeader, SpecNote } from "@/components/PageHeader"
-import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import {
@@ -246,6 +247,8 @@ export default function CustomersPage() {
                       onClick + navigate ではなく実際の <a> のままにしているので、
                       ⌘+クリックで新しいタブ・右クリック・キーボード操作が効く。
                       この行に他のボタンを置くときは覆いを外すこと。
+                      hover で説明を出すバッジは z-10 で覆いより前に出している
+                      (HintBadge 側で指定)。
                     */}
                     {/* 探すときに見るのは名前なので、名前を上・ID を下に置く */}
                     <div className="flex flex-wrap items-center gap-1.5">
@@ -279,12 +282,16 @@ export default function CustomersPage() {
                       <>
                         {formatDate(r.latestFace.completedAt)}
                         {r.latestFace.quality === "warn" ? (
-                          <Badge
-                            variant="outline"
-                            className="ml-1 border-amber-300 px-1 py-0 text-[10px] text-amber-700"
-                          >
+                          <HintBadge hint={BADGE_HINT.quality_warn} className="ml-1">
                             品質注意
-                          </Badge>
+                          </HintBadge>
+                        ) : r.latestFace.quality === "insufficient" ? (
+                          <HintBadge
+                            hint={BADGE_HINT.quality_insufficient}
+                            className="ml-1"
+                          >
+                            品質不足
+                          </HintBadge>
                         ) : null}
                       </>
                     ) : (
@@ -294,12 +301,9 @@ export default function CustomersPage() {
                   <TableCell className="text-right text-sm tabular-nums">
                     {r.eligibleCount}
                     {r.atRisk ? (
-                      <Badge
-                        variant="outline"
-                        className="ml-1 border-amber-300 px-1 py-0 text-[10px] text-amber-700"
-                      >
+                      <HintBadge hint={BADGE_HINT.churn_risk} className="ml-1">
                         離脱リスク
-                      </Badge>
+                      </HintBadge>
                     ) : null}
                   </TableCell>
                   <TableCell className="text-sm">

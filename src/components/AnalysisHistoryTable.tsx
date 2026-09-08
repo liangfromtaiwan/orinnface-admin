@@ -5,6 +5,8 @@
  * 行の描き方を 1 箇所に置き、2 画面で列や表記がずれないようにしている。
  */
 
+import { BADGE_HINT } from "@/components/badge-hints"
+import { HintBadge } from "@/components/HintBadge"
 import { Button } from "@/components/ui/button"
 import {
   Table,
@@ -83,10 +85,10 @@ export function AnalysisHistoryTable({
               <TableCell>
                 {s.quality === "ok" ? (
                   "—"
+                ) : s.quality === "warn" ? (
+                  <HintBadge hint={BADGE_HINT.quality_warn}>注意</HintBadge>
                 ) : (
-                  <span className="text-amber-700">
-                    {s.quality === "warn" ? "注意" : "不足"}
-                  </span>
+                  <HintBadge hint={BADGE_HINT.quality_insufficient}>不足</HintBadge>
                 )}
               </TableCell>
               <TableCell className="text-xs text-muted-foreground">
