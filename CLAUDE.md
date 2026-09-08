@@ -343,6 +343,12 @@ scripts/              仕様不変条件の smoke test
 - `branding.ts` の `resolveBranding()` は `surface` 必須。B2C は企業設定を受けず、
   未反映の `draft` は店舗側に出ない(どちらも `npm run smoke` で検証)
 
+### 既知の環境依存
+- dark mode は未接線(`ThemeProvider` なし)。`.dark` の定義はあるが class は付かない。
+  🔴 OS の設定を見るコンポーネント(sonner など)に `"system"` を渡すと、
+  そのコンポーネントだけ dark になりアプリの light と食い違う。
+  `ui/sonner.tsx` は light に固定してある。他に OS 依存のものを足すときも同じ注意が必要。
+
 ### 検証コマンド
 ```bash
 npm run check         # build + lint + smoke + smoke:render をまとめて実行

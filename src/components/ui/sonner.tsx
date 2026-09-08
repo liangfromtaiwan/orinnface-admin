@@ -7,9 +7,18 @@ import { CircleCheckIcon, InfoIcon, TriangleAlertIcon, OctagonXIcon, Loader2Icon
 const Toaster = ({ ...props }: ToasterProps) => {
   const { theme = "system" } = useTheme()
 
+  /*
+    🔴 アプリ側は ThemeProvider が無く常に light で描いている(index.css の TODO)。
+       ここに "system" をそのまま渡すと sonner だけが OS の設定を見て dark を選び、
+       明るいトーストに dark 用の文字色 hsl(0,0%,91%) が載って説明文が読めなくなる。
+       ThemeProvider を入れるまでは light に固定し、入れたらその値に従う。
+  */
+  const resolved: ToasterProps["theme"] =
+    theme === "system" ? "light" : (theme as ToasterProps["theme"])
+
   return (
     <Sonner
-      theme={theme as ToasterProps["theme"]}
+      theme={resolved}
       className="toaster group"
       icons={{
         success: (

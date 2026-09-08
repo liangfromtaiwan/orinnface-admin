@@ -4,7 +4,7 @@
  * 「品質注意」「離脱リスク」「再同意待ち」は、出る条件を知らないと
  * 何を意味するのか分からない。バッジに hover / focus で条件を出す。
  *
- * 説明文は badge-hints.tsx に置く(fast-refresh のため component と分離)。
+ * 説明文は badge-hints.ts に置く(fast-refresh のため component と分離)。
  */
 
 import type { ReactNode } from "react"
