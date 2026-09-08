@@ -2,9 +2,8 @@
  * ブランド設定 (吉田さん確定 2026-09-08)
  *
  * 契約企業ごとに ブランド表示名 / ロゴ / メインカラー を設定する。
- * V1 は運営本部(operator)が設定し、V2 で契約企業管理者に開放する。
- *
- * V1 の管理画面に必要な操作は 編集・プレビュー・反映・標準表示へ戻す の 4 つ。
+ * 設定するのは運営本部(operator)。必要な操作は
+ * 編集・プレビュー・反映・標準表示へ戻す の 4 つ。
  * 「反映」と「標準表示へ戻す」は店舗側の見え方が変わる操作なので確認を挟む。
  *
  * 🔴 設定は企業単位。配下店舗へ共通適用する(店舗ごとの上書きは持たない)。
@@ -45,7 +44,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useSession } from "@/contexts/session-context"
 import {
   STANDARD_BRANDING,
@@ -93,126 +91,78 @@ export default function BrandingPage() {
         description="契約企業ごとの表示名・ロゴ・メインカラーを設定します。設定は企業単位で、配下店舗へ共通適用されます。"
       />
 
-      <Tabs defaultValue="v1">
-        <TabsList>
-          <TabsTrigger value="v1">本部が設定 (V1)</TabsTrigger>
-          <TabsTrigger value="v2">契約企業管理者の画面 (V2参考)</TabsTrigger>
-        </TabsList>
+      <div className="flex flex-wrap items-center gap-3">
+        <Select value={companyId} onValueChange={setCompanyId}>
+          <SelectTrigger className="h-9 w-64">
+            <SelectValue placeholder="契約企業" />
+          </SelectTrigger>
+          <SelectContent>
+            {partners.map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <StateBadge entry={entry} />
+        {entry?.appliedAt ? (
+          <span className="text-xs text-muted-foreground">
+            最終反映 {formatDateTime(entry.appliedAt)}
+          </span>
+        ) : null}
+      </div>
 
-        <TabsContent value="v1" className="space-y-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <Select value={companyId} onValueChange={setCompanyId}>
-              <SelectTrigger className="h-9 w-64">
-                <SelectValue placeholder="契約企業" />
-              </SelectTrigger>
-              <SelectContent>
-                {partners.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <StateBadge entry={entry} />
-            {entry?.appliedAt ? (
-              <span className="text-xs text-muted-foreground">
-                最終反映 {formatDateTime(entry.appliedAt)}
-              </span>
-            ) : null}
-          </div>
-
-          {company ? (
-            <BrandingEditor
-              company={company}
-              entry={entry}
-              readOnly={!editable}
-              onChangeDraft={(draft) =>
-                update((prev) => ({ ...(prev ?? { companyId }), companyId, draft }))
+      {company ? (
+        <BrandingEditor
+          company={company}
+          entry={entry}
+          readOnly={!editable}
+          onChangeDraft={(draft) =>
+            update((prev) => ({ ...(prev ?? { companyId }), companyId, draft }))
+          }
+          onApply={() =>
+            update((prev) => {
+              const applied = previewBranding(prev)
+              return {
+                ...(prev ?? { companyId }),
+                companyId,
+                applied,
+                draft: undefined,
+                appliedAt: new Date().toISOString(),
               }
-              onApply={() =>
-                update((prev) => {
-                  const applied = previewBranding(prev)
-                  return {
-                    ...(prev ?? { companyId }),
+            })
+          }
+          onDiscard={() =>
+            update((prev) => (prev ? { ...prev, draft: undefined } : prev))
+          }
+          onResetToStandard={() =>
+            update((prev) =>
+              prev
+                ? {
                     companyId,
-                    applied,
+                    applied: undefined,
                     draft: undefined,
                     appliedAt: new Date().toISOString(),
                   }
-                })
-              }
-              onDiscard={() =>
-                update((prev) => (prev ? { ...prev, draft: undefined } : prev))
-              }
-              onResetToStandard={() =>
-                update((prev) =>
-                  prev
-                    ? {
-                        companyId,
-                        applied: undefined,
-                        draft: undefined,
-                        appliedAt: new Date().toISOString(),
-                      }
-                    : prev
-                )
-              }
-            />
-          ) : (
-            <Card>
-              <CardContent className="py-12 text-center text-sm text-muted-foreground">
-                契約企業がありません
-              </CardContent>
-            </Card>
-          )}
+                : prev
+            )
+          }
+        />
+      ) : (
+        <Card>
+          <CardContent className="py-12 text-center text-sm text-muted-foreground">
+            契約企業がありません
+          </CardContent>
+        </Card>
+      )}
 
-          <SpecNote>
-            V1 は運営本部が設定します。契約企業管理者・店舗管理者はこの画面を開けません。
-            設定は企業単位で保存し、配下店舗すべてに同じ表示が適用されます
-            (店舗ごとの上書きは持ちません)。B2C アプリは契約企業の設定を受けず、
-            常に orinnFACE ブランドで表示します。
-            反映と標準表示へ戻す操作は監査ログ(ブランド設定変更)に記録します。
-          </SpecNote>
-        </TabsContent>
-
-        <TabsContent value="v2" className="space-y-4">
-          {/*
-            V2 で company_admin に開放したときの画面。V1 では操作させないので
-            読み取り専用で出し、V1 との違いだけを説明する。
-          */}
-          <Card className="border-dashed">
-            <CardHeader>
-              <CardTitle className="text-base font-medium">
-                V2 参考: 契約企業管理者が自社分を設定する画面
-              </CardTitle>
-              <CardDescription>
-                V1 では使用しません。V2 で company_admin に開放したときの見え方です。
-                V1 との違いは「企業を選ばない(自社固定)」ことだけで、
-                操作(編集・プレビュー・反映・標準表示へ戻す)は同じです。
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <p className="text-sm">
-                対象企業:{" "}
-                <span className="font-medium">{partners[0]?.name ?? "—"}</span>
-                <span className="ml-2 text-xs text-muted-foreground">
-                  (自社に固定。他社は選択できません)
-                </span>
-              </p>
-              {partners[0] ? (
-                <BrandingEditor
-                  company={partners[0]}
-                  entry={entries.find((e) => e.companyId === partners[0].id)}
-                  readOnly
-                  onChangeDraft={() => {}}
-                  onApply={() => {}}
-                  onDiscard={() => {}}
-                  onResetToStandard={() => {}}
-                />
-              ) : null}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      <SpecNote>
+        設定するのは運営本部です。契約企業管理者・店舗管理者はこの画面を開けません。
+        設定は企業単位で保存し、配下店舗すべてに同じ表示が適用されます
+        (店舗ごとの上書きは持ちません)。B2C アプリは契約企業の設定を受けず、
+        常に orinnFACE ブランドで表示します。
+        反映と標準表示へ戻す操作は監査ログ(ブランド設定変更)に記録します。
+      </SpecNote>
     </div>
   )
 }
@@ -262,7 +212,7 @@ function BrandingEditor({
     onChangeDraft({ ...draft, ...patch })
   }
 
-  /** V1 は preview のみ。保存先は backend 実装時に差し替える。 */
+  /** この画面では preview のみ。保存先は backend 実装時に差し替える。 */
   function pickLogo(file?: File) {
     if (!file) return
     const reader = new FileReader()
