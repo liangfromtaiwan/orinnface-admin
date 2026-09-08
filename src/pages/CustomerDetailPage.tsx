@@ -163,19 +163,17 @@ export default function CustomerDetailPage() {
     <div className="space-y-4">
       <PageHeader
         title={customer.displayName}
+        /* 🔴 email は identity 側。Customer には持たせず dataSubjectId で join する (§5) */
+        titleAside={
+          identity ? (
+            identity.email
+          ) : (
+            <span className="text-xs">メールアドレスなし（未登録）</span>
+          )
+        }
         description={
           <span className="flex flex-wrap items-center gap-2">
             <span className="font-mono tabular-nums">{customer.displayCode}</span>
-            {/* 🔴 email は identity 側。Customer には持たせず dataSubjectId で join する (§5) */}
-            <span className="text-xs">
-              {identity ? (
-                identity.email
-              ) : (
-                <span className="text-muted-foreground">
-                  メールアドレスなし（未登録）
-                </span>
-              )}
-            </span>
             <CustomerBadges
               customer={customer}
               linked={!!activeLink && !!activeLink.consentedAt}

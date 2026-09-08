@@ -3,17 +3,28 @@ import type { ReactNode } from "react"
 
 export function PageHeader({
   title,
+  titleAside,
   description,
   actions,
 }: {
   title: string
+  /**
+   * 見出しの右に並べる補足(顧客のメールアドレスなど)。
+   * 見出しそのものではないので h1 の外に置く。
+   */
+  titleAside?: ReactNode
   description?: ReactNode
   actions?: ReactNode
 }) {
   return (
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div className="space-y-1">
-        <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+          <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
+          {titleAside ? (
+            <span className="text-sm text-muted-foreground">{titleAside}</span>
+          ) : null}
+        </div>
         {description ? (
           <div className="text-sm text-muted-foreground">{description}</div>
         ) : null}

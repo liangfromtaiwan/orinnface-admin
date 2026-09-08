@@ -88,18 +88,16 @@ export default function CustomerAnalysesPage() {
     <div className="space-y-4">
       <PageHeader
         title={`${customer.displayName} の分析履歴`}
+        titleAside={
+          identity ? (
+            identity.email
+          ) : (
+            <span className="text-xs">メールアドレスなし（未登録）</span>
+          )
+        }
         description={
           <span className="flex flex-wrap items-center gap-2">
             <span className="font-mono tabular-nums">{customer.displayCode}</span>
-            <span className="text-xs">
-              {identity ? (
-                identity.email
-              ) : (
-                <span className="text-muted-foreground">
-                  メールアドレスなし（未登録）
-                </span>
-              )}
-            </span>
             <CustomerBadges
               customer={customer}
               linked={!!activeLink && !!activeLink.consentedAt}
