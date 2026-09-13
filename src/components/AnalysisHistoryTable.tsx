@@ -5,8 +5,7 @@
  * 行の描き方を 1 箇所に置き、2 画面で列や表記がずれないようにしている。
  */
 
-import { BADGE_HINT } from "@/components/badge-hints"
-import { HintBadge } from "@/components/HintBadge"
+import { QualityBadge } from "@/components/QualityBadge"
 import { Button } from "@/components/ui/button"
 import {
   Table,
@@ -32,12 +31,10 @@ export const HISTORY_PREVIEW_LIMIT = 10
 
 export function AnalysisHistoryTable({
   sessions,
-  selectedId,
   onSelect,
 }: {
   sessions: AnalysisSession[]
-  /** 選択中の行を示す。全件ページでは使わない。 */
-  selectedId?: string
+  /** 行の「詳細」。顧客詳細・全件ページとも分析詳細ページへ送る。 */
   onSelect: (sessionId: string) => void
 }) {
   const storeName = useStoreName()
@@ -58,10 +55,7 @@ export function AnalysisHistoryTable({
         </TableHeader>
         <TableBody>
           {sessions.map((s) => (
-            <TableRow
-              key={s.id}
-              data-state={s.id === selectedId ? "selected" : undefined}
-            >
+            <TableRow key={s.id}>
               <TableCell className="tabular-nums">
                 {s.completedAt ? (
                   formatDate(s.completedAt)
@@ -83,13 +77,7 @@ export function AnalysisHistoryTable({
                 )}
               </TableCell>
               <TableCell>
-                {s.quality === "ok" ? (
-                  "—"
-                ) : s.quality === "warn" ? (
-                  <HintBadge hint={BADGE_HINT.quality_warn}>注意</HintBadge>
-                ) : (
-                  <HintBadge hint={BADGE_HINT.quality_insufficient}>不足</HintBadge>
-                )}
+                <QualityBadge quality={s.quality} />
               </TableCell>
               <TableCell className="text-xs text-muted-foreground">
                 {s.newCapture ? "新規撮影" : "再解析(適格外)"}

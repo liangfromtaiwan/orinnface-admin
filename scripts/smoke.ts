@@ -7,7 +7,7 @@
  */
 
 import { adminAccounts, analysisSessions, carePlaybacks, customers, storeDataLinks, stores, rawImageAssets, handoffTokens, recommendationRuns, NOW } from "@/lib/mock/seed"
-import { resolveScope, canViewCustomer, visibleCustomerIds, can, visibleScreens, canAccessScreen, viewScopeFor, companyAdminsOf } from "@/lib/domain/scope"
+import { resolveScope, canViewCustomer, visibleCustomerIds, can, visibleScreens, canAccessScreen, viewScopeFor, companyAdminsOf, canManageMembership, applyMembershipChange, hasMembership, membershipAuditLabel } from "@/lib/domain/scope"
 import { CARE_VIDEO_SLOTS, careEntitlement, assertCareSlotInvariant, canPlaySlot, careSlotFor } from "@/lib/domain/care-catalog"
 import { matchesCustomerFilter, CUSTOMER_FILTER_ORDER } from "@/lib/domain/plans"
 import { decideRawImageView, usesB2bDisplay } from "@/lib/domain/scope"
@@ -18,6 +18,7 @@ import { TIER_BADGE, PLAN_STEP, CONTRACT_STEP } from "@/components/tier-badge"
 import { resolveBranding, brandingCompanyIdFor, hasUnappliedDraft, isStandard, readableTextOn, validateBranding, STANDARD_BRANDING } from "@/lib/domain/branding"
 import { monthlyActiveUsers, totalAnalyses, continuingUsers, churnRiskUsers, improvementRate, careCompletionRate, isEligible, isChurnRisk, billableActiveUsers, makeBillingIdentityResolver } from "@/lib/domain/kpi"
 import { buildPeriod } from "@/lib/domain/periods"
+import { BADGE_HINT } from "@/components/badge-hints"
 
 let failed = 0
 function check(name: string, cond: boolean, detail = "") {
@@ -99,6 +100,106 @@ check("operator は生画像 token を発行できる", can(opScope, "raw_image.
 check("company_admin は care 承認できない", !can(resolveScope(adminAccounts[1], stores), "care.approve"))
 check("company_admin は差し替え申請できる", can(resolveScope(adminAccounts[1], stores), "care.request_replacement"))
 check("staff は監査検索できない", !can(staffScope, "audit.search"))
+
+console.log("── 分析の状態 (§13) ──")
+{
+  const byStatus = new Map<string, number>()
+  for (const s of analysisSessions) byStatus.set(s.status, (byStatus.get(s.status) ?? 0) + 1)
+  console.log(`  状態の分布: ${[...byStatus.entries()].map(([k, v]) => `${k}=${v}`).join(" ")}`)
+
+  // 状態 filter の選択肢が死なないよう、進行中も seed に居ること
+  check("撮影中の分析が存在する", (byStatus.get("capturing") ?? 0) > 0)
+  check("解析中の分析が存在する", (byStatus.get("analyzing") ?? 0) > 0)
+  check("失敗した分析が存在する", (byStatus.get("failed") ?? 0) > 0)
+
+  const inFlight = analysisSessions.filter(
+    s => s.status === "capturing" || s.status === "analyzing"
+  )
+  // 🔴 進行中が母数に混ざると KPI がずれる
+  check("進行中は completedAt を持たない", inFlight.every(s => !s.completedAt))
+  check("進行中は適格分析に入らない", inFlight.every(s => !isEligible(s)))
+  check("進行中は推奨 run を持たない",
+    inFlight.every(s => !recommendationRuns.some(r => r.analysisSessionId === s.id)))
+  check("進行中は生画像を持たない(解析前)",
+    inFlight.every(s => s.rawImageAssetIds.length === 0))
+  check("滞留を確認できる古い進行中が 1 件ある",
+    inFlight.some(s => Date.parse(NOW) - Date.parse(s.startedAt) > 3 * 3600_000))
+}
+
+console.log("── 品質バッジと適格分析の整合 ──")
+{
+  const base = analysisSessions.find(s => s.status === "completed" && s.newCapture)!
+  const warn = { ...base, quality: "warn" as const }
+  const insufficient = { ...base, quality: "insufficient" as const }
+
+  check("品質注意は適格分析に含める", isEligible(warn))
+  check("品質不足は適格分析から除外する", !isEligible(insufficient))
+
+  // 🔴 母数の扱いを説明する文面が実装とずれていないこと。
+  //    以前 quality_insufficient に「除外していません」と書いてあり、
+  //    isEligible() の実装と矛盾していた。
+  check("品質注意の説明が「含める」と言っている",
+    BADGE_HINT.quality_warn.lines.some(l => l.includes("含めています")))
+  check("品質不足の説明が「除外する」と言っている",
+    BADGE_HINT.quality_insufficient.lines.some(l => l.includes("除外")))
+  check("どちらの説明も閾値が未確定であることを書いている",
+    [BADGE_HINT.quality_warn, BADGE_HINT.quality_insufficient]
+      .every(h => h.lines.some(l => l.includes("未確定"))))
+}
+
+console.log("── membership の付与・剥奪 (§4.1, §4.2, §4.3) ──")
+{
+  const companyAdminScope = resolveScope(adminAccounts[1], stores)
+  const ownStore = companyAdminScope.storeIds[0]
+  const otherStore = stores.find(s => !companyAdminScope.storeIds.includes(s.id))!
+  const someCompany = stores.find(s => s.id === ownStore)!.companyId
+
+  check("本部は契約企業管理者を指名できる",
+    canManageMembership(opScope, { kind: "company", companyId: someCompany, role: "company_admin" }))
+  check("契約企業管理者は同格を増やせない (指名は本部の操作)",
+    !canManageMembership(companyAdminScope, { kind: "company", companyId: someCompany, role: "company_admin" }))
+  check("契約企業管理者は配下店舗のスタッフを付与できる",
+    canManageMembership(companyAdminScope, { kind: "store", storeId: ownStore, role: "store_staff" }))
+  check("契約企業管理者でも権限範囲外の店舗は触れない",
+    !canManageMembership(companyAdminScope, { kind: "store", storeId: otherStore.id, role: "store_admin" }))
+  check("店舗管理者は担当者を変更できない (§4.3 は「確認する」)",
+    !canManageMembership(adminScope, { kind: "store", storeId: adminScope.storeIds[0], role: "store_staff" }))
+  check("スタッフは担当者を変更できない",
+    !canManageMembership(staffScope, { kind: "store", storeId: staffScope.storeIds[0], role: "store_staff" }))
+
+  // 付与・剥奪が membership 行の足し引きとして働くこと
+  const target = { kind: "store", storeId: otherStore.id, role: "store_staff" } as const
+  const before = adminAccounts[3]
+  check("付与前は membership を持たない", !hasMembership(before, target))
+
+  const granted = applyMembershipChange(adminAccounts, before.id, target, "grant")
+  const afterGrant = granted.find(a => a.id === before.id)!
+  check("付与すると membership 行が増える", hasMembership(afterGrant, target))
+  check("付与は他のアカウントに影響しない",
+    granted.filter(a => a.id !== before.id).every((a, i) =>
+      a === adminAccounts.filter(x => x.id !== before.id)[i]))
+  check("付与しても seed は書き換わらない (immutable)", !hasMembership(adminAccounts[3], target))
+
+  const twice = applyMembershipChange(granted, before.id, target, "grant")
+  const afterTwice = twice.find(a => a.id === before.id)!
+  check("同じ membership を二重に付与しない",
+    afterTwice.storeMemberships.filter(m => m.storeId === target.storeId && m.role === target.role).length === 1)
+
+  const revoked = applyMembershipChange(granted, before.id, target, "revoke")
+  const afterRevoke = revoked.find(a => a.id === before.id)!
+  check("剥奪すると membership 行が消える", !hasMembership(afterRevoke, target))
+  check("剥奪しても元の担当店舗は残る (account を作り直さない)",
+    afterRevoke.storeMemberships.some(m => m.storeId === staffScope.storeIds[0]))
+
+  // 付与した結果が scope に効くこと
+  check("付与した店舗が scope に入る",
+    resolveScope(afterGrant, stores).storeIds.includes(otherStore.id))
+
+  check("監査ラベルに対象と操作が入る",
+    membershipAuditLabel(before.id, target, "grant").includes(otherStore.id) &&
+    membershipAuditLabel(before.id, target, "grant").includes("付与") &&
+    membershipAuditLabel(before.id, target, "revoke").includes("剥奪"))
+}
 
 console.log("── 姿勢分析は B2B のみ (§5.2) ──")
 {

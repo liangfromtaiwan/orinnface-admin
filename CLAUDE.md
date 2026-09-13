@@ -148,7 +148,10 @@
 
 - 顧客詳細は**最新 10 件**で打ち切り(`HISTORY_PREVIEW_LIMIT`)、
   `/customers/:id/analyses` で全件を見る。行の描画は `AnalysisHistoryTable` に集約。
-- 全件ページの「詳細」は `?session=` を付けて顧客詳細へ戻し、その回を開く。
+- 行の「詳細」は顧客詳細・全件ページとも `/customers/:id/analyses/:sessionId` へ送る。
+  🔴 以前は顧客詳細の一覧の下に指標カードを差し込んでいたが、既定で最新の表情分析が
+  選ばれているため「1 行目の詳細を押しても何も変わらない」ように見え、変化も画面外で
+  起きていた。1 回の分析 = 1 ページにして、選択 state と `?session=` は廃止した。
 
 ### 顧客一覧欄位
 顧客識別(最小必要,**analytics 不得混入 PII**)/ active 店舗與連携狀態 / 最新分析(`completed_at`、face・posture、品質、有無結果)/ 継続(初回・前回・最新適格分析日時、分析回數、離脱風險)/ care(推奨表示、再生開始、完了、直近実施、月次回數)/ 保持(retention policy、期限、通知・削除 state — 僅有權限者)
@@ -352,6 +355,14 @@ scripts/              仕様不変条件の smoke test
 - `scope.ts` の `viewScopeFor()` は role を持ち越す → 視点を絞っても権限が落ちない
 - `branding.ts` の `resolveBranding()` は `surface` 必須。B2C は企業設定を受けず、
   未反映の `draft` は店舗側に出ない(どちらも `npm run smoke` で検証)
+- 品質の表示は `QualityBadge` だけ。画面ごとに span を書かない。説明文は
+  `badge-hints.ts` に 1 箇所。🔴 **母数の扱い(warn は含める / insufficient は除外)を
+  書いた文面は `isEligible()` と必ず一致させる**。`npm run smoke` が突き合わせる
+- membership の付与・剥奪は `decideMembershipEdit()` を通す。画面側で role を
+  直接見て分岐しない。契約企業管理者の指名は本部のみ、店舗管理者は確認のみ
+  (§4.2「管理する」/ §4.3「確認する」の書き分けが根拠 → 質問 14)。
+  `applyMembershipChange()` は membership 行の足し引きだけを行い、
+  account・顧客・分析履歴・同意・保存期限は作り直さない (§2)
 
 ### 既知の環境依存
 - dark mode は未接線(`ThemeProvider` なし)。`.dark` の定義はあるが class は付かない。
@@ -405,6 +416,10 @@ npm run smoke:render  # 全ページを SSR して実行時エラーを検出
 9. 🟡 離脱リスクの 14 日を画面から設定できるようにするか(§6「日数は運用設定」)
 10. 🔴 B2C の数字の扱い(全社 MAU に B2C が混ざる / KPI を B2C・B2B で分けるか) ← **請求根拠に影響**
 11. 🟡 店舗では過去の分析を見せられるが本人のアプリ(Member 以下)では見られない差は意図か
+14. 🟡 店舗管理者は担当者を「変更」できるか「確認」だけか(§4.2「管理する」/ §4.3「確認する」)
+    ← 現実装は確認のみ。`decideMembershipEdit()` の 1 箇所で切り替えられる
+15. 🟡 「下書き」の分析を本部の分析一覧に出すか(§13)
+    ← 選択肢は残しモックは空。撮影中・解析中は滞留確認のため seed に入れてある
 
 暫定実装には `provisional` フラグや ⓘ の注意書きを必ず添え、
 **確定していない値が確定値として読まれないようにする**。

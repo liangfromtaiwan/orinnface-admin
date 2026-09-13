@@ -492,6 +492,66 @@ customers
     })
   })
 
+/**
+ * 進行中の分析 (§13 の draft / capturing / analyzing / completed / failed)
+ *
+ * 通常生成は completed と failed しか作らないため、分析画面の状態 filter で
+ * 「撮影中」「解析中」を選ぶと常に 0 件になり、選択肢が死んでいた。
+ * 実運用では店員が撮影を始めた時点で撮影中の session が存在し、
+ * 本部がその滞留を見つけるのがこの画面の役目なので、確認できる状態にしておく。
+ *
+ * 🔴 completedAt を持たないので、KPI・推奨 run・保持期限のどれにも入らない
+ *    (いずれも status === "completed" で絞っている)。母数を動かさない。
+ * 🔴 「下書き」は seed に入れない。session を作っただけで撮影前の状態であり、
+ *    本部の分析一覧に出すべきかが未確定なため (QUESTIONS #15)。
+ */
+const IN_FLIGHT_FIXTURES: {
+  suffix: string
+  status: Extract<AnalysisSession["status"], "capturing" | "analyzing">
+  /** 開始から何分経過しているか。滞留を見つけられることの確認用。 */
+  minutesAgo: number
+}[] = [
+  { suffix: "capturing", status: "capturing", minutesAgo: 2 },
+  { suffix: "analyzing", status: "analyzing", minutesAgo: 4 },
+  // 解析が明らかに滞留している 1 件。異常として拾えることの確認用
+  { suffix: "stuck", status: "analyzing", minutesAgo: 260 },
+]
+
+customers
+  .filter((c) => !c.unregistered && storeDataLinks.some(
+    (l) => l.dataSubjectId === c.dataSubjectId && l.status === "active"
+  ))
+  .slice(0, IN_FLIGHT_FIXTURES.length)
+  .forEach((c, k) => {
+    const { suffix, status, minutesAgo } = IN_FLIGHT_FIXTURES[k]
+    const link = storeDataLinks.find(
+      (l) => l.dataSubjectId === c.dataSubjectId && l.status === "active"
+    )
+    analysisSessions.push({
+      id: `as_${c.dataSubjectId}_${suffix}`,
+      dataSubjectId: c.dataSubjectId,
+      analysisType: "face",
+      status,
+      startedAt: new Date(new Date(NOW).getTime() - minutesAgo * 60_000).toISOString(),
+      // 進行中なので完了していない。画面は開始日時で並べる
+      completedAt: undefined,
+      storeId: link?.storeId,
+      newCapture: true,
+      quality: "ok",
+      // 解析前なので指標はまだ無い
+      metrics: [],
+      versions: {
+        modelVersion: MODEL_VERSION,
+        thresholdVersion: THRESHOLD_VERSION,
+        averageVersion: AVERAGE_VERSION,
+        recommendationBaselineVersion: ACTIVE_BASELINE_VERSION,
+        recommendationPolicyVersion: ACTIVE_POLICY_VERSION,
+        careCatalogVersion: CARE_CATALOG_VERSION,
+      },
+      rawImageAssetIds: [],
+    })
+  })
+
 /* ------------------------------------------------------------------ *
  * 生画像の保持期限 (§10)
  *

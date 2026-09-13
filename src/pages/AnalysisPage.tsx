@@ -9,6 +9,7 @@ import { useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 
 import { PageHeader, SpecNote } from "@/components/PageHeader"
+import { QualityBadge } from "@/components/QualityBadge"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import {
@@ -57,17 +58,55 @@ export default function AnalysisPage() {
     return ids
   }, [customers, storeDataLinks])
 
+  /** 種別 filter を当てる前の母数。種別の件数バッジはここから数える。 */
+  const visible = useMemo(
+    () =>
+      analysisSessions.filter(
+        (s) => s.analysisType !== "posture" || b2bSubjects.has(s.dataSubjectId)
+      ),
+    [analysisSessions, b2bSubjects]
+  )
+
+  const typeCounts = useMemo(() => {
+    const map = new Map<AnalysisType, number>()
+    for (const s of visible) map.set(s.analysisType, (map.get(s.analysisType) ?? 0) + 1)
+    return map
+  }, [visible])
+
+  /**
+   * 状態 filter を当てる前の母数。件数バッジもここから数えるので、
+   * 選択肢に出ている数と、選んだときの表示件数が必ず一致する。
+   */
+  const scoped = useMemo(
+    () => visible.filter((s) => (type === "all" ? true : s.analysisType === type)),
+    [visible, type]
+  )
+
+  /**
+   * 状態ごとの件数。0 件の選択肢も (0) と出して残す。
+   * 🔴 選択肢を消すと「撮影中が 1 件も無い」のか「そもそも見られない」のかが
+   *    区別できなくなる。滞留を探すのがこの画面の役目なので 0 も情報。
+   */
+  const statusCounts = useMemo(() => {
+    const map = new Map<AnalysisStatus, number>()
+    for (const s of scoped) map.set(s.status, (map.get(s.status) ?? 0) + 1)
+    return map
+  }, [scoped])
+
   const rows = useMemo(
     () =>
-      analysisSessions
-        .filter(
-          (s) => s.analysisType !== "posture" || b2bSubjects.has(s.dataSubjectId)
-        )
-        .filter((s) => (type === "all" ? true : s.analysisType === type))
+      scoped
         .filter((s) => (status === "all" ? true : s.status === status))
-        .sort((a, b) => (b.completedAt ?? "").localeCompare(a.completedAt ?? ""))
+        /*
+          進行中は completedAt を持たない。completedAt だけで並べると
+          空文字になって最下段へ沈み、いちばん気にしたい滞留が見えなくなる。
+          完了していないものは開始日時で並べる。
+        */
+        .sort((a, b) =>
+          (b.completedAt ?? b.startedAt).localeCompare(a.completedAt ?? a.startedAt)
+        )
         .slice(0, 200),
-    [analysisSessions, type, status, b2bSubjects]
+    [scoped, status]
   )
 
   const eligibleCount = rows.filter(isEligible).length
@@ -84,9 +123,13 @@ export default function AnalysisPage() {
                 <SelectValue placeholder="種別" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">すべての種別</SelectItem>
-                <SelectItem value="face">表情分析</SelectItem>
-                <SelectItem value="posture">姿勢分析</SelectItem>
+                <SelectItem value="all">すべての種別 ({visible.length})</SelectItem>
+                <SelectItem value="face">
+                  表情分析 ({typeCounts.get("face") ?? 0})
+                </SelectItem>
+                <SelectItem value="posture">
+                  姿勢分析 ({typeCounts.get("posture") ?? 0})
+                </SelectItem>
               </SelectContent>
             </Select>
             <Select
@@ -97,10 +140,10 @@ export default function AnalysisPage() {
                 <SelectValue placeholder="状態" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">すべての状態</SelectItem>
+                <SelectItem value="all">すべての状態 ({scoped.length})</SelectItem>
                 {(Object.keys(ANALYSIS_STATUS_LABEL) as AnalysisStatus[]).map((s) => (
                   <SelectItem key={s} value={s}>
-                    {ANALYSIS_STATUS_LABEL[s]}
+                    {ANALYSIS_STATUS_LABEL[s]} ({statusCounts.get(s) ?? 0})
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -169,13 +212,7 @@ export default function AnalysisPage() {
                     )}
                   </TableCell>
                   <TableCell>
-                    {s.quality === "ok" ? (
-                      "—"
-                    ) : (
-                      <span className="text-amber-700">
-                        {s.quality === "warn" ? "注意" : "不足"}
-                      </span>
-                    )}
+                    <QualityBadge quality={s.quality} />
                   </TableCell>
                   <TableCell className="text-sm">{storeName(s.storeId)}</TableCell>
                   <TableCell className="font-mono text-xs text-muted-foreground">

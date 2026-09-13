@@ -15,6 +15,7 @@ import { BADGE_HINT } from "@/components/badge-hints"
 import { HintBadge } from "@/components/HintBadge"
 import { InfoHint } from "@/components/InfoHint"
 import { PageHeader, SpecNote } from "@/components/PageHeader"
+import { QualityBadge } from "@/components/QualityBadge"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import {
@@ -278,18 +279,12 @@ export default function CustomersPage() {
                     {r.latestFace?.completedAt ? (
                       <>
                         {formatDate(r.latestFace.completedAt)}
-                        {r.latestFace.quality === "warn" ? (
-                          <HintBadge hint={BADGE_HINT.quality_warn} className="ml-1">
-                            品質注意
-                          </HintBadge>
-                        ) : r.latestFace.quality === "insufficient" ? (
-                          <HintBadge
-                            hint={BADGE_HINT.quality_insufficient}
+                        {r.latestFace.quality === "ok" ? null : (
+                          <QualityBadge
+                            quality={r.latestFace.quality}
                             className="ml-1"
-                          >
-                            品質不足
-                          </HintBadge>
-                        ) : null}
+                          />
+                        )}
                       </>
                     ) : (
                       <span className="text-muted-foreground">—</span>
