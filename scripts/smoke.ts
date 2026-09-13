@@ -8,7 +8,7 @@
 
 import { adminAccounts, analysisSessions, carePlaybacks, customers, storeDataLinks, stores, rawImageAssets, handoffTokens, recommendationRuns, NOW } from "@/lib/mock/seed"
 import { resolveScope, canViewCustomer, visibleCustomerIds, can, visibleScreens, canAccessScreen, viewScopeFor, companyAdminsOf, canManageMembership, applyMembershipChange, hasMembership, membershipAuditLabel } from "@/lib/domain/scope"
-import { CARE_VIDEO_SLOTS, careEntitlement, assertCareSlotInvariant, canPlaySlot, careSlotFor } from "@/lib/domain/care-catalog"
+import { CARE_VIDEO_SLOTS, careEntitlement, assertCareSlotInvariant, canPlaySlot, careSlotFor, decideCareReplacement, applyDirectReplacement, addCareAsset, assertKnownVideoCode } from "@/lib/domain/care-catalog"
 import { matchesCustomerFilter, CUSTOMER_FILTER_ORDER } from "@/lib/domain/plans"
 import { decideRawImageView, usesB2bDisplay } from "@/lib/domain/scope"
 import { compareWithAgeBand, metricsByGroup } from "@/lib/domain/metrics"
@@ -18,6 +18,7 @@ import { TIER_BADGE, PLAN_STEP, CONTRACT_STEP } from "@/components/tier-badge"
 import { resolveBranding, brandingCompanyIdFor, hasUnappliedDraft, isStandard, readableTextOn, validateBranding, STANDARD_BRANDING } from "@/lib/domain/branding"
 import { monthlyActiveUsers, totalAnalyses, continuingUsers, churnRiskUsers, improvementRate, careCompletionRate, isEligible, isChurnRisk, billableActiveUsers, makeBillingIdentityResolver } from "@/lib/domain/kpi"
 import { buildPeriod } from "@/lib/domain/periods"
+import { careAssets, careAssignments } from "@/lib/mock/seed"
 import { BADGE_HINT } from "@/components/badge-hints"
 
 let failed = 0
@@ -100,6 +101,65 @@ check("operator は生画像 token を発行できる", can(opScope, "raw_image.
 check("company_admin は care 承認できない", !can(resolveScope(adminAccounts[1], stores), "care.approve"))
 check("company_admin は差し替え申請できる", can(resolveScope(adminAccounts[1], stores), "care.request_replacement"))
 check("staff は監査検索できない", !can(staffScope, "audit.search"))
+
+console.log("── care 差し替えと動画追加 (§7.1, §12) ──")
+{
+  const companyAdminScope = resolveScope(adminAccounts[1], stores)
+  // 🔴 申請するのは契約企業・店舗。本部は承認する側なので申請を挟まない (§7.1)
+  check("本部は申請を挟まず直接差し替える",
+    decideCareReplacement(opScope).kind === "direct")
+  check("契約企業は申請する", decideCareReplacement(companyAdminScope).kind === "request")
+  check("スタッフは差し替えできない", decideCareReplacement(staffScope).kind === "denied")
+
+  const code = "care_1m_smile"
+  const before = careAssignments.filter(
+    a => a.videoCode === code && a.status === "active" && !a.scope.companyId && !a.scope.storeId
+  )
+  const alt = careAssets.find(a => a.videoCode === code && a.id !== before[0]?.careAssetId)!
+
+  const after = applyDirectReplacement(careAssignments, {
+    videoCode: code, careAssetId: alt.id, actorName: "吉田",
+    reason: "監修版へ切り替え", now: NOW, catalogVersion: "cc-2026.08.1",
+  })
+  const actives = after.filter(
+    a => a.videoCode === code && a.status === "active" && !a.scope.companyId && !a.scope.storeId
+  )
+  // §13「重複有効を publish 前に拒否」
+  check("差し替え後も本部デフォルトの active は 1 件", actives.length === 1,
+    `(${actives.length} 件)`)
+  check("差し替え後の asset が切り替わっている", actives[0].careAssetId === alt.id)
+  check("元の asset を履歴に残す", actives[0].previousCareAssetId === before[0]?.careAssetId)
+  check("前の assignment は消さず ended にする",
+    after.some(a => a.videoCode === code && a.status === "ended" &&
+      a.careAssetId === before[0]?.careAssetId))
+  check("video_code は変わらない", after.every(a => a.videoCode === code || a.videoCode !== code))
+  check("seed を書き換えない(immutable)",
+    careAssignments.filter(a => a.videoCode === code && a.status === "active" &&
+      !a.scope.companyId && !a.scope.storeId).length === before.length)
+
+  // 🔴 追加できるのは asset だけ。枠(slot)は増やせない (§7, §12)
+  const added = addCareAsset(careAssets, {
+    videoCode: code, title: "テスト動画", provider: "テスト",
+    durationSeconds: 60, rightsCleared: false, now: NOW,
+  })
+  check("動画を追加しても枠は 13 のまま", CARE_VIDEO_SLOTS.length === 13)
+  check("追加した動画は既存の枠に紐づく",
+    added.filter(a => a.videoCode === code).length ===
+      careAssets.filter(a => a.videoCode === code).length + 1)
+
+  let threw = false
+  try {
+    addCareAsset(careAssets, {
+      videoCode: "care_1m_new_pose", title: "x", provider: "x",
+      durationSeconds: 60, rightsCleared: false, now: NOW,
+    })
+  } catch { threw = true }
+  check("14 番目の枠に動画を足そうとすると落ちる", threw)
+
+  let threw2 = false
+  try { assertKnownVideoCode("is_starter") } catch { threw2 = true }
+  check("禁止されている枠名も弾く", threw2)
+}
 
 console.log("── 分析の状態 (§13) ──")
 {

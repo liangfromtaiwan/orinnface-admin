@@ -10,6 +10,7 @@
 import { useMemo } from "react"
 import { toast } from "sonner"
 
+import { CareAssetAddDialog, CareReplaceDialog } from "@/components/CareAssetDialog"
 import { InfoHint } from "@/components/InfoHint"
 import { PageHeader, SpecNote } from "@/components/PageHeader"
 import { Badge } from "@/components/ui/badge"
@@ -27,6 +28,7 @@ import { useSession } from "@/contexts/session-context"
 import {
   CARE_CATEGORY_LABEL,
   CARE_VIDEO_SLOTS,
+  decideCareReplacement,
   providerOf,
   resolveAssignment,
 } from "@/lib/domain/care-catalog"
@@ -37,16 +39,20 @@ import {
   PLAN_LABEL,
   type CareAssignment,
 } from "@/lib/domain/types"
-import { careAssets, careAssignments } from "@/lib/mock/seed"
 
 export default function CareVideosPage() {
-  const { scope } = useSession()
+  const { scope, careAssets, careAssignments } = useSession()
   const canApprove = can(scope, "care.approve")
-  const canRequest = can(scope, "care.request_replacement")
+  /*
+    🔴 申請するのは契約企業・店舗で、本部は承認する側 (§7.1)。
+       本部に申請を出させると自分で出して自分で承認する往復になるので、
+       本部には「差し替え」を、それ以外には「差し替え申請」を出す。
+  */
+  const replacement = decideCareReplacement(scope)
 
   const assetById = useMemo(
     () => new Map(careAssets.map((a) => [a.id, a])),
-    []
+    [careAssets]
   )
 
   /**
@@ -71,17 +77,33 @@ export default function CareVideosPage() {
       if (resolved) map.set(slot.videoCode, resolved)
     }
     return map
-  }, [now])
+  }, [now, careAssignments])
 
   const requests = careAssignments.filter(
     (a) => a.status !== "active" || a.scope.companyId || a.scope.storeId
   )
 
+  /** この枠に差し替え候補が何件あるか(追加した動画も含む)。 */
+  const assetCountByCode = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const a of careAssets) {
+      map.set(a.videoCode, (map.get(a.videoCode) ?? 0) + 1)
+    }
+    return map
+  }, [careAssets])
+
   return (
     <div className="space-y-4">
       <PageHeader
         title="care動画"
-        description={`固定 ${CARE_VIDEO_SLOTS.length} 枠。ユーザー向け機能名は「顔トレ」、内部総称は care video です。`}
+        description={`固定 ${CARE_VIDEO_SLOTS.length} 枠 / 登録済み動画 ${careAssets.length} 本。ユーザー向け機能名は「顔トレ」、内部総称は care video です。`}
+        actions={
+          replacement.kind === "denied" ? null : (
+            <CareAssetAddDialog>
+              <Button size="sm">動画を追加</Button>
+            </CareAssetAddDialog>
+          )
+        }
       />
 
       <Card className="overflow-hidden py-0">
@@ -137,18 +159,38 @@ export default function CareVideosPage() {
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={!canRequest}
-                        onClick={() =>
-                          toast.info("差し替え申請", {
-                            description: `${slot.videoCode} の care_asset_id のみを切り替えます。video_code / pose_code は変更しません。`,
-                          })
-                        }
-                      >
-                        差し替え申請
-                      </Button>
+                      {replacement.kind === "direct" ? (
+                        <CareReplaceDialog
+                          slot={slot}
+                          currentAssetId={assignment?.careAssetId}
+                        >
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={(assetCountByCode.get(slot.videoCode) ?? 0) < 2}
+                            title={
+                              (assetCountByCode.get(slot.videoCode) ?? 0) < 2
+                                ? "この枠には差し替え候補がありません。先に動画を追加してください"
+                                : undefined
+                            }
+                          >
+                            差し替え
+                          </Button>
+                        </CareReplaceDialog>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={replacement.kind === "denied"}
+                          onClick={() =>
+                            toast.info("差し替え申請", {
+                              description: `${slot.videoCode} の care_asset_id のみを切り替えます。video_code / pose_code は変更しません。`,
+                            })
+                          }
+                        >
+                          差し替え申請
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 )
@@ -250,8 +292,9 @@ export default function CareVideosPage() {
       </Card>
 
       <SpecNote>
-        契約企業・店舗は既存枠への差し替えを申請できますが、V1 で slot・pose・video_code を
-        新設することはできません。差し替え時は care_asset_id だけを切り替え、元 asset・
+        差し替えを申請するのは契約企業・店舗で、本部はそれを承認します。本部は自分が
+        承認者なので、申請を挟まず本部デフォルトを直接差し替えます。動画は既存の枠に
+        追加できますが、V1 で slot・pose・video_code を新設することはできません。差し替え時は care_asset_id だけを切り替え、元 asset・
         差し替え asset・申請者・承認者・理由・開始終了・取消・catalog version を履歴として
         保持します。会員権限は Guest = 推奨2件を lock 表示 + 登録 CTA(再生不可)、
         Member = 選定2動作の1分 care を JST 暦月10回、Premium = 1分・3分・リンパ・神経で

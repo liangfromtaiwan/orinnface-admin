@@ -11,12 +11,14 @@
 
 import type {
   CareAssignment,
+  CareVideoAsset,
   CareVideoSlot,
   CompanyId,
   PlanCode,
   PoseCode,
   StoreId,
 } from "./types"
+import { can, type Scope } from "./scope"
 
 const MEMBER_UP: PlanCode[] = ["member", "premium"]
 const PREMIUM_ONLY: PlanCode[] = ["premium"]
@@ -214,4 +216,125 @@ export function resolveAssignment(
 export function providerOf(assignment: CareAssignment | undefined): SlotProvider {
   if (!assignment) return "standard"
   return assignment.scope.storeId || assignment.scope.companyId ? "store" : "standard"
+}
+
+
+/* ------------------------------------------------------------------ *
+ * 差し替えの進め方 (§7.1)
+ *
+ * 🔴 申請するのは「契約企業・店舗」で、本部はそれを承認する側。
+ *    本部に「差し替え申請」を出させると、自分で出して自分で承認する
+ *    意味のない往復になる。本部は本部デフォルトを直接差し替える。
+ * 🔴 本部が直接差し替えても履歴は同じように残す。元 asset・実行者・理由・
+ *    開始終了・catalog version を保持する (§7.1)。
+ * ------------------------------------------------------------------ */
+
+export type CareReplacementDecision =
+  /** 本部。承認者自身なので申請を挟まず直接切り替える */
+  | { kind: "direct" }
+  /** 契約企業・店舗。本部承認が要る */
+  | { kind: "request" }
+  | { kind: "denied" }
+
+export function decideCareReplacement(scope: Scope): CareReplacementDecision {
+  if (can(scope, "care.approve")) return { kind: "direct" }
+  if (can(scope, "care.request_replacement")) return { kind: "request" }
+  return { kind: "denied" }
+}
+
+/**
+ * 本部デフォルトの asset を直接切り替える。
+ *
+ * 🔴 切り替えるのは care_asset_id だけ。video_code / pose_code は変えない (§7.1)。
+ * 🔴 同じ枠に有効な本部デフォルトを 2 件作らない (§13「重複有効を publish 前に拒否」)。
+ *    既存の active は ended にしてから新しい active を足す。
+ * 🔴 過去の assignment は消さずに残す。rollback と履歴表示の根拠になる。
+ */
+export function applyDirectReplacement(
+  assignments: CareAssignment[],
+  input: {
+    videoCode: string
+    careAssetId: string
+    actorName: string
+    reason: string
+    now: string
+    catalogVersion: string
+  }
+): CareAssignment[] {
+  assertKnownVideoCode(input.videoCode)
+
+  const isDefaultFor = (a: CareAssignment) =>
+    a.videoCode === input.videoCode && !a.scope.companyId && !a.scope.storeId
+
+  const current = assignments.find((a) => isDefaultFor(a) && a.status === "active")
+
+  const ended = assignments.map((a) =>
+    a === current ? { ...a, status: "ended" as const, endAt: input.now } : a
+  )
+
+  return [
+    ...ended,
+    {
+      id: `cas_direct_${input.videoCode}_${input.now}`,
+      videoCode: input.videoCode,
+      careAssetId: input.careAssetId,
+      // 本部デフォルトなので scope は空
+      scope: {},
+      status: "active",
+      requestedBy: input.actorName,
+      // 本部が自分で切り替えるので、実行者がそのまま承認者
+      approvedBy: input.actorName,
+      reason: input.reason,
+      startAt: input.now,
+      previousCareAssetId: current?.careAssetId,
+      catalogVersion: input.catalogVersion,
+      createdAt: input.now,
+    },
+  ]
+}
+
+/**
+ * 既存の枠に動画(asset)を追加する。
+ *
+ * 🔴 追加できるのは **asset だけ**。枠(slot)は増やせない。
+ *    V1 に POST /admin/v1/care-video-slots は存在せず、14 番目の枠も
+ *    「はじめて向け」枠も作らない (§7, §12)。
+ *    未知の video_code が来たら、その場で落として気付けるようにする。
+ * 🔴 権利確認は本部の棚卸し (§7.1, §16 P0)。本部以外が登録した asset は
+ *    必ず未確認から始まり、未確認のままでは公開できない。
+ */
+export function addCareAsset(
+  assets: CareVideoAsset[],
+  input: {
+    videoCode: string
+    title: string
+    provider: string
+    durationSeconds: number
+    rightsCleared: boolean
+    now: string
+  }
+): CareVideoAsset[] {
+  assertKnownVideoCode(input.videoCode)
+
+  return [
+    ...assets,
+    {
+      id: `ca_added_${input.videoCode}_${input.now}`,
+      videoCode: input.videoCode,
+      title: input.title,
+      provider: input.provider,
+      durationSeconds: input.durationSeconds,
+      rightsCleared: input.rightsCleared,
+      createdAt: input.now,
+    },
+  ]
+}
+
+/** 🔴 固定 13 枠の外に asset や assignment を作らせない (§7)。 */
+export function assertKnownVideoCode(videoCode: string): void {
+  if (!CARE_VIDEO_SLOTS.some((s) => s.videoCode === videoCode)) {
+    throw new Error(
+      `未知の video_code: ${videoCode}。V1 は固定 13 枠のみで、slot は新設できない (仕様書 v1.0 §7, §12)`
+    )
+  }
 }

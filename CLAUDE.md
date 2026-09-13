@@ -355,6 +355,11 @@ scripts/              仕様不変条件の smoke test
 - `scope.ts` の `viewScopeFor()` は role を持ち越す → 視点を絞っても権限が落ちない
 - `branding.ts` の `resolveBranding()` は `surface` 必須。B2C は企業設定を受けず、
   未反映の `draft` は店舗側に出ない(どちらも `npm run smoke` で検証)
+- care の差し替えは `decideCareReplacement()` を通す。🔴 **申請するのは契約企業・店舗で、
+  本部は承認する側 (§7.1)**。本部に申請を出させない。`applyDirectReplacement()` は
+  同じ枠に有効な本部デフォルトを 2 件作らない(§13「重複有効を publish 前に拒否」)
+- care の動画追加は `addCareAsset()`。🚫 **追加できるのは asset だけで枠は増やせない**。
+  `assertKnownVideoCode()` が 13 枠の外を弾く(§7, §12。V1 に POST care-video-slots は無い)
 - 品質の表示は `QualityBadge` だけ。画面ごとに span を書かない。説明文は
   `badge-hints.ts` に 1 箇所。🔴 **母数の扱い(warn は含める / insufficient は除外)を
   書いた文面は `isEligible()` と必ず一致させる**。`npm run smoke` が突き合わせる

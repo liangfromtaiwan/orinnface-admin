@@ -11,6 +11,8 @@ import type {
   AccountId,
   AdminAccount,
   AuditEvent,
+  CareAssignment,
+  CareVideoAsset,
   CompanyId,
   AnalysisSession,
   CarePlayback,
@@ -45,6 +47,32 @@ export type SessionValue = {
   ) => void
   /** 監査ログ。画面で起きた変更を seed の履歴に足して見せる。 */
   auditEvents: AuditEvent[]
+
+  /* ---- care 動画 (§7) ---- */
+
+  careAssets: CareVideoAsset[]
+  careAssignments: CareAssignment[]
+  /**
+   * 本部デフォルトの asset を直接差し替える (§7.1)。
+   * 🔴 呼ぶ前に `decideCareReplacement()` が direct を返すことを確認する。
+   *    契約企業・店舗は申請を経由するので、この関数を通さない。
+   */
+  replaceCareAsset: (
+    videoCode: string,
+    careAssetId: string,
+    reason: string
+  ) => void
+  /**
+   * 既存の枠に動画を追加する。
+   * 🔴 追加できるのは asset だけ。枠(slot)は V1 では増やせない (§7, §12)。
+   */
+  addCareVideoAsset: (input: {
+    videoCode: string
+    title: string
+    provider: string
+    durationSeconds: number
+    rightsCleared: boolean
+  }) => void
 
   /* ---- 視点(どの組織を見ているか) ---- */
 

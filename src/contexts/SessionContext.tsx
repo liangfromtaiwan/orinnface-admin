@@ -18,6 +18,10 @@ import {
   resolveBranding,
 } from "@/lib/domain/branding"
 import {
+  addCareAsset,
+  applyDirectReplacement,
+} from "@/lib/domain/care-catalog"
+import {
   applyMembershipChange,
   membershipAuditLabel,
   resolveScope,
@@ -29,6 +33,8 @@ import type {
   AccountId,
   AdminAccount,
   AuditEvent,
+  CareAssignment,
+  CareVideoAsset,
   CompanyId,
   DataSubjectId,
 } from "@/lib/domain/types"
@@ -36,6 +42,8 @@ import {
   adminAccounts as seededAccounts,
   analysisSessions,
   auditEvents as seededAuditEvents,
+  careAssets as seededCareAssets,
+  careAssignments as seededCareAssignments,
   carePlaybacks,
   companies,
   companyBrandings,
@@ -43,6 +51,9 @@ import {
   storeDataLinks,
   stores,
 } from "@/lib/mock/seed"
+
+/** 差し替え履歴に残す catalog version。seed と同じ値を使う。 */
+const CARE_CATALOG_VERSION = "cc-2026.08.1"
 
 /** 監査の request ID を seed と同じ桁で揃える。 */
 function pad6(n: number): string {
@@ -59,6 +70,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
    */
   const [accounts, setAccounts] = useState<AdminAccount[]>(seededAccounts)
   const [addedAuditEvents, setAddedAuditEvents] = useState<AuditEvent[]>([])
+  /** care の asset / assignment も画面から変わる。永続化は backend 側。 */
+  const [careAssets, setCareAssets] = useState<CareVideoAsset[]>(seededCareAssets)
+  const [careAssignments, setCareAssignments] = useState<CareAssignment[]>(
+    seededCareAssignments
+  )
 
   /** アカウントを変えたら視点は全社横断に戻す(他社の視点を持ち越さない)。 */
   function switchAccount(id: string) {
@@ -67,9 +83,76 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }
 
   /**
-   * 🔴 権限判定はここではしない(呼び出し側の `decideMembershipEdit()` が行う)。
-   *    この関数は state を動かし、§11 の変更監査を 1 件残すだけ。
+   * §11 の変更監査を 1 件足す。画面で起きた操作は必ずここを通す。
+   * 🔴 権限判定はどの操作でもここではしない。呼び出し側の decide... が行う。
    */
+  const pushAudit = useCallback(
+    (category: AuditEvent["category"], targetLabel: string, reason: string) => {
+      setAddedAuditEvents((prev) => {
+        const actor =
+          seededAccounts.find((a) => a.id === accountId) ?? seededAccounts[0]
+        return [
+          ...prev,
+          {
+            id: `au_live_${prev.length + 1}`,
+            category,
+            actorAccountId: actor.id,
+            actorName: actor.displayName,
+            targetLabel,
+            reason,
+            occurredAt: new Date().toISOString(),
+            requestId: `req_live_${pad6(prev.length + 1)}`,
+          },
+        ]
+      })
+    },
+    [accountId]
+  )
+
+  /**
+   * 本部デフォルトの差し替え (§7.1)。
+   * 🔴 権限判定は呼び出し側の decideCareReplacement()。ここは state と監査だけ。
+   */
+  const replaceCareAsset = useCallback(
+    (videoCode: string, careAssetId: string, reason: string) => {
+      const actor =
+        seededAccounts.find((a) => a.id === accountId) ?? seededAccounts[0]
+      const now = new Date().toISOString()
+      setCareAssignments((prev) =>
+        applyDirectReplacement(prev, {
+          videoCode,
+          careAssetId,
+          actorName: actor.displayName,
+          reason,
+          now,
+          catalogVersion: CARE_CATALOG_VERSION,
+        })
+      )
+      pushAudit("care_replacement", `${videoCode} の care_asset_id を切り替え`, reason)
+    },
+    [accountId, pushAudit]
+  )
+
+  const addCareVideoAsset = useCallback(
+    (input: {
+      videoCode: string
+      title: string
+      provider: string
+      durationSeconds: number
+      rightsCleared: boolean
+    }) => {
+      const now = new Date().toISOString()
+      setCareAssets((prev) => addCareAsset(prev, { ...input, now }))
+      pushAudit(
+        "care_replacement",
+        `${input.videoCode} に動画「${input.title}」(${input.provider})を追加`,
+        input.rightsCleared ? "権利確認済として登録" : "権利確認は未完了"
+      )
+    },
+    [pushAudit]
+  )
+
+  /** 🔴 可否は呼び出し側の decideMembershipEdit()。ここは state と監査だけ。 */
   const changeMembership = useCallback(
     (
       targetAccountId: AccountId,
@@ -80,23 +163,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setAccounts((prev) =>
         applyMembershipChange(prev, targetAccountId, target, action)
       )
-      setAddedAuditEvents((prev) => {
-        const actor =
-          seededAccounts.find((a) => a.id === accountId) ?? seededAccounts[0]
-        const event: AuditEvent = {
-          id: `au_live_${prev.length + 1}`,
-          category: "role_change",
-          actorAccountId: actor.id,
-          actorName: actor.displayName,
-          targetLabel: membershipAuditLabel(targetAccountId, target, action),
-          reason,
-          occurredAt: new Date().toISOString(),
-          requestId: `req_live_${pad6(prev.length + 1)}`,
-        }
-        return [...prev, event]
-      })
+      pushAudit(
+        "role_change",
+        membershipAuditLabel(targetAccountId, target, action),
+        reason
+      )
     },
-    [accountId]
+    [pushAudit]
   )
 
   const value = useMemo<SessionValue>(() => {
@@ -152,6 +225,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       switchAccount,
       changeMembership,
       auditEvents: [...seededAuditEvents, ...addedAuditEvents],
+      careAssets,
+      careAssignments,
+      replaceCareAsset,
+      addCareVideoAsset,
       viewCompanyId: effectiveCompanyId,
       viewableCompanies,
       setViewCompany: setViewCompanyId,
@@ -169,7 +246,17 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       storeDataLinks,
       totalCustomerCount: customers.length,
     }
-  }, [accountId, viewCompanyId, accounts, addedAuditEvents, changeMembership])
+  }, [
+    accountId,
+    viewCompanyId,
+    accounts,
+    addedAuditEvents,
+    changeMembership,
+    careAssets,
+    careAssignments,
+    replaceCareAsset,
+    addCareVideoAsset,
+  ])
 
   return (
     <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
