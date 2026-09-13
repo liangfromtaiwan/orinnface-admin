@@ -30,10 +30,9 @@ import { useSession } from "@/contexts/session-context"
 import { formatDateTime } from "@/lib/domain/kpi"
 import { can } from "@/lib/domain/scope"
 import { AUDIT_CATEGORY_LABEL, type AuditCategory } from "@/lib/domain/types"
-import { auditEvents } from "@/lib/mock/seed"
 
 export default function AuditPage() {
-  const { scope } = useSession()
+  const { scope, auditEvents } = useSession()
   const [category, setCategory] = useState<AuditCategory | "all">("all")
   const [query, setQuery] = useState("")
 
@@ -53,7 +52,7 @@ export default function AuditPage() {
           )
         })
         .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt)),
-    [category, query]
+    [auditEvents, category, query]
   )
 
   if (!allowed) {

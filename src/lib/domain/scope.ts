@@ -9,6 +9,7 @@
  */
 
 import type {
+  AccountId,
   AdminAccount,
   CompanyId,
   DataSubjectId,
@@ -99,6 +100,149 @@ export function companyAdminsOf(
       (m) => m.companyId === companyId && m.role === "company_admin"
     )
   )
+}
+
+/* ------------------------------------------------------------------ *
+ * membership の付与・剥奪 (§2, §4.1, §4.2, §4.3)
+ *
+ * 🔴 誰が誰に何を付与できるかは role ごとに違う。仕様書の動詞が根拠:
+ *    - §4.1 本部の「会社・店舗」の内容に **membership** が挙がっている
+ *      → 契約企業管理者を指名できるのは本部だけ。
+ *    - §4.2 契約企業管理者は「店舗管理者・店舗スタッフの membership を
+ *      権限範囲内で**管理する**」→ 配下店舗の 2 ロールだけ付与・剥奪できる。
+ *    - §4.3 店舗管理者は担当店舗の「スタッフ...を**確認する**」
+ *      → 確認であって管理ではないので、付与・剥奪はできない。
+ *      ⚠️ §4.2 が「管理する」、§4.3 が「確認する」と書き分けられている点を
+ *         根拠にした読み。QUESTIONS_FOR_YOSHIDA.md #12 で確認中。
+ * 🔴 role を単一列として書き換えるのではなく、membership 行の追加・削除として扱う。
+ *    account・顧客・分析履歴・同意・保存期限は作り直さない (§2)。
+ * ------------------------------------------------------------------ */
+
+export type MembershipTarget =
+  | { kind: "company"; companyId: CompanyId; role: "company_admin" }
+  | { kind: "store"; storeId: StoreId; role: "store_admin" | "store_staff" }
+
+export type MembershipEditDecision =
+  | { kind: "allowed" }
+  | {
+      kind: "denied"
+      reason:
+        /** 契約企業管理者の指名は本部だけ (§4.1) */
+        | "operator_only"
+        /** 自分のスコープ外の店舗 */
+        | "out_of_scope"
+        /** §4.3 は「確認する」。店舗管理者・スタッフは付与・剥奪できない */
+        | "read_only_role"
+    }
+
+export function decideMembershipEdit(
+  scope: Scope,
+  target: MembershipTarget
+): MembershipEditDecision {
+  if (scope.crossCompany) return { kind: "allowed" }
+
+  if (scope.role !== "company_admin") {
+    return { kind: "denied", reason: "read_only_role" }
+  }
+  // 契約企業管理者は自分と同格を増やせない。指名は本部の操作 (§4.1)
+  if (target.kind === "company") {
+    return { kind: "denied", reason: "operator_only" }
+  }
+  if (!scope.storeIds.includes(target.storeId)) {
+    return { kind: "denied", reason: "out_of_scope" }
+  }
+  return { kind: "allowed" }
+}
+
+export function canManageMembership(
+  scope: Scope,
+  target: MembershipTarget
+): boolean {
+  return decideMembershipEdit(scope, target).kind === "allowed"
+}
+
+export const MEMBERSHIP_DENIED_LABEL: Record<
+  Extract<MembershipEditDecision, { kind: "denied" }>["reason"],
+  string
+> = {
+  operator_only: "契約企業管理者を指名できるのは本部だけです",
+  out_of_scope: "権限範囲外の店舗です",
+  read_only_role: "このロールは担当者を確認できますが変更はできません",
+}
+
+/** その account が target の membership を既に持っているか。 */
+export function hasMembership(
+  account: AdminAccount,
+  target: MembershipTarget
+): boolean {
+  if (target.kind === "company") {
+    return account.organizationMemberships.some(
+      (m) => m.companyId === target.companyId && m.role === target.role
+    )
+  }
+  return account.storeMemberships.some(
+    (m) => m.storeId === target.storeId && m.role === target.role
+  )
+}
+
+/**
+ * 監査に残す対象表記 (§11 変更監査)。
+ * seed の既存 role_change イベントと同じ書式に揃える。
+ */
+export function membershipAuditLabel(
+  accountId: AccountId,
+  target: MembershipTarget,
+  action: "grant" | "revoke"
+): string {
+  const scopeLabel =
+    target.kind === "company" ? target.companyId : target.storeId
+  const verb = action === "grant" ? "付与" : "剥奪"
+  return `${accountId} に ${scopeLabel} の ${target.role} を${verb}`
+}
+
+/**
+ * membership 行を足す・消す。account 本体は作り直さない (§2)。
+ *
+ * 🔴 role を単一列として上書きしないので、同じ account が
+ *    別の会社・別の店舗の membership を同時に持てる。
+ * 🔴 既に持っている membership を grant しても重複行を作らない。
+ */
+export function applyMembershipChange(
+  accounts: AdminAccount[],
+  accountId: AccountId,
+  target: MembershipTarget,
+  action: "grant" | "revoke"
+): AdminAccount[] {
+  return accounts.map((a) => {
+    if (a.id !== accountId) return a
+
+    if (target.kind === "company") {
+      const rest = a.organizationMemberships.filter(
+        (m) => !(m.companyId === target.companyId && m.role === target.role)
+      )
+      return {
+        ...a,
+        organizationMemberships:
+          action === "revoke"
+            ? rest
+            : [
+                ...rest,
+                { accountId, companyId: target.companyId, role: target.role },
+              ],
+      }
+    }
+
+    const rest = a.storeMemberships.filter(
+      (m) => !(m.storeId === target.storeId && m.role === target.role)
+    )
+    return {
+      ...a,
+      storeMemberships:
+        action === "revoke"
+          ? rest
+          : [...rest, { accountId, storeId: target.storeId, role: target.role }],
+    }
+  })
 }
 
 /**

@@ -6,9 +6,11 @@
 import { createContext, useContext } from "react"
 
 import type { Branding } from "@/lib/domain/branding"
-import type { Scope } from "@/lib/domain/scope"
+import type { MembershipTarget, Scope } from "@/lib/domain/scope"
 import type {
+  AccountId,
   AdminAccount,
+  AuditEvent,
   CompanyId,
   AnalysisSession,
   CarePlayback,
@@ -25,6 +27,24 @@ export type SessionValue = {
   /** デモ用のアカウント切替。実認証実装時に削除する。 */
   accounts: AdminAccount[]
   switchAccount: (accountId: string) => void
+
+  /* ---- membership の付与・剥奪 (§4.1, §4.2) ---- */
+
+  /**
+   * membership 行を足す・消す。
+   * 🔴 呼ぶ前に `decideMembershipEdit()` で可否を判定すること。
+   *    ここは画面の state を動かすだけで、権限判定はしない。
+   *    実 API 接続時は POST/DELETE のたびに Backend 側でも再検証する。
+   * 🔴 変更は §11 の変更監査に role_change として必ず 1 件残る。
+   */
+  changeMembership: (
+    accountId: AccountId,
+    target: MembershipTarget,
+    action: "grant" | "revoke",
+    reason: string
+  ) => void
+  /** 監査ログ。画面で起きた変更を seed の履歴に足して見せる。 */
+  auditEvents: AuditEvent[]
 
   /* ---- 視点(どの組織を見ているか) ---- */
 

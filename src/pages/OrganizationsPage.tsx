@@ -20,7 +20,9 @@ import { useMemo, useState } from "react"
 import { ChevronRightIcon, SearchIcon } from "lucide-react"
 
 import { ContractBadge } from "@/components/ContractBadge"
+import { MembershipDialog } from "@/components/MembershipDialog"
 import { PageHeader, SpecNote } from "@/components/PageHeader"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import {
   Collapsible,
@@ -45,19 +47,20 @@ import {
 } from "@/components/ui/table"
 import { useSession } from "@/contexts/session-context"
 import { isEligible } from "@/lib/domain/kpi"
-import { companyAdminsOf } from "@/lib/domain/scope"
+import { canManageMembership, companyAdminsOf } from "@/lib/domain/scope"
 import {
   CONTRACT_STATUS_LABEL,
   ROLE_LABEL,
   type Company,
   type Store,
 } from "@/lib/domain/types"
-import { adminAccounts } from "@/lib/mock/seed"
+
 
 type StoreStats = { customers: number; eligible: number }
 
 export default function OrganizationsPage() {
-  const { companies, stores, storeDataLinks, analysisSessions } = useSession()
+  const { accounts, companies, scope, stores, storeDataLinks, analysisSessions } =
+    useSession()
   const [query, setQuery] = useState("")
   const [contract, setContract] = useState<Company["contractStatus"] | "all">("all")
   const [manuallyOpen, setManuallyOpen] = useState<Set<string>>(new Set())
@@ -80,7 +83,7 @@ export default function OrganizationsPage() {
 
   const membershipsByStore = useMemo(() => {
     const map = new Map<string, { name: string; role: string }[]>()
-    for (const a of adminAccounts) {
+    for (const a of accounts) {
       for (const m of a.storeMemberships) {
         const list = map.get(m.storeId) ?? []
         list.push({ name: a.displayName, role: ROLE_LABEL[m.role] })
@@ -88,7 +91,7 @@ export default function OrganizationsPage() {
       }
     }
     return map
-  }, [])
+  }, [accounts])
 
   /** filter の選択肢に件数を出すため、検索前の母数で数える。 */
   const partnerCompanies = useMemo(
@@ -186,7 +189,7 @@ export default function OrganizationsPage() {
       {rows.map(({ company, own, hitStores }) => {
         // 検索中は一致した会社を自動で開く。それ以外は既定で閉じる。
         const open = q ? true : manuallyOpen.has(company.id)
-        const companyAdmins = companyAdminsOf(adminAccounts, company.id)
+        const companyAdmins = companyAdminsOf(accounts, company.id)
         const totals = own.reduce(
           (acc, s) => {
             const st = statsByStore.get(s.id)
@@ -250,14 +253,41 @@ export default function OrganizationsPage() {
 
               <CollapsibleContent>
                 <div className="border-t">
-                  {/* 契約はあるのに管理者が居ない状態は運用上の問題なので黙って隠さない */}
-                  <p className="pt-3 pr-4 pl-11 text-xs text-muted-foreground">
+                  {/*
+                    契約はあるのに管理者が居ない状態は運用上の問題なので黙って隠さない。
+                    未設定を出すだけだと直す先が無いので、同じ行から指名できるようにする。
+                  */}
+                  <p className="flex flex-wrap items-center gap-x-1.5 pt-3 pr-4 pl-11 text-xs text-muted-foreground">
                     契約企業管理者:{" "}
                     {companyAdmins.length > 0 ? (
                       companyAdmins.map((a) => a.displayName).join(" / ")
                     ) : (
                       <span className="text-amber-700">未設定</span>
                     )}
+                    {canManageMembership(scope, {
+                      kind: "company",
+                      companyId: company.id,
+                      role: "company_admin",
+                    }) ? (
+                      <MembershipDialog
+                        targetLabel={company.name}
+                        targets={[
+                          {
+                            kind: "company",
+                            companyId: company.id,
+                            role: "company_admin",
+                          },
+                        ]}
+                      >
+                        <Button
+                          variant="link"
+                          size="sm"
+                          className="h-auto p-0 text-xs"
+                        >
+                          {companyAdmins.length > 0 ? "変更" : "指名する"}
+                        </Button>
+                      </MembershipDialog>
+                    ) : null}
                   </p>
 
                   {listed.length === 0 ? (
@@ -292,10 +322,42 @@ export default function OrganizationsPage() {
                                 <TableCell className="text-right tabular-nums">
                                   {st?.eligible ?? 0}
                                 </TableCell>
-                                <TableCell className="truncate text-xs text-muted-foreground">
-                                  {members.length === 0
-                                    ? "—"
-                                    : members.map((m) => `${m.name}(${m.role})`).join(" / ")}
+                                <TableCell className="text-xs text-muted-foreground">
+                                  <MembershipDialog
+                                    targetLabel={store.name}
+                                    targets={[
+                                      {
+                                        kind: "store",
+                                        storeId: store.id,
+                                        role: "store_admin",
+                                      },
+                                      {
+                                        kind: "store",
+                                        storeId: store.id,
+                                        role: "store_staff",
+                                      },
+                                    ]}
+                                  >
+                                    <button
+                                      type="button"
+                                      className="block w-full truncate text-left underline-offset-2 hover:underline"
+                                      title={
+                                        members.length === 0
+                                          ? "担当者を割り当てる"
+                                          : members
+                                              .map((m) => `${m.name}(${m.role})`)
+                                              .join(" / ")
+                                      }
+                                    >
+                                      {members.length === 0 ? (
+                                        <span className="text-amber-700">未割当</span>
+                                      ) : (
+                                        members
+                                          .map((m) => `${m.name}(${m.role})`)
+                                          .join(" / ")
+                                      )}
+                                    </button>
+                                  </MembershipDialog>
                                 </TableCell>
                               </TableRow>
                             )

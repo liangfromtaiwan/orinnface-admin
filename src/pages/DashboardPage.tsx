@@ -63,7 +63,6 @@ import {
 } from "@/lib/domain/plans"
 import { companyAdminsOf } from "@/lib/domain/scope"
 import {
-  adminAccounts,
   careAssets,
   handoffTokens,
   NOW,
@@ -100,6 +99,7 @@ const trendConfig = {
 
 export default function DashboardPage() {
   const {
+    accounts,
     scope,
     customers,
     analysisSessions,
@@ -108,8 +108,7 @@ export default function DashboardPage() {
     stores,
     viewCompanyId,
     viewableCompanies,
-  } =
-    useSession()
+  } = useSession()
 
   const [segment, setSegment] = useState<DashboardSegment>("all")
   const [periodKey, setPeriodKey] = useState<PeriodKey>("last_3m")
@@ -133,7 +132,7 @@ export default function DashboardPage() {
   */
   const viewingCompany = viewableCompanies.find((c) => c.id === viewCompanyId)
   const companyAdmins = viewCompanyId
-    ? companyAdminsOf(adminAccounts, viewCompanyId)
+    ? companyAdminsOf(accounts, viewCompanyId)
     : []
   const showSegmentTabs = scope.crossCompany && !viewCompanyId
   const effectiveSegment: DashboardSegment = showSegmentTabs ? segment : "all"

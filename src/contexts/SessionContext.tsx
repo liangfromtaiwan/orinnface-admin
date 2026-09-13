@@ -10,18 +10,32 @@
  *    Backend 側で membership / store_data_link / 対象 scope を再検証すること。
  */
 
-import { useMemo, useState, type ReactNode } from "react"
+import { useCallback, useMemo, useState, type ReactNode } from "react"
 
 import { SessionContext, type SessionValue } from "@/contexts/session-context"
 import {
   brandingCompanyIdFor,
   resolveBranding,
 } from "@/lib/domain/branding"
-import { resolveScope, viewScopeFor, visibleCustomerIds } from "@/lib/domain/scope"
-import type { CompanyId, DataSubjectId } from "@/lib/domain/types"
 import {
-  adminAccounts,
+  applyMembershipChange,
+  membershipAuditLabel,
+  resolveScope,
+  viewScopeFor,
+  visibleCustomerIds,
+  type MembershipTarget,
+} from "@/lib/domain/scope"
+import type {
+  AccountId,
+  AdminAccount,
+  AuditEvent,
+  CompanyId,
+  DataSubjectId,
+} from "@/lib/domain/types"
+import {
+  adminAccounts as seededAccounts,
   analysisSessions,
+  auditEvents as seededAuditEvents,
   carePlaybacks,
   companies,
   companyBrandings,
@@ -30,10 +44,21 @@ import {
   stores,
 } from "@/lib/mock/seed"
 
+/** 監査の request ID を seed と同じ桁で揃える。 */
+function pad6(n: number): string {
+  return String(n).padStart(6, "0")
+}
+
 export function SessionProvider({ children }: { children: ReactNode }) {
-  const [accountId, setAccountId] = useState(adminAccounts[0].id)
+  const [accountId, setAccountId] = useState(seededAccounts[0].id)
   /** 本部が 1 社に絞って見ているときだけ入る。undefined = 全社横断。 */
   const [viewCompanyId, setViewCompanyId] = useState<CompanyId | undefined>()
+  /**
+   * membership は画面から変わるので state で持つ。
+   * 🔴 backend 未接続のため変更はリロードで消える。永続化はエンジニア側。
+   */
+  const [accounts, setAccounts] = useState<AdminAccount[]>(seededAccounts)
+  const [addedAuditEvents, setAddedAuditEvents] = useState<AuditEvent[]>([])
 
   /** アカウントを変えたら視点は全社横断に戻す(他社の視点を持ち越さない)。 */
   function switchAccount(id: string) {
@@ -41,9 +66,41 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setViewCompanyId(undefined)
   }
 
+  /**
+   * 🔴 権限判定はここではしない(呼び出し側の `decideMembershipEdit()` が行う)。
+   *    この関数は state を動かし、§11 の変更監査を 1 件残すだけ。
+   */
+  const changeMembership = useCallback(
+    (
+      targetAccountId: AccountId,
+      target: MembershipTarget,
+      action: "grant" | "revoke",
+      reason: string
+    ) => {
+      setAccounts((prev) =>
+        applyMembershipChange(prev, targetAccountId, target, action)
+      )
+      setAddedAuditEvents((prev) => {
+        const actor =
+          seededAccounts.find((a) => a.id === accountId) ?? seededAccounts[0]
+        const event: AuditEvent = {
+          id: `au_live_${prev.length + 1}`,
+          category: "role_change",
+          actorAccountId: actor.id,
+          actorName: actor.displayName,
+          targetLabel: membershipAuditLabel(targetAccountId, target, action),
+          reason,
+          occurredAt: new Date().toISOString(),
+          requestId: `req_live_${pad6(prev.length + 1)}`,
+        }
+        return [...prev, event]
+      })
+    },
+    [accountId]
+  )
+
   const value = useMemo<SessionValue>(() => {
-    const account =
-      adminAccounts.find((a) => a.id === accountId) ?? adminAccounts[0]
+    const account = accounts.find((a) => a.id === accountId) ?? accounts[0]
     const scope = resolveScope(account, stores)
 
     const scopedStores = scope.crossCompany
@@ -91,8 +148,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return {
       account,
       scope,
-      accounts: adminAccounts,
+      accounts,
       switchAccount,
+      changeMembership,
+      auditEvents: [...seededAuditEvents, ...addedAuditEvents],
       viewCompanyId: effectiveCompanyId,
       viewableCompanies,
       setViewCompany: setViewCompanyId,
@@ -110,7 +169,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       storeDataLinks,
       totalCustomerCount: customers.length,
     }
-  }, [accountId, viewCompanyId])
+  }, [accountId, viewCompanyId, accounts, addedAuditEvents, changeMembership])
 
   return (
     <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
