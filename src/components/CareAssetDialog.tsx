@@ -9,9 +9,13 @@
  * 🔴 切り替わるのは care_asset_id だけ。video_code / pose_code は不変 (§7.1)。
  * 🔴 §13「重い操作は確認画面と理由入力」に従い理由を必須にする。
  *    理由は §11 の変更監査 (care_replacement) に残る。
+ * 🔴 動画ファイルは**選ぶだけで、この画面は保存しない**。保存先・変換・配信は
+ *    backend の担当 (この repo はフロントエンドのみ)。尺だけはブラウザで
+ *    実ファイルから読めるので、手入力させずにそこから埋める。
  */
 
-import { useState } from "react"
+import { useRef, useState } from "react"
+import { UploadIcon } from "lucide-react"
 import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
@@ -143,12 +147,55 @@ export function CareAssetAddDialog({ children }: { children: React.ReactNode }) 
   const [provider, setProvider] = useState("")
   const [duration, setDuration] = useState("")
   const [rightsCleared, setRightsCleared] = useState(false)
+  const [file, setFile] = useState<File | null>(null)
+  /** ファイルから尺を読めなかった場合だけ手入力に戻す。 */
+  const [durationFromFile, setDurationFromFile] = useState(false)
+  const fileInput = useRef<HTMLInputElement>(null)
+
+  /**
+   * 選ばれた動画の尺をブラウザで読む。
+   * 🔴 読むだけでアップロードはしない。object URL は読み終わったら必ず解放する。
+   */
+  function pickFile(picked: File) {
+    setFile(picked)
+    // タイトル未入力ならファイル名から埋める(拡張子は落とす)
+    if (!title.trim()) setTitle(picked.name.replace(/\.[^.]+$/, ""))
+
+    const url = URL.createObjectURL(picked)
+    const probe = document.createElement("video")
+    probe.preload = "metadata"
+    probe.onloadedmetadata = () => {
+      if (Number.isFinite(probe.duration) && probe.duration > 0) {
+        setDuration(String(Math.round(probe.duration)))
+        setDurationFromFile(true)
+      }
+      URL.revokeObjectURL(url)
+    }
+    probe.onerror = () => {
+      // 尺が読めない形式もあるので、その場合は手入力に任せる
+      setDurationFromFile(false)
+      URL.revokeObjectURL(url)
+    }
+    probe.src = url
+  }
+
+  function reset() {
+    setVideoCode("")
+    setTitle("")
+    setProvider("")
+    setDuration("")
+    setRightsCleared(false)
+    setFile(null)
+    setDurationFromFile(false)
+    if (fileInput.current) fileInput.current.value = ""
+  }
 
   /** 🔴 権利確認は本部の棚卸し (§7.1, §16 P0)。本部以外は未確認から始める。 */
   const canClearRights = can(scope, "care.approve")
 
   const seconds = Number(duration)
   const valid =
+    file !== null &&
     videoCode !== "" &&
     title.trim() !== "" &&
     provider.trim() !== "" &&
@@ -162,6 +209,7 @@ export function CareAssetAddDialog({ children }: { children: React.ReactNode }) 
       provider: provider.trim(),
       durationSeconds: seconds,
       rightsCleared: canClearRights && rightsCleared,
+      sourceFileName: file?.name,
     })
     toast.success(`「${title.trim()}」を追加しました`, {
       description:
@@ -170,11 +218,7 @@ export function CareAssetAddDialog({ children }: { children: React.ReactNode }) 
           : "権利確認が未完了のため、このままでは公開できません。",
     })
     setOpen(false)
-    setVideoCode("")
-    setTitle("")
-    setProvider("")
-    setDuration("")
-    setRightsCleared(false)
+    reset()
   }
 
   return (
@@ -206,6 +250,48 @@ export function CareAssetAddDialog({ children }: { children: React.ReactNode }) 
             </Select>
           </div>
 
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">動画ファイル</label>
+            <input
+              ref={fileInput}
+              type="file"
+              accept="video/*"
+              className="hidden"
+              onChange={(e) => {
+                const picked = e.target.files?.[0]
+                if (picked) pickFile(picked)
+              }}
+            />
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-9"
+                onClick={() => fileInput.current?.click()}
+              >
+                <UploadIcon />
+                {file ? "選び直す" : "動画を選ぶ"}
+              </Button>
+              {file ? (
+                <span className="min-w-0 flex-1 truncate text-xs">
+                  {file.name}
+                  <span className="ml-1.5 text-muted-foreground">
+                    {formatFileSize(file.size)}
+                  </span>
+                </span>
+              ) : (
+                <span className="text-xs text-muted-foreground">
+                  未選択
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              この画面はファイルを読むだけで保存はしません。保存・変換・配信は
+              backend 側で実装します。
+            </p>
+          </div>
+
           <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -218,13 +304,27 @@ export function CareAssetAddDialog({ children }: { children: React.ReactNode }) 
             placeholder="提供者(制作・監修)"
             className="h-9"
           />
-          <Input
-            value={duration}
-            onChange={(e) => setDuration(e.target.value)}
-            inputMode="numeric"
-            placeholder="尺(秒)"
-            className="h-9"
-          />
+          <div className="space-y-1">
+            <Input
+              value={duration}
+              onChange={(e) => {
+                setDuration(e.target.value)
+                setDurationFromFile(false)
+              }}
+              inputMode="numeric"
+              placeholder="尺(秒)"
+              className="h-9"
+            />
+            {durationFromFile ? (
+              <p className="text-xs text-muted-foreground">
+                選んだファイルから読み取りました。直接書き換えることもできます。
+              </p>
+            ) : file ? (
+              <p className="text-xs text-muted-foreground">
+                このファイルからは尺を読み取れませんでした。秒数を入力してください。
+              </p>
+            ) : null}
+          </div>
 
           {canClearRights ? (
             <label className="flex items-start gap-2 text-xs">
@@ -257,7 +357,14 @@ export function CareAssetAddDialog({ children }: { children: React.ReactNode }) 
           </p>
 
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setOpen(false)
+                reset()
+              }}
+            >
               やめる
             </Button>
             <Button size="sm" disabled={!valid} onClick={submit}>
@@ -268,4 +375,10 @@ export function CareAssetAddDialog({ children }: { children: React.ReactNode }) 
       </DialogContent>
     </Dialog>
   )
+}
+
+/** ファイルサイズを人が読める形にする。 */
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }

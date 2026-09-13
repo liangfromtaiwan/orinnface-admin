@@ -311,6 +311,8 @@ export function addCareAsset(
     provider: string
     durationSeconds: number
     rightsCleared: boolean
+    /** アップロードされた動画ファイル名。保存は backend の担当。 */
+    sourceFileName?: string
     now: string
   }
 ): CareVideoAsset[] {
@@ -326,6 +328,7 @@ export function addCareAsset(
       durationSeconds: input.durationSeconds,
       rightsCleared: input.rightsCleared,
       createdAt: input.now,
+      sourceFileName: input.sourceFileName,
     },
   ]
 }

@@ -361,6 +361,13 @@ export type CareVideoAsset = {
   /** 権利確認の状態。未確認の asset は公開できない。 */
   rightsCleared: boolean
   createdAt: string
+  /**
+   * アップロードされた動画ファイル名。
+   * 🔴 管理画面は選ばれたファイルを読むだけで、保存はしない。
+   *    実際の保存先(署名 URL の発行・配信・変換)は backend の担当。
+   *    ここは「backend が何を受け取るか」を示すための項目。
+   */
+  sourceFileName?: string
 }
 
 export type CareAssignmentStatus =

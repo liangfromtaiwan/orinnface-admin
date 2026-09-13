@@ -97,7 +97,7 @@
 - [x] `RequireScreen` ✅ 2026-08-30 - スコープ外画面へのアクセスを弾く(表示制御)
 - [x] `PremiumSignalCard` ✅ 2026-08-30 - 営収シグナル(Premium 新規/離脱/会員数)。本部のみ
 - [x] `PlanCompositionCard` ✅ 2026-08-30 - プラン構成比ドーナツ。本部のみ
-- [x] `CareReplaceDialog` / `CareAssetAddDialog` ✅ 2026-09-13 - 本部デフォルトの直接差し替えと、既存枠への動画追加(§7.1)。枠は増やせない
+- [x] `CareReplaceDialog` / `CareAssetAddDialog` ✅ 2026-09-13 - 本部デフォルトの直接差し替えと、既存枠への動画追加(§7.1)。動画ファイルは選ぶだけ(保存は backend)・尺は自動読み取り。枠は増やせない
 - [x] `QualityBadge` ✅ 2026-09-13 - 品質バッジ。分析・顧客一覧・分析履歴の 3 画面で共通。hover で閾値未確定の注記を出す
 - [x] `SessionDetail` ✅ 2026-09-13 - 1 回の分析の全結果(指標カード・推奨 run・技術情報)。分析詳細ページで使う
 - [x] `MembershipDialog` ✅ 2026-09-13 - membership の付与・剥奪(§4.1/§4.2)。理由入力必須・監査に role_change を残す

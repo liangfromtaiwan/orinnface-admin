@@ -72,6 +72,7 @@ export type SessionValue = {
     provider: string
     durationSeconds: number
     rightsCleared: boolean
+    sourceFileName?: string
   }) => void
 
   /* ---- 視点(どの組織を見ているか) ---- */

@@ -140,6 +140,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       provider: string
       durationSeconds: number
       rightsCleared: boolean
+      sourceFileName?: string
     }) => {
       const now = new Date().toISOString()
       setCareAssets((prev) => addCareAsset(prev, { ...input, now }))
