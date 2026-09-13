@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip"
 import { NotificationsProvider } from "@/contexts/NotificationsContext"
 import { SessionProvider } from "@/contexts/SessionContext"
 import AccountPage from "./pages/AccountPage"
+import AnalysisDetailPage from "./pages/AnalysisDetailPage"
 import AnalysisPage from "./pages/AnalysisPage"
 import AuditPage from "./pages/AuditPage"
 import BrandingPage from "./pages/BrandingPage"
@@ -73,6 +74,14 @@ export default function App() {
                 element={
                   <RequireScreen screen="customers">
                     <CustomerAnalysesPage />
+                  </RequireScreen>
+                }
+              />
+              <Route
+                path="/customers/:dataSubjectId/analyses/:sessionId"
+                element={
+                  <RequireScreen screen="customers">
+                    <AnalysisDetailPage />
                   </RequireScreen>
                 }
               />

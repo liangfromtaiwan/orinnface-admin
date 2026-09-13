@@ -9,7 +9,7 @@
  */
 
 import { useMemo, useState } from "react"
-import { Link, useParams, useSearchParams } from "react-router-dom"
+import { Link, useNavigate, useParams } from "react-router-dom"
 import { AlertTriangleIcon, ArrowLeftIcon, ChevronRightIcon } from "lucide-react"
 
 import { AnalysisHistoryTable, HISTORY_PREVIEW_LIMIT } from "@/components/AnalysisHistoryTable"
@@ -55,7 +55,6 @@ import {
   getMetric,
   isImproved,
   METRIC_GROUP_LABEL,
-  metricsByGroup,
 } from "@/lib/domain/metrics"
 import {
   CONSENT_KIND_LABEL,
@@ -63,10 +62,11 @@ import {
   RETENTION_STATE_LABEL,
   type AnalysisSession,
 } from "@/lib/domain/types"
-import { ageBandAverages, careAssets, consentEvents, customerIdentities, rawImageAssets, recommendationRuns } from "@/lib/mock/seed"
+import { ageBandAverages, careAssets, consentEvents, customerIdentities, rawImageAssets } from "@/lib/mock/seed"
 
 export default function CustomerDetailPage() {
   const { dataSubjectId = "" } = useParams()
+  const navigate = useNavigate()
   const { scope, customers, analysisSessions, carePlaybacks, storeDataLinks } =
     useSession()
   const storeName = useStoreName()
@@ -96,24 +96,10 @@ export default function CustomerDetailPage() {
   const faceSessions = sessions.filter((s) => s.analysisType === "face" && isEligible(s))
   const postureSessions = sessions.filter((s) => s.analysisType === "posture" && isEligible(s))
 
-  /*
-    全件ページから ?session= で戻ってきたときはその回を開く。
-    存在しない id が来た場合は既定(最新の適格な表情分析)に落とす。
-  */
-  const [searchParams] = useSearchParams()
-  const requestedId = searchParams.get("session")
-  const [selectedId, setSelectedId] = useState<string>(
-    () =>
-      (requestedId && sessions.some((s) => s.id === requestedId)
-        ? requestedId
-        : faceSessions[0]?.id) ?? ""
-  )
   /** 詳細画面に出すのは最新の一部だけ。残りは全件ページで見る。 */
   const visibleSessions = sessions.slice(0, HISTORY_PREVIEW_LIMIT)
   /** 同年代比較は最新の適格な表情分析を基準に出す。 */
   const latestFaceForAgeBand = faceSessions.find((s) => s.metrics.length > 0)
-  const selected =
-    sessions.find((s) => s.id === selectedId) ?? faceSessions[0] ?? sessions[0]
 
   const identity = customerIdentities.find(
     (x) => x.dataSubjectId === dataSubjectId
@@ -209,8 +195,9 @@ export default function CustomerDetailPage() {
           <Card className="py-0">
             <AnalysisHistoryTable
               sessions={visibleSessions}
-              selectedId={selected?.id}
-              onSelect={setSelectedId}
+              onSelect={(id) =>
+                navigate(`/customers/${dataSubjectId}/analyses/${id}`)
+              }
             />
             {/* 履歴は使うほど増えるので、詳細では打ち切って全件ページへ送る */}
             {sessions.length > HISTORY_PREVIEW_LIMIT ? (
@@ -238,8 +225,6 @@ export default function CustomerDetailPage() {
               いずれの場合もデータ自体は削除されていません。
             </SpecNote>
           ) : null}
-
-          {selected ? <SessionDetail session={selected} /> : null}
         </TabsContent>
 
         {/* ---------------- 比較 ---------------- */}
@@ -500,150 +485,6 @@ export default function CustomerDetailPage() {
   )
 }
 
-/* ------------------------------------------------------------------ *
- * 分析詳細
- * ------------------------------------------------------------------ */
-
-function SessionDetail({ session }: { session: AnalysisSession }) {
-  const [showTech, setShowTech] = useState(false)
-  const run = recommendationRuns.find((r) => r.analysisSessionId === session.id)
-
-  if (session.status === "failed") {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">分析詳細</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm">
-          <p className="flex items-center gap-1.5 text-destructive">
-            <AlertTriangleIcon className="size-4" />
-            {session.failureReason ?? "分析に失敗しました"}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {session.retryable
-              ? "再実行が可能です。過去 run や asset は上書きせず、新しい run として実行します。"
-              : "再実行できません。"}
-          </p>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  const isFace = session.analysisType === "face"
-
-  return (
-    <div className="space-y-4">
-      {isFace ? (
-        <>
-          <MetricGroupCard
-            session={session}
-            group="neutral"
-            note="無表情の6指標です。5動作の可動域とは別の指標なので混ぜて表示しません。同年代との比較は「比較」タブにあります。"
-          />
-          <div className="grid gap-4 lg:grid-cols-3">
-            <MetricGroupCard session={session} group="range" />
-            <MetricGroupCard session={session} group="asymmetry" />
-            <MetricGroupCard session={session} group="compensation" />
-          </div>
-        </>
-      ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <MetricGroupCard
-            session={session}
-            group="posture_front"
-            note="姿勢は B2B のみ。B2C には出しません。"
-          />
-          <MetricGroupCard
-            session={session}
-            group="posture_side"
-            note="左右の側面結果は別表示です。V1 のユーザー画面は左側面を使います。"
-          />
-        </div>
-      )}
-
-      {run ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-1.5 text-base">
-              推奨(Backend 正式 run)
-              <InfoHint label="推奨の出どころ">
-                正式推奨は Backend だけが生成します。AI /v1/recommend の値は
-                本番画面・保存に使いません。
-              </InfoHint>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-0 pb-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>rank</TableHead>
-                  <TableHead>pose</TableHead>
-                  <TableHead className="text-right">score</TableHead>
-                  <TableHead className="text-right">baseline</TableHead>
-                  <TableHead className="text-right">deviation</TableHead>
-                  <TableHead>video_code</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {run.items.map((item) => (
-                  <TableRow key={item.rank}>
-                    <TableCell className="tabular-nums">{item.rank}</TableCell>
-                    <TableCell className="font-mono text-xs">{item.poseCode}</TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {item.score.toFixed(2)}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {item.baseline.toFixed(2)}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {item.deviation.toFixed(2)}
-                    </TableCell>
-                    <TableCell className="font-mono text-xs">{item.videoCode}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            <div className="border-t px-4 py-2 text-xs text-muted-foreground">
-              baseline_version {run.baselineVersion} / policy_version {run.policyVersion}
-            </div>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      <Card>
-        <CardHeader className="flex-row items-center justify-between">
-          <CardTitle className="text-base">技術情報</CardTitle>
-          <Button variant="ghost" size="sm" onClick={() => setShowTech((v) => !v)}>
-            {showTech ? "閉じる" : "開く"}
-          </Button>
-        </CardHeader>
-        {showTech ? (
-          <CardContent>
-            <dl className="grid gap-x-6 gap-y-1 text-xs sm:grid-cols-2">
-              {Object.entries(session.versions).map(([k, v]) =>
-                v ? (
-                  <div key={k} className="flex justify-between gap-2 border-b py-1">
-                    <dt className="text-muted-foreground">{k}</dt>
-                    <dd className="font-mono">{v}</dd>
-                  </div>
-                ) : null
-              )}
-              <div className="flex justify-between gap-2 border-b py-1">
-                <dt className="text-muted-foreground">quality</dt>
-                <dd className="font-mono">{session.quality}</dd>
-              </div>
-              <div className="flex justify-between gap-2 border-b py-1">
-                <dt className="text-muted-foreground">newCapture</dt>
-                <dd className="font-mono">{String(session.newCapture)}</dd>
-              </div>
-            </dl>
-          </CardContent>
-        ) : null}
-      </Card>
-    </div>
-  )
-}
-
 /**
  * 無表情(neutral)6 指標。§5.2 の neutral 欄は「無表情6指標・同年代比較・average_version」。
  *
@@ -737,53 +578,6 @@ function NeutralCard({
           平均値は AI分析 v1.6 が正本です。metric_direction は §16 P1 の未決事項のため、
           「平均より良い」の判定は暫定です。
         </p>
-      </CardContent>
-    </Card>
-  )
-}
-
-function MetricGroupCard({
-  session,
-  group,
-  note,
-}: {
-  session: AnalysisSession
-  group: Parameters<typeof metricsByGroup>[0]
-  note?: string
-}) {
-  const defs = metricsByGroup(group)
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-1.5 text-base">
-          {METRIC_GROUP_LABEL[group]}
-          {note ? (
-            <InfoHint label={`${METRIC_GROUP_LABEL[group]} について`}>{note}</InfoHint>
-          ) : null}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-1">
-        {defs.map((def) => {
-          const m = session.metrics.find((x) => x.metricCode === def.code)
-          return (
-            <div
-              key={def.code}
-              className="flex items-baseline justify-between gap-2 border-b py-1 text-sm last:border-0"
-            >
-              <span className="text-muted-foreground">{def.label}</span>
-              <span className="tabular-nums">
-                {m ? (
-                  <>
-                    {m.value.toFixed(2)}
-                    <span className="ml-1 text-xs text-muted-foreground">{def.unit}</span>
-                  </>
-                ) : (
-                  <span className="text-muted-foreground">欠測</span>
-                )}
-              </span>
-            </div>
-          )
-        })}
       </CardContent>
     </Card>
   )

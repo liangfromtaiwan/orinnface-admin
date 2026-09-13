@@ -7,6 +7,7 @@ import DashboardPage from "@/pages/DashboardPage"
 import CustomersPage from "@/pages/CustomersPage"
 import CustomerAnalysesPage from "@/pages/CustomerAnalysesPage"
 import CustomerDetailPage from "@/pages/CustomerDetailPage"
+import AnalysisDetailPage from "@/pages/AnalysisDetailPage"
 import AnalysisPage from "@/pages/AnalysisPage"
 import OrganizationsPage from "@/pages/OrganizationsPage"
 import CareVideosPage from "@/pages/CareVideosPage"
@@ -16,6 +17,7 @@ import AuditPage from "@/pages/AuditPage"
 import BrandingPage from "@/pages/BrandingPage"
 import AccountPage from "@/pages/AccountPage"
 import LoginPage from "@/pages/LoginPage"
+import { analysisSessions } from "@/lib/mock/seed"
 
 const pages: [string, string, React.ComponentType][] = [
   ["ダッシュボード", "/dashboard", DashboardPage],
@@ -24,6 +26,8 @@ const pages: [string, string, React.ComponentType][] = [
   // 履歴が上限を超える顧客。打ち切り表示と全件への導線を通す
   ["顧客詳細(履歴12件)", "/customers/ds_036", CustomerDetailPage],
   ["分析履歴(全件)", "/customers/ds_036/analyses", CustomerAnalysesPage],
+  // 分析詳細は独立ページ。顧客詳細の一覧からここへ送る
+  ["分析詳細", "/customers/ds_036/analyses/__SESSION__", AnalysisDetailPage],
   ["分析", "/analysis", AnalysisPage],
   ["会社・店舗", "/organizations", OrganizationsPage],
   ["care動画", "/care", CareVideosPage],
@@ -35,8 +39,13 @@ const pages: [string, string, React.ComponentType][] = [
   ["ログイン", "/login", LoginPage],
 ]
 
+/** 分析詳細は実在する session を指さないと fallback が描かれるだけで検証にならない。 */
+const sampleSessionId = analysisSessions.find((s) => s.dataSubjectId === "ds_036")?.id
+if (!sampleSessionId) throw new Error("ds_036 の分析が seed に無い")
+
 let failed = 0
-for (const [name, path, Page] of pages) {
+for (const [name, rawPath, Page] of pages) {
+  const path = rawPath.replace("__SESSION__", sampleSessionId)
   try {
     const html = renderToString(
       <SessionProvider>
@@ -45,6 +54,7 @@ for (const [name, path, Page] of pages) {
           <MemoryRouter initialEntries={[path]}>
             <Routes>
               {/* param が入らないと fallback が描かれるだけで検証にならない */}
+              <Route path="/customers/:dataSubjectId/analyses/:sessionId" element={<Page />} />
               <Route path="/customers/:dataSubjectId/analyses" element={<Page />} />
               <Route path="/customers/:dataSubjectId" element={<Page />} />
               <Route path="*" element={<Page />} />

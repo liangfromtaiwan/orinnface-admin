@@ -5,8 +5,8 @@
  * 全件はこの画面で見る。行の描き方は AnalysisHistoryTable に寄せてあるので
  * 2 画面で列や表記がずれない。
  *
- * 行の「詳細」は ?session= を付けて顧客詳細へ戻す。
- * 指標の中身は顧客詳細側で描くため、ここでは一覧だけを持つ。
+ * 行の「詳細」は分析詳細ページへ送る。指標の中身はそちらで描くため、
+ * ここでは一覧だけを持つ。
  */
 
 import { useMemo, useState } from "react"
@@ -142,7 +142,7 @@ export default function CustomerAnalysesPage() {
           <AnalysisHistoryTable
             sessions={shown}
             onSelect={(id) =>
-              navigate(`/customers/${dataSubjectId}?session=${id}`)
+              navigate(`/customers/${dataSubjectId}/analyses/${id}`)
             }
           />
         )}
