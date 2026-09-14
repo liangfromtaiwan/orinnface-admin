@@ -23,6 +23,7 @@ import {
   careAssetIdFor,
 } from "@/lib/domain/care-catalog"
 import {
+  applyInvite,
   applyMembershipChange,
   membershipAuditLabel,
   resolveScope,
@@ -155,6 +156,39 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     [pushAudit]
   )
 
+  /**
+   * 🔴 可否は呼び出し側の decideInvite()。ここは state と監査だけ。
+   *    招待メールの送信は backend の担当なので、この画面は state を進めるだけ。
+   */
+  const inviteMember = useCallback(
+    (
+      email: string,
+      displayName: string,
+      target: MembershipTarget,
+      reason: string
+    ) => {
+      const now = new Date().toISOString()
+      /*
+        🔴 監査ラベルに新規アカウントの id が要るので、更新関数の中ではなく
+           ここで結果を組み立てる。更新関数は StrictMode で 2 回呼ばれるため、
+           中で副作用を起こすと監査が二重になる。
+      */
+      const result = applyInvite(accounts, { email, displayName, target, now })
+      setAccounts(result.accounts)
+      // 🔴 招待も担当の変更なので §11 の変更監査に残す
+      pushAudit(
+        "role_change",
+        membershipAuditLabel(
+          result.accountId,
+          target,
+          result.isNew ? "invite" : "grant"
+        ),
+        reason
+      )
+    },
+    [accounts, pushAudit]
+  )
+
   /** 🔴 可否は呼び出し側の decideMembershipEdit()。ここは state と監査だけ。 */
   const changeMembership = useCallback(
     (
@@ -227,6 +261,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       accounts,
       switchAccount,
       changeMembership,
+      inviteMember,
       auditEvents: [...seededAuditEvents, ...addedAuditEvents],
       careAssets,
       careAssignments,
@@ -255,6 +290,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     accounts,
     addedAuditEvents,
     changeMembership,
+    inviteMember,
     careAssets,
     careAssignments,
     replaceCareAsset,

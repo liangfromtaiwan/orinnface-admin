@@ -86,7 +86,11 @@ export default function OrganizationsPage() {
     for (const a of accounts) {
       for (const m of a.storeMemberships) {
         const list = map.get(m.storeId) ?? []
-        list.push({ name: a.displayName, role: ROLE_LABEL[m.role] })
+        // 招待中(パスワード未設定)はまだ使えないので一覧でも分かるようにする
+        list.push({
+          name: a.status === "invited" ? `${a.displayName}(招待中)` : a.displayName,
+          role: ROLE_LABEL[m.role],
+        })
         map.set(m.storeId, list)
       }
     }
@@ -260,7 +264,13 @@ export default function OrganizationsPage() {
                   <p className="flex flex-wrap items-center gap-x-1.5 pt-3 pr-4 pl-11 text-xs text-muted-foreground">
                     契約企業管理者:{" "}
                     {companyAdmins.length > 0 ? (
-                      companyAdmins.map((a) => a.displayName).join(" / ")
+                      companyAdmins
+                        .map((a) =>
+                          a.status === "invited"
+                            ? `${a.displayName}(招待中)`
+                            : a.displayName
+                        )
+                        .join(" / ")
                     ) : (
                       <span className="text-amber-700">未設定</span>
                     )}

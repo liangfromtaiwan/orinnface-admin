@@ -148,6 +148,7 @@ export const adminAccounts: AdminAccount[] = [
     displayName: "吉田",
     email: "operator@fitwayworld.example.jp",
     twoFactorEnabled: true,
+    status: "active",
     organizationMemberships: [
       { accountId: "acc_operator", companyId: "co_hq", role: "operator" },
     ],
@@ -158,6 +159,7 @@ export const adminAccounts: AdminAccount[] = [
     displayName: "高橋 由紀",
     email: "admin@lumiere.example.jp",
     twoFactorEnabled: true,
+    status: "active",
     organizationMemberships: [
       { accountId: "acc_company_admin", companyId: "co_lumiere", role: "company_admin" },
     ],
@@ -168,6 +170,7 @@ export const adminAccounts: AdminAccount[] = [
     displayName: "佐々木 亮",
     email: "ginza@lumiere.example.jp",
     twoFactorEnabled: true,
+    status: "active",
     organizationMemberships: [],
     // 複数店舗担当でも企業全体へは拡張しない (§4.3)
     storeMemberships: [
@@ -180,6 +183,7 @@ export const adminAccounts: AdminAccount[] = [
     displayName: "中島 美咲",
     email: "staff.ginza@lumiere.example.jp",
     twoFactorEnabled: false, // 任意・初期 OFF (§2)
+    status: "active",
     organizationMemberships: [],
     storeMemberships: [
       { accountId: "acc_store_staff", storeId: "st_lumiere_ginza", role: "store_staff" },

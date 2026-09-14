@@ -8,8 +8,10 @@
  * 🔴 §13「重い操作は確認画面と理由入力を設ける」に従い、理由を必須にする。
  *    入力した理由はそのまま §11 の変更監査 (role_change) に残る。
  *
- * V1 では account そのものの作成は手動運用なので、この画面からは
- * 既存アカウントの担当を付け外しするだけで、新規アカウントは作らない。
+ * 🔴 アカウントは**招待制** (吉田さん確定 2026-09-14)。
+ *    メールアドレスを入れて招待し、本人がパスワードを設定してはじめて使える。
+ *    招待した側はパスワードに触らない。招待メールの送信は backend の担当。
+ *    招待できる範囲は付与できる範囲と同じ (`decideInvite()`)。
  */
 
 import { useMemo, useState } from "react"
@@ -35,8 +37,10 @@ import {
 } from "@/components/ui/select"
 import { useSession } from "@/contexts/session-context"
 import {
+  decideInvite,
   decideMembershipEdit,
   hasMembership,
+  INVITE_DENIED_LABEL,
   MEMBERSHIP_DENIED_LABEL,
   type MembershipTarget,
 } from "@/lib/domain/scope"
@@ -60,8 +64,9 @@ export function MembershipDialog({ targets, targetLabel, children }: Props) {
         <DialogHeader>
           <DialogTitle>{targetLabel} の担当者</DialogTitle>
           <DialogDescription>
-            既存アカウントの担当を付け外しします。アカウントの新規作成は V1 では
-            手動運用です。変更は監査に残ります。
+            既存アカウントの担当を付け外しするか、メールアドレスで招待します。
+            招待された方がパスワードを設定するまで、そのアカウントは使えません。
+            変更は監査に残ります。
           </DialogDescription>
         </DialogHeader>
 
@@ -79,9 +84,13 @@ export function MembershipDialog({ targets, targetLabel, children }: Props) {
 }
 
 function RoleSection({ target }: { target: MembershipTarget }) {
-  const { accounts, account, scope, changeMembership } = useSession()
+  const { accounts, account, scope, changeMembership, inviteMember } = useSession()
   const [pick, setPick] = useState<string>("")
   const [reason, setReason] = useState("")
+  /* 招待 */
+  const [inviting, setInviting] = useState(false)
+  const [email, setEmail] = useState("")
+  const [displayName, setDisplayName] = useState("")
 
   const decision = decideMembershipEdit(scope, target)
   const editable = decision.kind === "allowed"
@@ -94,6 +103,20 @@ function RoleSection({ target }: { target: MembershipTarget }) {
     () => accounts.filter((a) => !hasMembership(a, target)),
     [accounts, target]
   )
+
+  const invite = decideInvite(scope, accounts, email, target)
+
+  function submitInvite() {
+    inviteMember(email.trim(), displayName.trim(), target, reason.trim())
+    toast.success(`${email.trim()} を招待しました`, {
+      description:
+        "招待メールから本人がパスワードを設定すると使えるようになります。",
+    })
+    setEmail("")
+    setDisplayName("")
+    setReason("")
+    setInviting(false)
+  }
 
   function submit(
     targetAccountId: string,
@@ -135,8 +158,23 @@ function RoleSection({ target }: { target: MembershipTarget }) {
               className="flex items-center justify-between gap-3 px-3 py-2"
             >
               <div className="min-w-0">
-                <p className="truncate text-sm">{a.displayName}</p>
-                <p className="truncate text-xs text-muted-foreground">{a.email}</p>
+                <p className="flex items-center gap-1.5 truncate text-sm">
+                  {a.displayName}
+                  {a.status === "invited" ? (
+                    <Badge
+                      variant="outline"
+                      className="shrink-0 border-amber-300 px-1 py-0 text-[10px] text-amber-700"
+                    >
+                      招待中
+                    </Badge>
+                  ) : null}
+                </p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {a.email}
+                  {a.status === "invited"
+                    ? " ・パスワード未設定のため利用できません"
+                    : ""}
+                </p>
               </div>
               {editable ? (
                 <RevokeButton
@@ -190,6 +228,68 @@ function RoleSection({ target }: { target: MembershipTarget }) {
             placeholder="変更の理由(監査に残ります)"
             className="h-9"
           />
+
+          {/*
+            まだアカウントを持っていない人はここから招待する。
+            🔴 パスワードは本人が設定する。招待した側は触らない。
+          */}
+          {inviting ? (
+            <div className="space-y-2 rounded-md border p-2.5">
+              <p className="text-xs font-medium">メールアドレスで招待</p>
+              <Input
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                type="email"
+                placeholder="メールアドレス"
+                className="h-9"
+              />
+              <Input
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="表示名(任意)"
+                className="h-9"
+              />
+              {email.trim() && invite.kind === "denied" ? (
+                <p className="text-xs text-amber-700">
+                  {INVITE_DENIED_LABEL[invite.reason]}
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  招待された方がパスワードと 2FA を設定するまで、このアカウントは
+                  使えません。パスワードはこちらでは設定しません。
+                </p>
+              )}
+              <div className="flex justify-end gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setInviting(false)
+                    setEmail("")
+                    setDisplayName("")
+                  }}
+                >
+                  やめる
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={invite.kind !== "allowed" || !reason.trim()}
+                  onClick={submitInvite}
+                >
+                  招待する
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button
+              variant="link"
+              size="sm"
+              className="h-auto px-0 text-xs"
+              onClick={() => setInviting(true)}
+            >
+              アカウントが無い方をメールアドレスで招待する
+            </Button>
+          )}
         </div>
       ) : (
         <p className="text-xs text-muted-foreground">

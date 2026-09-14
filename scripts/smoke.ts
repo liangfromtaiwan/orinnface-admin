@@ -7,7 +7,7 @@
  */
 
 import { adminAccounts, analysisSessions, carePlaybacks, customers, storeDataLinks, stores, rawImageAssets, handoffTokens, recommendationRuns, NOW } from "@/lib/mock/seed"
-import { resolveScope, canViewCustomer, visibleCustomerIds, can, visibleScreens, canAccessScreen, viewScopeFor, companyAdminsOf, canManageMembership, applyMembershipChange, hasMembership, membershipAuditLabel } from "@/lib/domain/scope"
+import { resolveScope, canViewCustomer, visibleCustomerIds, can, visibleScreens, canAccessScreen, viewScopeFor, companyAdminsOf, canManageMembership, applyMembershipChange, hasMembership, membershipAuditLabel, decideInvite, applyInvite, isEmailLike } from "@/lib/domain/scope"
 import { CARE_VIDEO_SLOTS, careEntitlement, assertCareSlotInvariant, canPlaySlot, careSlotFor, decideCareReplacement, applyDirectReplacement, addCareAsset, assertKnownVideoCode, careAssetUsage } from "@/lib/domain/care-catalog"
 import { matchesCustomerFilter, CUSTOMER_FILTER_ORDER } from "@/lib/domain/plans"
 import { decideRawImageView, usesB2bDisplay } from "@/lib/domain/scope"
@@ -218,6 +218,59 @@ console.log("── 分析の状態 (§13) ──")
     inFlight.every(s => s.rawImageAssetIds.length === 0))
   check("滞留を確認できる古い進行中が 1 件ある",
     inFlight.some(s => Date.parse(NOW) - Date.parse(s.startedAt) > 3 * 3600_000))
+}
+
+console.log("── 招待 (吉田さん確定 2026-09-14) ──")
+{
+  const storeAdminScope = resolveScope(adminAccounts[2], stores)
+  const ownStore = storeAdminScope.storeIds[0]
+  const target = { kind: "store", storeId: ownStore, role: "store_staff" } as const
+
+  check("seed のアカウントはすべて有効", adminAccounts.every(a => a.status === "active"))
+
+  check("メール形式を弾く", !isEmailLike("notanemail"))
+  check("正しいメールは通る", isEmailLike("new.staff@lumiere.example.jp"))
+
+  check("店舗管理者は担当店舗のスタッフを招待できる",
+    decideInvite(storeAdminScope, adminAccounts, "new@lumiere.example.jp", target).kind === "allowed")
+  check("形式不正なメールでは招待できない",
+    decideInvite(storeAdminScope, adminAccounts, "bad", target).kind === "denied")
+  check("スタッフは招待できない",
+    decideInvite(staffScope, adminAccounts, "new@lumiere.example.jp", target).kind === "denied")
+  // 🔴 店舗管理者が招待できるのはスタッフだけ
+  check("店舗管理者は店舗管理者を招待できない",
+    decideInvite(storeAdminScope, adminAccounts, "new@lumiere.example.jp",
+      { kind: "store", storeId: ownStore, role: "store_admin" }).kind === "denied")
+  check("店舗管理者は契約企業管理者を招待できない",
+    decideInvite(storeAdminScope, adminAccounts, "new@lumiere.example.jp",
+      { kind: "company", companyId: stores.find(s => s.id === ownStore)!.companyId, role: "company_admin" }).kind === "denied")
+
+  const r = applyInvite(adminAccounts, {
+    email: "new.staff@lumiere.example.jp", target, now: NOW,
+  })
+  const created = r.accounts.find(a => a.id === r.accountId)!
+  check("招待でアカウントが増える", r.isNew && r.accounts.length === adminAccounts.length + 1)
+  // 🔴 本人がパスワードを設定するまで使えない
+  check("招待したアカウントは invited", created.status === "invited")
+  check("2FA は本人が設定するので未設定から始まる", created.twoFactorEnabled === false)
+  check("招待と同時に担当が割り当たる", hasMembership(created, target))
+  check("表示名が無ければメールのローカル部を使う", created.displayName === "new.staff")
+  check("招待しても seed は書き換わらない", adminAccounts.length === 4)
+
+  // 既にアカウントがある人は作り直さず担当だけ足す (§2)
+  const again = applyInvite(r.accounts, {
+    email: "new.staff@lumiere.example.jp",
+    target: { kind: "store", storeId: storeAdminScope.storeIds[1], role: "store_staff" },
+    now: NOW,
+  })
+  check("同じメールならアカウントを作り直さない",
+    !again.isNew && again.accounts.length === r.accounts.length)
+  const both = again.accounts.find(a => a.id === r.accountId)!
+  check("兼任として担当が 2 件になる", both.storeMemberships.length === 2)
+
+  // 招待済みの人を同じ担当で再招待しない
+  check("すでに同じ担当を持つ人は招待できない",
+    decideInvite(storeAdminScope, r.accounts, "new.staff@lumiere.example.jp", target).kind === "denied")
 }
 
 console.log("── 品質バッジと適格分析の整合 ──")

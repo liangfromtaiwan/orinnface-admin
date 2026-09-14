@@ -45,8 +45,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const navigate = useNavigate()
   const { scope, account, accounts, switchAccount } = useSession()
 
-  /* デモ用。role は membership から解決するので、ここでも resolveScope を通す。 */
-  const switchableAccounts: SwitchableAccount[] = accounts.map((a) => {
+  /*
+    デモ用。role は membership から解決するので、ここでも resolveScope を通す。
+    🔴 招待中(パスワード未設定)のアカウントではログインできないので出さない
+       (吉田さん確定 2026-09-14)。
+  */
+  const switchableAccounts: SwitchableAccount[] = accounts
+    .filter((a) => a.status === "active")
+    .map((a) => {
     const s = resolveScope(a, stores)
     return {
       id: a.id,

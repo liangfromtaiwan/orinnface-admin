@@ -45,6 +45,18 @@ export type SessionValue = {
     action: "grant" | "revoke",
     reason: string
   ) => void
+  /**
+   * メールアドレスで招待して担当を割り当てる (吉田さん確定 2026-09-14)。
+   * 🔴 呼ぶ前に `decideInvite()` で可否を判定すること。
+   * 🔴 招待中のアカウントは本人がパスワードを設定するまで使えない。
+   *    招待メールの送信は backend の担当。
+   */
+  inviteMember: (
+    email: string,
+    displayName: string,
+    target: MembershipTarget,
+    reason: string
+  ) => void
   /** 監査ログ。画面で起きた変更を seed の履歴に足して見せる。 */
   auditEvents: AuditEvent[]
 

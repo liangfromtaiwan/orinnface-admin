@@ -212,12 +212,118 @@ export function hasMembership(
 export function membershipAuditLabel(
   accountId: AccountId,
   target: MembershipTarget,
-  action: "grant" | "revoke"
+  action: "grant" | "revoke" | "invite"
 ): string {
   const scopeLabel =
     target.kind === "company" ? target.companyId : target.storeId
-  const verb = action === "grant" ? "付与" : "剥奪"
+  const verb =
+    action === "grant" ? "付与" : action === "revoke" ? "剥奪" : "招待して付与"
   return `${accountId} に ${scopeLabel} の ${target.role} を${verb}`
+}
+
+/* ------------------------------------------------------------------ *
+ * 招待 (吉田さん確定 2026-09-14)
+ *
+ * 🔴 アカウントは招待制。メールアドレスを入れて招待し、
+ *    本人がパスワードを設定してはじめて使える状態になる。
+ *    招待した側はパスワードに触らない。
+ * 🔴 招待できる範囲は付与できる範囲と同じ。判定は decideMembershipEdit() を
+ *    そのまま使う(本部→契約企業管理者 / 契約企業管理者→配下店舗の 2 ロール /
+ *    店舗管理者→担当店舗のスタッフ)。
+ * ------------------------------------------------------------------ */
+
+export type InviteDecision =
+  | { kind: "allowed" }
+  | { kind: "denied"; reason: "no_permission" | "already_member" | "invalid_email" }
+
+/** 招待できるか。既に同じ担当を持っている人は招待しない。 */
+export function decideInvite(
+  scope: Scope,
+  accounts: AdminAccount[],
+  email: string,
+  target: MembershipTarget
+): InviteDecision {
+  if (!isEmailLike(email)) return { kind: "denied", reason: "invalid_email" }
+  if (!canManageMembership(scope, target)) {
+    return { kind: "denied", reason: "no_permission" }
+  }
+  const existing = accounts.find(
+    (a) => a.email.toLowerCase() === email.trim().toLowerCase()
+  )
+  if (existing && hasMembership(existing, target)) {
+    return { kind: "denied", reason: "already_member" }
+  }
+  return { kind: "allowed" }
+}
+
+export const INVITE_DENIED_LABEL: Record<
+  Extract<InviteDecision, { kind: "denied" }>["reason"],
+  string
+> = {
+  no_permission: "この担当を招待する権限がありません",
+  already_member: "このアドレスの方はすでにこの担当を持っています",
+  invalid_email: "メールアドレスの形式が正しくありません",
+}
+
+/** 厳密な検証は backend の担当。ここは明らかな入力ミスを弾くだけ。 */
+export function isEmailLike(email: string): boolean {
+  const v = email.trim()
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)
+}
+
+/**
+ * 招待して担当を割り当てる。
+ *
+ * 🔴 すでにアカウントがあるアドレスなら**作り直さず**担当だけ足す (§2)。
+ *    同じ人が別の店舗を兼任することがあるため。
+ * 🔴 新規のときは status: "invited" で作る。本人がパスワードを設定するまで
+ *    ログインできない。2FA も本人が設定するので false から始める。
+ */
+export function applyInvite(
+  accounts: AdminAccount[],
+  input: {
+    email: string
+    /** 表示名。未入力ならメールアドレスのローカル部を仮に使う。 */
+    displayName?: string
+    target: MembershipTarget
+    now: string
+  }
+): { accounts: AdminAccount[]; accountId: AccountId; isNew: boolean } {
+  const email = input.email.trim()
+  const existing = accounts.find(
+    (a) => a.email.toLowerCase() === email.toLowerCase()
+  )
+
+  if (existing) {
+    return {
+      accounts: applyMembershipChange(accounts, existing.id, input.target, "grant"),
+      accountId: existing.id,
+      isNew: false,
+    }
+  }
+
+  const id = `acc_invited_${now36(input.now)}`
+  const created: AdminAccount = {
+    id,
+    displayName: input.displayName?.trim() || email.split("@")[0],
+    email,
+    // 本人が設定するまで 2FA は無い。必須ロールなら画面が警告を出す (§2)
+    twoFactorEnabled: false,
+    status: "invited",
+    invitedAt: input.now,
+    organizationMemberships: [],
+    storeMemberships: [],
+  }
+
+  return {
+    accounts: applyMembershipChange([...accounts, created], id, input.target, "grant"),
+    accountId: id,
+    isNew: true,
+  }
+}
+
+function now36(iso: string): string {
+  return Date.parse(iso).toString(36)
 }
 
 /**

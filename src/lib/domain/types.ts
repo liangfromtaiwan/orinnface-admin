@@ -66,6 +66,14 @@ export type AdminAccount = {
   twoFactorEnabled: boolean
   organizationMemberships: OrganizationMembership[]
   storeMemberships: StoreMembership[]
+  /**
+   * 招待したがまだ本人がパスワードを設定していない状態 (吉田さん確定 2026-09-14)。
+   * 🔴 招待中のアカウントではログインできない。担当は先に割り当てられるが、
+   *    本人がパスワードを設定するまで実際には使えない。
+   */
+  status: "active" | "invited"
+  /** 招待を送った日時。status が invited のときだけ入る。 */
+  invitedAt?: string
 }
 
 /* ------------------------------------------------------------------ *
