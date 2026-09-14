@@ -372,6 +372,13 @@ export function CareReplaceDialog({
 
   /** この枠に登録されている動画だけを候補にする(枠をまたいだ差し替えはしない)。 */
   const candidates = careAssets.filter((a) => a.videoCode === slot.videoCode)
+  /**
+   * 実際に選べるもの。公開中のものは選べないので、これが空なら
+   * 「登録済みから選ぶ」は成立しない。
+   * 🔴 枠をまたいだ差し替えはしない。案内の枠に 1分ケアを入れられてしまうと
+   *    video_code の意味が崩れる (§7.1)。
+   */
+  const selectable = candidates.filter((a) => a.id !== currentAssetId)
   const picked = candidates.find((a) => a.id === pick)
   /** 🔴 権利確認が済んでいない動画は公開できない (§7.1)。 */
   const pickedBlocked = picked !== undefined && !picked.rightsCleared
@@ -519,9 +526,19 @@ export function CareReplaceDialog({
 
           {mode === "existing" ? (
             <>
-              <Select value={pick} onValueChange={setPick}>
+              <Select
+                value={pick}
+                onValueChange={setPick}
+                disabled={selectable.length === 0}
+              >
                 <SelectTrigger className="h-9 w-full">
-                  <SelectValue placeholder="この枠の動画から選ぶ" />
+                  <SelectValue
+                    placeholder={
+                      selectable.length === 0
+                        ? "この枠には他の動画がありません"
+                        : "この枠の動画から選ぶ"
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {candidates.map((a) => (
@@ -538,10 +555,18 @@ export function CareReplaceDialog({
                 </SelectContent>
               </Select>
 
-              {candidates.length < 2 ? (
+              {selectable.length === 0 ? (
                 <p className="text-xs text-muted-foreground">
-                  この枠に差し替え候補がありません。「新しい動画を上げる」から
-                  追加してください。
+                  この枠に登録されている動画は公開中の 1 本だけです。
+                  差し替えるには、先に動画を追加してください。
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="h-auto px-1 py-0 text-xs"
+                    onClick={() => setMode("upload")}
+                  >
+                    新しい動画を上げる
+                  </Button>
                 </p>
               ) : null}
 
