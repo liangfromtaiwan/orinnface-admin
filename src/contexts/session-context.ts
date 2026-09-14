@@ -63,8 +63,9 @@ export type SessionValue = {
     reason: string
   ) => void
   /**
-   * 既存の枠に動画を追加する。
+   * 既存の枠に動画を追加し、追加した asset の id を返す。
    * 🔴 追加できるのは asset だけ。枠(slot)は V1 では増やせない (§7, §12)。
+   * id を返すのは、追加してそのまま差し替えたい導線があるため。
    */
   addCareVideoAsset: (input: {
     videoCode: string
@@ -73,7 +74,7 @@ export type SessionValue = {
     durationSeconds: number
     rightsCleared: boolean
     sourceFileName?: string
-  }) => void
+  }) => string
 
   /* ---- 視点(どの組織を見ているか) ---- */
 

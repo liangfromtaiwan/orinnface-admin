@@ -20,6 +20,7 @@ import {
 import {
   addCareAsset,
   applyDirectReplacement,
+  careAssetIdFor,
 } from "@/lib/domain/care-catalog"
 import {
   applyMembershipChange,
@@ -149,6 +150,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         `${input.videoCode} に動画「${input.title}」(${input.provider})を追加`,
         input.rightsCleared ? "権利確認済として登録" : "権利確認は未完了"
       )
+      return careAssetIdFor(input.videoCode, now)
     },
     [pushAudit]
   )

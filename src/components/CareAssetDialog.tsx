@@ -40,10 +40,184 @@ import { useSession } from "@/contexts/session-context"
 import { CARE_VIDEO_SLOTS, careSlotLabel } from "@/lib/domain/care-catalog"
 import { can } from "@/lib/domain/scope"
 import type { CareVideoSlot } from "@/lib/domain/types"
+import { cn } from "@/lib/utils"
+
+/* ------------------------------------------------------------------ *
+ * 動画ファイルの選択
+ *
+ * 差し替えと追加の両方から使う。尺を手入力させると実際の動画とずれても
+ * 気付けず、ずれた尺は「1分ケア」「3分ケア」の区分と食い違うため、
+ * 実ファイルから読んで埋める。
+ * ------------------------------------------------------------------ */
+
+function useVideoFile() {
+  const [file, setFile] = useState<File | null>(null)
+  /** ファイルから読めた尺(秒)。読めない形式のときは undefined。 */
+  const [durationSeconds, setDurationSeconds] = useState<number | undefined>()
+  /** 拡張子を落としたファイル名。タイトルの既定値に使う。 */
+  const [suggestedTitle, setSuggestedTitle] = useState<string | undefined>()
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  /** 🔴 読むだけでアップロードしない。object URL は読み終わったら必ず解放する。 */
+  function pick(picked: File) {
+    setFile(picked)
+    setSuggestedTitle(picked.name.replace(/\.[^.]+$/, ""))
+    setDurationSeconds(undefined)
+
+    const url = URL.createObjectURL(picked)
+    const probe = document.createElement("video")
+    probe.preload = "metadata"
+    probe.onloadedmetadata = () => {
+      if (Number.isFinite(probe.duration) && probe.duration > 0) {
+        setDurationSeconds(Math.round(probe.duration))
+      }
+      URL.revokeObjectURL(url)
+    }
+    probe.onerror = () => {
+      // 尺が読めない形式もある。その場合は手入力に任せる
+      URL.revokeObjectURL(url)
+    }
+    probe.src = url
+  }
+
+  function reset() {
+    setFile(null)
+    setDurationSeconds(undefined)
+    setSuggestedTitle(undefined)
+    if (inputRef.current) inputRef.current.value = ""
+  }
+
+  return { file, durationSeconds, suggestedTitle, inputRef, pick, reset }
+}
+
+function VideoFilePicker({
+  file,
+  inputRef,
+  onPick,
+}: {
+  file: File | null
+  inputRef: React.RefObject<HTMLInputElement | null>
+  onPick: (file: File) => void
+}) {
+  return (
+    <div className="space-y-1">
+      <label className="text-xs text-muted-foreground">動画ファイル</label>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="video/*"
+        className="hidden"
+        onChange={(e) => {
+          const picked = e.target.files?.[0]
+          if (picked) onPick(picked)
+        }}
+      />
+      <div className="flex items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-9"
+          onClick={() => inputRef.current?.click()}
+        >
+          <UploadIcon />
+          {file ? "選び直す" : "動画を選ぶ"}
+        </Button>
+        {file ? (
+          <span className="min-w-0 flex-1 truncate text-xs">
+            {file.name}
+            <span className="ml-1.5 text-muted-foreground">
+              {formatFileSize(file.size)}
+            </span>
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground">未選択</span>
+        )}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        この画面はファイルを読むだけで保存はしません。保存・変換・配信は backend
+        側で実装します。
+      </p>
+    </div>
+  )
+}
+
+/** 尺の入力。ファイルから読めていればその旨を出す。 */
+function DurationField({
+  value,
+  onChange,
+  fromFile,
+  hasFile,
+}: {
+  value: string
+  onChange: (v: string) => void
+  fromFile: boolean
+  hasFile: boolean
+}) {
+  return (
+    <div className="space-y-1">
+      <Input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        inputMode="numeric"
+        placeholder="尺(秒)"
+        className="h-9"
+      />
+      {fromFile ? (
+        <p className="text-xs text-muted-foreground">
+          選んだファイルから読み取りました。直接書き換えることもできます。
+        </p>
+      ) : hasFile ? (
+        <p className="text-xs text-muted-foreground">
+          このファイルからは尺を読み取れませんでした。秒数を入力してください。
+        </p>
+      ) : null}
+    </div>
+  )
+}
+
+/** 🔴 権利確認は本部の棚卸し (§7.1, §16 P0)。未確認の動画は公開できない。 */
+function RightsField({
+  canClear,
+  checked,
+  onChange,
+}: {
+  canClear: boolean
+  checked: boolean
+  onChange: (v: boolean) => void
+}) {
+  if (!canClear) {
+    return (
+      <p className="text-xs text-muted-foreground">
+        権利確認は本部が行います。追加した動画は権利未確認の状態で登録され、
+        確認が済むまで公開できません。
+      </p>
+    )
+  }
+  return (
+    <label className="flex items-start gap-2 text-xs">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="mt-0.5"
+      />
+      <span>
+        権利確認済として登録する
+        <span className="block text-muted-foreground">
+          提供者・内容・権利を確認したうえでチェックしてください。未確認の動画は
+          公開できません。
+        </span>
+      </span>
+    </label>
+  )
+}
 
 /* ------------------------------------------------------------------ *
  * 差し替え(本部デフォルトの直接切り替え)
  * ------------------------------------------------------------------ */
+
+type ReplaceMode = "existing" | "upload"
 
 export function CareReplaceDialog({
   slot,
@@ -54,32 +228,100 @@ export function CareReplaceDialog({
   currentAssetId?: string
   children: React.ReactNode
 }) {
-  const { careAssets, replaceCareAsset } = useSession()
+  const { scope, careAssets, replaceCareAsset, addCareVideoAsset } = useSession()
   const [open, setOpen] = useState(false)
-  const [pick, setPick] = useState("")
+  const [mode, setMode] = useState<ReplaceMode>("existing")
   const [reason, setReason] = useState("")
+
+  /* 登録済みから選ぶ場合 */
+  const [pick, setPick] = useState("")
+
+  /* 新しい動画を上げる場合 */
+  const video = useVideoFile()
+  const [title, setTitle] = useState("")
+  const [provider, setProvider] = useState("")
+  const [duration, setDuration] = useState("")
+  const [rightsCleared, setRightsCleared] = useState(false)
+
+  const canClearRights = can(scope, "care.approve")
 
   /** この枠に登録されている動画だけを候補にする(枠をまたいだ差し替えはしない)。 */
   const candidates = careAssets.filter((a) => a.videoCode === slot.videoCode)
   const picked = candidates.find((a) => a.id === pick)
   /** 🔴 権利確認が済んでいない動画は公開できない (§7.1)。 */
-  const blocked = picked !== undefined && !picked.rightsCleared
+  const pickedBlocked = picked !== undefined && !picked.rightsCleared
 
-  function submit() {
-    if (!picked) return
-    replaceCareAsset(slot.videoCode, picked.id, reason.trim())
-    toast.success(`${slot.videoCode} を「${picked.title}」に切り替えました`, {
-      description: "care_asset_id のみ変更。video_code / pose_code は不変です。",
-    })
-    setOpen(false)
+  /* ファイルを選んだら、まだ触っていない項目だけ実ファイルの値で埋める */
+  const derivedDuration =
+    duration || (video.durationSeconds ? String(video.durationSeconds) : "")
+  const derivedTitle = title || video.suggestedTitle || ""
+  const seconds = Number(derivedDuration)
+
+  const uploadValid =
+    video.file !== null &&
+    derivedTitle.trim() !== "" &&
+    provider.trim() !== "" &&
+    Number.isFinite(seconds) &&
+    seconds > 0 &&
+    // 上げてすぐ公開するので、権利確認が済んでいないと差し替えられない
+    rightsCleared
+
+  const canSubmit =
+    reason.trim() !== "" &&
+    (mode === "existing" ? picked !== undefined && !pickedBlocked : uploadValid)
+
+  function reset() {
+    setMode("existing")
     setPick("")
     setReason("")
+    setTitle("")
+    setProvider("")
+    setDuration("")
+    setRightsCleared(false)
+    video.reset()
+  }
+
+  function submit() {
+    if (mode === "existing") {
+      if (!picked) return
+      replaceCareAsset(slot.videoCode, picked.id, reason.trim())
+      toast.success(`${slot.videoCode} を「${picked.title}」に切り替えました`, {
+        description: "care_asset_id のみ変更。video_code / pose_code は不変です。",
+      })
+    } else {
+      if (!video.file) return
+      /*
+        追加してそのまま差し替える。asset の登録と assignment の切り替えは
+        別の操作なので、監査にも 2 件残る(追加 / 切り替え)。
+      */
+      const assetId = addCareVideoAsset({
+        videoCode: slot.videoCode,
+        title: derivedTitle.trim(),
+        provider: provider.trim(),
+        durationSeconds: seconds,
+        rightsCleared,
+        sourceFileName: video.file.name,
+      })
+      replaceCareAsset(slot.videoCode, assetId, reason.trim())
+      toast.success(
+        `${slot.videoCode} を「${derivedTitle.trim()}」に切り替えました`,
+        { description: "動画を追加してから care_asset_id を切り替えました。" }
+      )
+    }
+    setOpen(false)
+    reset()
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        setOpen(v)
+        if (!v) reset()
+      }}
+    >
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{careSlotLabel(slot)} の差し替え</DialogTitle>
           <DialogDescription>
@@ -89,26 +331,102 @@ export function CareReplaceDialog({
         </DialogHeader>
 
         <div className="space-y-3">
-          <Select value={pick} onValueChange={setPick}>
-            <SelectTrigger className="h-9 w-full">
-              <SelectValue placeholder="この枠の動画から選ぶ" />
-            </SelectTrigger>
-            <SelectContent>
-              {candidates.map((a) => (
-                <SelectItem key={a.id} value={a.id} disabled={a.id === currentAssetId}>
-                  {a.title}
-                  {a.id === currentAssetId ? "（公開中）" : ""}
-                  {a.rightsCleared ? "" : "（権利未確認）"}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {/* 登録済みから選ぶか、新しく上げるか */}
+          <div className="flex gap-1 rounded-md bg-muted p-1">
+            {(
+              [
+                ["existing", "登録済みから選ぶ"],
+                ["upload", "新しい動画を上げる"],
+              ] as const
+            ).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setMode(key)}
+                className={cn(
+                  "flex-1 rounded-sm px-2 py-1 text-xs transition-colors",
+                  mode === key
+                    ? "bg-background font-medium shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
 
-          {blocked ? (
-            <p className="text-xs text-amber-700">
-              この動画は権利確認が未完了のため公開できません。先に権利を確認してください。
-            </p>
-          ) : null}
+          {mode === "existing" ? (
+            <>
+              <Select value={pick} onValueChange={setPick}>
+                <SelectTrigger className="h-9 w-full">
+                  <SelectValue placeholder="この枠の動画から選ぶ" />
+                </SelectTrigger>
+                <SelectContent>
+                  {candidates.map((a) => (
+                    <SelectItem
+                      key={a.id}
+                      value={a.id}
+                      disabled={a.id === currentAssetId}
+                    >
+                      {a.title}
+                      {a.id === currentAssetId ? "（公開中）" : ""}
+                      {a.rightsCleared ? "" : "（権利未確認）"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {candidates.length < 2 ? (
+                <p className="text-xs text-muted-foreground">
+                  この枠に差し替え候補がありません。「新しい動画を上げる」から
+                  追加してください。
+                </p>
+              ) : null}
+
+              {pickedBlocked ? (
+                <p className="text-xs text-amber-700">
+                  この動画は権利確認が未完了のため公開できません。先に権利を
+                  確認してください。
+                </p>
+              ) : null}
+            </>
+          ) : (
+            <>
+              <VideoFilePicker
+                file={video.file}
+                inputRef={video.inputRef}
+                onPick={video.pick}
+              />
+              <Input
+                value={derivedTitle}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="動画のタイトル"
+                className="h-9"
+              />
+              <Input
+                value={provider}
+                onChange={(e) => setProvider(e.target.value)}
+                placeholder="提供者(制作・監修)"
+                className="h-9"
+              />
+              <DurationField
+                value={derivedDuration}
+                onChange={setDuration}
+                fromFile={video.durationSeconds !== undefined && duration === ""}
+                hasFile={video.file !== null}
+              />
+              <RightsField
+                canClear={canClearRights}
+                checked={rightsCleared}
+                onChange={setRightsCleared}
+              />
+              {canClearRights && video.file && !rightsCleared ? (
+                <p className="text-xs text-amber-700">
+                  上げた動画をそのまま公開するので、権利確認のチェックが必要です。
+                </p>
+              ) : null}
+            </>
+          )}
 
           <Input
             value={reason}
@@ -121,11 +439,7 @@ export function CareReplaceDialog({
             <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>
               やめる
             </Button>
-            <Button
-              size="sm"
-              disabled={!picked || blocked || !reason.trim()}
-              onClick={submit}
-            >
+            <Button size="sm" disabled={!canSubmit} onClick={submit}>
               差し替える
             </Button>
           </div>
@@ -147,37 +461,23 @@ export function CareAssetAddDialog({ children }: { children: React.ReactNode }) 
   const [provider, setProvider] = useState("")
   const [duration, setDuration] = useState("")
   const [rightsCleared, setRightsCleared] = useState(false)
-  const [file, setFile] = useState<File | null>(null)
-  /** ファイルから尺を読めなかった場合だけ手入力に戻す。 */
-  const [durationFromFile, setDurationFromFile] = useState(false)
-  const fileInput = useRef<HTMLInputElement>(null)
+  const video = useVideoFile()
 
-  /**
-   * 選ばれた動画の尺をブラウザで読む。
-   * 🔴 読むだけでアップロードはしない。object URL は読み終わったら必ず解放する。
-   */
-  function pickFile(picked: File) {
-    setFile(picked)
-    // タイトル未入力ならファイル名から埋める(拡張子は落とす)
-    if (!title.trim()) setTitle(picked.name.replace(/\.[^.]+$/, ""))
+  /** 🔴 権利確認は本部の棚卸し (§7.1, §16 P0)。本部以外は未確認から始める。 */
+  const canClearRights = can(scope, "care.approve")
 
-    const url = URL.createObjectURL(picked)
-    const probe = document.createElement("video")
-    probe.preload = "metadata"
-    probe.onloadedmetadata = () => {
-      if (Number.isFinite(probe.duration) && probe.duration > 0) {
-        setDuration(String(Math.round(probe.duration)))
-        setDurationFromFile(true)
-      }
-      URL.revokeObjectURL(url)
-    }
-    probe.onerror = () => {
-      // 尺が読めない形式もあるので、その場合は手入力に任せる
-      setDurationFromFile(false)
-      URL.revokeObjectURL(url)
-    }
-    probe.src = url
-  }
+  const derivedDuration =
+    duration || (video.durationSeconds ? String(video.durationSeconds) : "")
+  const derivedTitle = title || video.suggestedTitle || ""
+  const seconds = Number(derivedDuration)
+
+  const valid =
+    video.file !== null &&
+    videoCode !== "" &&
+    derivedTitle.trim() !== "" &&
+    provider.trim() !== "" &&
+    Number.isFinite(seconds) &&
+    seconds > 0
 
   function reset() {
     setVideoCode("")
@@ -185,33 +485,20 @@ export function CareAssetAddDialog({ children }: { children: React.ReactNode }) 
     setProvider("")
     setDuration("")
     setRightsCleared(false)
-    setFile(null)
-    setDurationFromFile(false)
-    if (fileInput.current) fileInput.current.value = ""
+    video.reset()
   }
 
-  /** 🔴 権利確認は本部の棚卸し (§7.1, §16 P0)。本部以外は未確認から始める。 */
-  const canClearRights = can(scope, "care.approve")
-
-  const seconds = Number(duration)
-  const valid =
-    file !== null &&
-    videoCode !== "" &&
-    title.trim() !== "" &&
-    provider.trim() !== "" &&
-    Number.isFinite(seconds) &&
-    seconds > 0
-
   function submit() {
+    if (!video.file) return
     addCareVideoAsset({
       videoCode,
-      title: title.trim(),
+      title: derivedTitle.trim(),
       provider: provider.trim(),
       durationSeconds: seconds,
       rightsCleared: canClearRights && rightsCleared,
-      sourceFileName: file?.name,
+      sourceFileName: video.file.name,
     })
-    toast.success(`「${title.trim()}」を追加しました`, {
+    toast.success(`「${derivedTitle.trim()}」を追加しました`, {
       description:
         canClearRights && rightsCleared
           ? "差し替えの候補として選べます。"
@@ -222,9 +509,15 @@ export function CareAssetAddDialog({ children }: { children: React.ReactNode }) 
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        setOpen(v)
+        if (!v) reset()
+      }}
+    >
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>動画を追加</DialogTitle>
           <DialogDescription>
@@ -250,50 +543,14 @@ export function CareAssetAddDialog({ children }: { children: React.ReactNode }) 
             </Select>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-xs text-muted-foreground">動画ファイル</label>
-            <input
-              ref={fileInput}
-              type="file"
-              accept="video/*"
-              className="hidden"
-              onChange={(e) => {
-                const picked = e.target.files?.[0]
-                if (picked) pickFile(picked)
-              }}
-            />
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-9"
-                onClick={() => fileInput.current?.click()}
-              >
-                <UploadIcon />
-                {file ? "選び直す" : "動画を選ぶ"}
-              </Button>
-              {file ? (
-                <span className="min-w-0 flex-1 truncate text-xs">
-                  {file.name}
-                  <span className="ml-1.5 text-muted-foreground">
-                    {formatFileSize(file.size)}
-                  </span>
-                </span>
-              ) : (
-                <span className="text-xs text-muted-foreground">
-                  未選択
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              この画面はファイルを読むだけで保存はしません。保存・変換・配信は
-              backend 側で実装します。
-            </p>
-          </div>
+          <VideoFilePicker
+            file={video.file}
+            inputRef={video.inputRef}
+            onPick={video.pick}
+          />
 
           <Input
-            value={title}
+            value={derivedTitle}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="動画のタイトル"
             className="h-9"
@@ -304,50 +561,17 @@ export function CareAssetAddDialog({ children }: { children: React.ReactNode }) 
             placeholder="提供者(制作・監修)"
             className="h-9"
           />
-          <div className="space-y-1">
-            <Input
-              value={duration}
-              onChange={(e) => {
-                setDuration(e.target.value)
-                setDurationFromFile(false)
-              }}
-              inputMode="numeric"
-              placeholder="尺(秒)"
-              className="h-9"
-            />
-            {durationFromFile ? (
-              <p className="text-xs text-muted-foreground">
-                選んだファイルから読み取りました。直接書き換えることもできます。
-              </p>
-            ) : file ? (
-              <p className="text-xs text-muted-foreground">
-                このファイルからは尺を読み取れませんでした。秒数を入力してください。
-              </p>
-            ) : null}
-          </div>
-
-          {canClearRights ? (
-            <label className="flex items-start gap-2 text-xs">
-              <input
-                type="checkbox"
-                checked={rightsCleared}
-                onChange={(e) => setRightsCleared(e.target.checked)}
-                className="mt-0.5"
-              />
-              <span>
-                権利確認済として登録する
-                <span className="block text-muted-foreground">
-                  提供者・内容・権利を確認したうえでチェックしてください。
-                  未確認の動画は公開できません。
-                </span>
-              </span>
-            </label>
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              権利確認は本部が行います。追加した動画は権利未確認の状態で登録され、
-              確認が済むまで公開できません。
-            </p>
-          )}
+          <DurationField
+            value={derivedDuration}
+            onChange={setDuration}
+            fromFile={video.durationSeconds !== undefined && duration === ""}
+            hasFile={video.file !== null}
+          />
+          <RightsField
+            canClear={canClearRights}
+            checked={rightsCleared}
+            onChange={setRightsCleared}
+          />
 
           <p className="text-xs text-muted-foreground">
             <Badge variant="outline" className="mr-1.5 px-1 py-0 text-[10px]">
@@ -357,14 +581,7 @@ export function CareAssetAddDialog({ children }: { children: React.ReactNode }) 
           </p>
 
           <div className="flex justify-end gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setOpen(false)
-                reset()
-              }}
-            >
+            <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>
               やめる
             </Button>
             <Button size="sm" disabled={!valid} onClick={submit}>

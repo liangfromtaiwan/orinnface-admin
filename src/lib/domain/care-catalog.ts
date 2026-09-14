@@ -321,7 +321,7 @@ export function addCareAsset(
   return [
     ...assets,
     {
-      id: `ca_added_${input.videoCode}_${input.now}`,
+      id: careAssetIdFor(input.videoCode, input.now),
       videoCode: input.videoCode,
       title: input.title,
       provider: input.provider,
@@ -331,6 +331,15 @@ export function addCareAsset(
       sourceFileName: input.sourceFileName,
     },
   ]
+}
+
+/**
+ * 追加する asset の id。
+ * 追加してすぐ差し替えたいときに呼び出し側でも同じ id を組み立てられるよう、
+ * 生成規則をここに 1 つだけ置く。
+ */
+export function careAssetIdFor(videoCode: string, now: string): string {
+  return `ca_added_${videoCode}_${now}`
 }
 
 /** 🔴 固定 13 枠の外に asset や assignment を作らせない (§7)。 */

@@ -83,15 +83,6 @@ export default function CareVideosPage() {
     (a) => a.status !== "active" || a.scope.companyId || a.scope.storeId
   )
 
-  /** この枠に差し替え候補が何件あるか(追加した動画も含む)。 */
-  const assetCountByCode = useMemo(() => {
-    const map = new Map<string, number>()
-    for (const a of careAssets) {
-      map.set(a.videoCode, (map.get(a.videoCode) ?? 0) + 1)
-    }
-    return map
-  }, [careAssets])
-
   return (
     <div className="space-y-4">
       <PageHeader
@@ -164,16 +155,11 @@ export default function CareVideosPage() {
                           slot={slot}
                           currentAssetId={assignment?.careAssetId}
                         >
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={(assetCountByCode.get(slot.videoCode) ?? 0) < 2}
-                            title={
-                              (assetCountByCode.get(slot.videoCode) ?? 0) < 2
-                                ? "この枠には差し替え候補がありません。先に動画を追加してください"
-                                : undefined
-                            }
-                          >
+                          {/*
+                            候補が無くてもダイアログ内から動画を上げられるので、
+                            ここでは止めない。候補の有無はダイアログ側で案内する。
+                          */}
+                          <Button variant="outline" size="sm">
                             差し替え
                           </Button>
                         </CareReplaceDialog>
