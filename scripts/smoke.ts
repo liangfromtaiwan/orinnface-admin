@@ -256,8 +256,15 @@ console.log("── membership の付与・剥奪 (§4.1, §4.2, §4.3) ──")
     canManageMembership(companyAdminScope, { kind: "store", storeId: ownStore, role: "store_staff" }))
   check("契約企業管理者でも権限範囲外の店舗は触れない",
     !canManageMembership(companyAdminScope, { kind: "store", storeId: otherStore.id, role: "store_admin" }))
-  check("店舗管理者は担当者を変更できない (§4.3 は「確認する」)",
-    !canManageMembership(adminScope, { kind: "store", storeId: adminScope.storeIds[0], role: "store_staff" }))
+  // 🔴 吉田さん確定 2026-09-14: 契約の後は店舗管理者がスタッフを追加できる
+  check("店舗管理者は担当店舗のスタッフを追加できる",
+    canManageMembership(adminScope, { kind: "store", storeId: adminScope.storeIds[0], role: "store_staff" }))
+  check("店舗管理者は同格の店舗管理者を増やせない",
+    !canManageMembership(adminScope, { kind: "store", storeId: adminScope.storeIds[0], role: "store_admin" }))
+  check("店舗管理者も担当外の店舗には手を出せない",
+    !canManageMembership(adminScope, { kind: "store", storeId: otherStore.id, role: "store_staff" }))
+  check("店舗管理者は契約企業管理者を指名できない",
+    !canManageMembership(adminScope, { kind: "company", companyId: someCompany, role: "company_admin" }))
   check("スタッフは担当者を変更できない",
     !canManageMembership(staffScope, { kind: "store", storeId: staffScope.storeIds[0], role: "store_staff" }))
 

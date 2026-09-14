@@ -103,17 +103,19 @@ export function companyAdminsOf(
 }
 
 /* ------------------------------------------------------------------ *
- * membership の付与・剥奪 (§2, §4.1, §4.2, §4.3)
+ * membership の付与・剥奪 (§2, §4.1, §4.2, §4.3 / 吉田さん確定 2026-09-14)
  *
- * 🔴 誰が誰に何を付与できるかは role ごとに違う。仕様書の動詞が根拠:
- *    - §4.1 本部の「会社・店舗」の内容に **membership** が挙がっている
- *      → 契約企業管理者を指名できるのは本部だけ。
- *    - §4.2 契約企業管理者は「店舗管理者・店舗スタッフの membership を
- *      権限範囲内で**管理する**」→ 配下店舗の 2 ロールだけ付与・剥奪できる。
- *    - §4.3 店舗管理者は担当店舗の「スタッフ...を**確認する**」
- *      → 確認であって管理ではないので、付与・剥奪はできない。
- *      ⚠️ §4.2 が「管理する」、§4.3 が「確認する」と書き分けられている点を
- *         根拠にした読み。QUESTIONS_FOR_YOSHIDA.md #12 で確認中。
+ * 🔴 **吉田さん確定 2026-09-14 がこの範囲の正**:
+ *    「最初は本社でやるけど、契約の後は店舗管理者がスタッフを追加できる」
+ *    → 店舗管理者は担当店舗の**店舗スタッフ**を追加・削除できる。
+ *    ⚠️ §4.3 は「スタッフ…を**確認する**」と書かれており、当初は
+ *       §4.2 の「管理する」との書き分けを根拠に「確認のみ」と実装していたが、
+ *       上の回答で覆った。仕様書側の文言は吉田さんが反映予定。
+ * 🔴 契約企業管理者を指名できるのは本部だけ (§4.1)。
+ *    実際の流れは「契約企業管理者から管理者のメールをもらい、本部が招待メールを
+ *    送る」(吉田さん確定 2026-09-14)。
+ * 🔴 店舗管理者が増やせるのは**スタッフだけ**。同格の店舗管理者は増やせない。
+ *    吉田さんの回答が「スタッフを追加できる」と限定しているため。
  * 🔴 role を単一列として書き換えるのではなく、membership 行の追加・削除として扱う。
  *    account・顧客・分析履歴・同意・保存期限は作り直さない (§2)。
  * ------------------------------------------------------------------ */
@@ -131,7 +133,9 @@ export type MembershipEditDecision =
         | "operator_only"
         /** 自分のスコープ外の店舗 */
         | "out_of_scope"
-        /** §4.3 は「確認する」。店舗管理者・スタッフは付与・剥奪できない */
+        /** 店舗管理者が増やせるのはスタッフだけ(吉田さん確定 2026-09-14) */
+        | "staff_only"
+        /** 店舗スタッフ・顧客は担当者を変更できない */
         | "read_only_role"
     }
 
@@ -139,19 +143,34 @@ export function decideMembershipEdit(
   scope: Scope,
   target: MembershipTarget
 ): MembershipEditDecision {
+  // 本部は全部できる
   if (scope.crossCompany) return { kind: "allowed" }
 
-  if (scope.role !== "company_admin") {
-    return { kind: "denied", reason: "read_only_role" }
-  }
-  // 契約企業管理者は自分と同格を増やせない。指名は本部の操作 (§4.1)
+  // 契約企業管理者の指名は本部の操作 (§4.1)
   if (target.kind === "company") {
     return { kind: "denied", reason: "operator_only" }
   }
-  if (!scope.storeIds.includes(target.storeId)) {
-    return { kind: "denied", reason: "out_of_scope" }
+
+  if (scope.role === "company_admin") {
+    // 配下店舗の店舗管理者・店舗スタッフを管理できる (§4.2)
+    if (!scope.storeIds.includes(target.storeId)) {
+      return { kind: "denied", reason: "out_of_scope" }
+    }
+    return { kind: "allowed" }
   }
-  return { kind: "allowed" }
+
+  if (scope.role === "store_admin") {
+    // 担当店舗のスタッフだけ。同格の店舗管理者は増やせない
+    if (target.role !== "store_staff") {
+      return { kind: "denied", reason: "staff_only" }
+    }
+    if (!scope.storeIds.includes(target.storeId)) {
+      return { kind: "denied", reason: "out_of_scope" }
+    }
+    return { kind: "allowed" }
+  }
+
+  return { kind: "denied", reason: "read_only_role" }
 }
 
 export function canManageMembership(
@@ -167,6 +186,7 @@ export const MEMBERSHIP_DENIED_LABEL: Record<
 > = {
   operator_only: "契約企業管理者を指名できるのは本部だけです",
   out_of_scope: "権限範囲外の店舗です",
+  staff_only: "店舗管理者が追加できるのは店舗スタッフだけです",
   read_only_role: "このロールは担当者を確認できますが変更はできません",
 }
 
