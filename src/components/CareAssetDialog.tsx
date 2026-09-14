@@ -14,8 +14,8 @@
  *    実ファイルから読めるので、手入力させずにそこから埋める。
  */
 
-import { useRef, useState } from "react"
-import { UploadIcon } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
+import { FilmIcon, UploadIcon } from "lucide-react"
 import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
@@ -38,8 +38,9 @@ import {
 } from "@/components/ui/select"
 import { useSession } from "@/contexts/session-context"
 import { CARE_VIDEO_SLOTS, careSlotLabel } from "@/lib/domain/care-catalog"
+import { formatDateTime } from "@/lib/domain/kpi"
 import { can } from "@/lib/domain/scope"
-import type { CareVideoSlot } from "@/lib/domain/types"
+import type { CareVideoAsset, CareVideoSlot } from "@/lib/domain/types"
 import { cn } from "@/lib/utils"
 
 /* ------------------------------------------------------------------ *
@@ -56,38 +57,151 @@ function useVideoFile() {
   const [durationSeconds, setDurationSeconds] = useState<number | undefined>()
   /** 拡張子を落としたファイル名。タイトルの既定値に使う。 */
   const [suggestedTitle, setSuggestedTitle] = useState<string | undefined>()
+  /** 選んだ動画をその場で再生して確認するための URL。 */
+  const [previewUrl, setPreviewUrl] = useState<string | undefined>()
   const inputRef = useRef<HTMLInputElement>(null)
+  /** 解放し忘れないよう、今つかんでいる URL を持っておく。 */
+  const urlRef = useRef<string | undefined>(undefined)
 
-  /** 🔴 読むだけでアップロードしない。object URL は読み終わったら必ず解放する。 */
+  function releaseUrl() {
+    if (urlRef.current) {
+      URL.revokeObjectURL(urlRef.current)
+      urlRef.current = undefined
+    }
+  }
+
+  // ダイアログを閉じずに画面を離れても解放する
+  useEffect(() => releaseUrl, [])
+
+  /**
+   * 🔴 読むだけでアップロードしない。
+   *    object URL は尺の読み取りと再生確認の両方で使うので、
+   *    次のファイルを選んだときか片付けるときにまとめて解放する。
+   */
   function pick(picked: File) {
+    releaseUrl()
     setFile(picked)
     setSuggestedTitle(picked.name.replace(/\.[^.]+$/, ""))
     setDurationSeconds(undefined)
 
     const url = URL.createObjectURL(picked)
+    urlRef.current = url
+    setPreviewUrl(url)
+
     const probe = document.createElement("video")
     probe.preload = "metadata"
     probe.onloadedmetadata = () => {
       if (Number.isFinite(probe.duration) && probe.duration > 0) {
         setDurationSeconds(Math.round(probe.duration))
       }
-      URL.revokeObjectURL(url)
     }
-    probe.onerror = () => {
-      // 尺が読めない形式もある。その場合は手入力に任せる
-      URL.revokeObjectURL(url)
-    }
+    // 尺が読めない形式もある。その場合は手入力に任せる
     probe.src = url
   }
 
   function reset() {
+    releaseUrl()
     setFile(null)
     setDurationSeconds(undefined)
     setSuggestedTitle(undefined)
+    setPreviewUrl(undefined)
     if (inputRef.current) inputRef.current.value = ""
   }
 
-  return { file, durationSeconds, suggestedTitle, inputRef, pick, reset }
+  return {
+    file,
+    durationSeconds,
+    suggestedTitle,
+    previewUrl,
+    inputRef,
+    pick,
+    reset,
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * 動画の中身の確認
+ *
+ * 🔴 登録済みの動画はこの画面では再生できない。配信(署名 URL の発行)は
+ *    backend の担当なので、代わりに素性を出して取り違えを防ぐ。
+ *    これから上げる動画は手元のファイルなのでその場で再生できる。
+ * ------------------------------------------------------------------ */
+
+function CareVideoPreview({
+  previewUrl,
+  label,
+}: {
+  previewUrl?: string
+  label: string
+}) {
+  if (previewUrl) {
+    return (
+      <div className="space-y-1">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <video
+          src={previewUrl}
+          controls
+          preload="metadata"
+          className="max-h-56 w-full rounded-md bg-black"
+        />
+      </div>
+    )
+  }
+  return (
+    <div className="space-y-1">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <div className="flex min-h-20 flex-col items-center justify-center gap-1 rounded-md border border-dashed bg-muted/40 p-3 text-center">
+        <FilmIcon className="size-4 text-muted-foreground" />
+        <p className="text-[11px] text-muted-foreground">
+          登録済みの動画はこの画面では再生できません
+        </p>
+        <p className="text-[11px] text-muted-foreground">
+          再生には backend の配信(署名 URL)が必要です
+        </p>
+      </div>
+    </div>
+  )
+}
+
+/** 動画の素性。どれを選んでいるかを取り違えないための一覧。 */
+function AssetFacts({
+  asset,
+  extra,
+}: {
+  asset: CareVideoAsset
+  extra?: { label: string; value: string }[]
+}) {
+  const rows: { label: string; value: string }[] = [
+    { label: "タイトル", value: asset.title },
+    { label: "提供者", value: asset.provider },
+    { label: "尺", value: `${asset.durationSeconds}秒` },
+    {
+      label: "権利",
+      value: asset.rightsCleared ? "確認済" : "未確認(公開できません)",
+    },
+    ...(asset.sourceFileName
+      ? [{ label: "ファイル", value: asset.sourceFileName }]
+      : []),
+    ...(extra ?? []),
+  ]
+  return (
+    <dl className="grid gap-x-4 gap-y-0.5 rounded-md border p-2.5 text-xs sm:grid-cols-2">
+      {rows.map((r) => (
+        <div key={r.label} className="flex justify-between gap-2">
+          <dt className="shrink-0 text-muted-foreground">{r.label}</dt>
+          <dd
+            className={cn(
+              "min-w-0 truncate text-right",
+              r.label === "権利" && !asset.rightsCleared && "text-amber-700"
+            )}
+            title={r.value}
+          >
+            {r.value}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  )
 }
 
 function VideoFilePicker({
@@ -228,7 +342,8 @@ export function CareReplaceDialog({
   currentAssetId?: string
   children: React.ReactNode
 }) {
-  const { scope, careAssets, replaceCareAsset, addCareVideoAsset } = useSession()
+  const { scope, careAssets, careAssignments, replaceCareAsset, addCareVideoAsset } =
+    useSession()
   const [open, setOpen] = useState(false)
   const [mode, setMode] = useState<ReplaceMode>("existing")
   const [reason, setReason] = useState("")
@@ -244,6 +359,16 @@ export function CareReplaceDialog({
   const [rightsCleared, setRightsCleared] = useState(false)
 
   const canClearRights = can(scope, "care.approve")
+
+  /** 今この枠で公開されている動画。差し替える前に中身を確かめられるようにする。 */
+  const current = careAssets.find((a) => a.id === currentAssetId)
+  /** いつ・誰が今の状態にしたか。取り違えの確認に使う。 */
+  const currentAssignment = careAssignments.find(
+    (a) =>
+      a.videoCode === slot.videoCode &&
+      a.status === "active" &&
+      a.careAssetId === currentAssetId
+  )
 
   /** この枠に登録されている動画だけを候補にする(枠をまたいだ差し替えはしない)。 */
   const candidates = careAssets.filter((a) => a.videoCode === slot.videoCode)
@@ -331,6 +456,43 @@ export function CareReplaceDialog({
         </DialogHeader>
 
         <div className="space-y-3">
+          {/* 差し替える前に、今出ているものを確かめられるようにする */}
+          <section className="space-y-2">
+            <h3 className="flex items-center gap-1.5 text-xs font-medium">
+              現在公開中
+              {currentAssignment?.previousCareAssetId ? (
+                <Badge variant="outline" className="px-1 py-0 text-[10px]">
+                  差し替え済み
+                </Badge>
+              ) : null}
+            </h3>
+            {current ? (
+              <>
+                <AssetFacts
+                  asset={current}
+                  extra={[
+                    ...(currentAssignment?.startAt
+                      ? [
+                          {
+                            label: "適用",
+                            value: formatDateTime(currentAssignment.startAt),
+                          },
+                        ]
+                      : []),
+                    ...(currentAssignment?.approvedBy
+                      ? [{ label: "実行者", value: currentAssignment.approvedBy }]
+                      : []),
+                  ]}
+                />
+                <CareVideoPreview label="中身の確認" />
+              </>
+            ) : (
+              <p className="text-xs text-destructive">
+                この枠に公開中の動画がありません。
+              </p>
+            )}
+          </section>
+
           {/* 登録済みから選ぶか、新しく上げるか */}
           <div className="flex gap-1 rounded-md bg-muted p-1">
             {(
@@ -383,6 +545,14 @@ export function CareReplaceDialog({
                 </p>
               ) : null}
 
+              {picked ? (
+                <div className="space-y-2">
+                  <h3 className="text-xs font-medium">切り替え先</h3>
+                  <AssetFacts asset={picked} />
+                  <CareVideoPreview label="中身の確認" />
+                </div>
+              ) : null}
+
               {pickedBlocked ? (
                 <p className="text-xs text-amber-700">
                   この動画は権利確認が未完了のため公開できません。先に権利を
@@ -397,6 +567,12 @@ export function CareReplaceDialog({
                 inputRef={video.inputRef}
                 onPick={video.pick}
               />
+              {video.previewUrl ? (
+                <CareVideoPreview
+                  previewUrl={video.previewUrl}
+                  label="上げる動画の確認"
+                />
+              ) : null}
               <Input
                 value={derivedTitle}
                 onChange={(e) => setTitle(e.target.value)}
@@ -548,6 +724,12 @@ export function CareAssetAddDialog({ children }: { children: React.ReactNode }) 
             inputRef={video.inputRef}
             onPick={video.pick}
           />
+          {video.previewUrl ? (
+            <CareVideoPreview
+              previewUrl={video.previewUrl}
+              label="追加する動画の確認"
+            />
+          ) : null}
 
           <Input
             value={derivedTitle}
