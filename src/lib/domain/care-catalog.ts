@@ -350,3 +350,65 @@ export function assertKnownVideoCode(videoCode: string): void {
     )
   }
 }
+
+
+/* ------------------------------------------------------------------ *
+ * 登録済み動画の使われ方 (§7.1)
+ *
+ * 🔴 本部は提供者・内容・権利・承認状態・公開期間・対象 scope を確認する。
+ *    確認するには一覧で見えないといけないので、1 本ごとの状態をここで決める。
+ * ------------------------------------------------------------------ */
+
+export type CareAssetUsage =
+  /** どこかの枠で公開されている */
+  | { kind: "published"; scope: SlotProvider | "company" }
+  /** 承認済みで公開待ち */
+  | { kind: "scheduled" }
+  /** 差し替え申請の対象になっている */
+  | { kind: "requested" }
+  /** 登録だけされていて、今はどの枠にも出ていない */
+  | { kind: "unused" }
+
+export const CARE_ASSET_USAGE_LABEL: Record<CareAssetUsage["kind"], string> = {
+  published: "公開中",
+  scheduled: "公開予定",
+  requested: "申請中",
+  unused: "未使用",
+}
+
+export function careAssetUsage(
+  assignments: CareAssignment[],
+  careAssetId: string
+): CareAssetUsage {
+  const mine = assignments.filter((a) => a.careAssetId === careAssetId)
+
+  const active = mine.find((a) => a.status === "active")
+  if (active) {
+    return {
+      kind: "published",
+      scope: active.scope.storeId
+        ? "store"
+        : active.scope.companyId
+          ? "company"
+          : "standard",
+    }
+  }
+  if (mine.some((a) => a.status === "scheduled" || a.status === "approved")) {
+    return { kind: "scheduled" }
+  }
+  if (mine.some((a) => a.status === "pending_approval")) {
+    return { kind: "requested" }
+  }
+  // ended / rejected / draft しか無い、または一度も使われていない
+  return { kind: "unused" }
+}
+
+/** 公開されている場合の適用範囲の表示。 */
+export const CARE_ASSET_SCOPE_LABEL: Record<
+  Extract<CareAssetUsage, { kind: "published" }>["scope"],
+  string
+> = {
+  standard: "本部デフォルト",
+  company: "会社全体",
+  store: "店舗限定",
+}

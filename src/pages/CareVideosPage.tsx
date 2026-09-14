@@ -7,7 +7,7 @@
  * 🔴 差し替えは care_asset_id だけを切り替える。video_code / pose_code は不変。
  */
 
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { toast } from "sonner"
 
 import { CareAssetAddDialog, CareReplaceDialog } from "@/components/CareAssetDialog"
@@ -16,6 +16,13 @@ import { PageHeader, SpecNote } from "@/components/PageHeader"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   Table,
   TableBody,
@@ -26,9 +33,13 @@ import {
 } from "@/components/ui/table"
 import { useSession } from "@/contexts/session-context"
 import {
+  CARE_ASSET_SCOPE_LABEL,
+  CARE_ASSET_USAGE_LABEL,
   CARE_CATEGORY_LABEL,
   CARE_VIDEO_SLOTS,
+  careAssetUsage,
   decideCareReplacement,
+  getCareSlot,
   providerOf,
   resolveAssignment,
 } from "@/lib/domain/care-catalog"
@@ -49,6 +60,10 @@ export default function CareVideosPage() {
        本部には「差し替え」を、それ以外には「差し替え申請」を出す。
   */
   const replacement = decideCareReplacement(scope)
+  /** 登録済み動画の絞り込み。権利未確認だけを拾えると棚卸しに使える。 */
+  const [assetFilter, setAssetFilter] = useState<
+    "all" | "published" | "unused" | "rights_pending"
+  >("all")
 
   const assetById = useMemo(
     () => new Map(careAssets.map((a) => [a.id, a])),
@@ -81,6 +96,40 @@ export default function CareVideosPage() {
 
   const requests = careAssignments.filter(
     (a) => a.status !== "active" || a.scope.companyId || a.scope.storeId
+  )
+
+  /** 表示順は枠の並び順に揃える(13 枠の表と読み比べられるように)。 */
+  const sortedAssets = useMemo(() => {
+    const order = new Map(CARE_VIDEO_SLOTS.map((s, i) => [s.videoCode, i]))
+    return [...careAssets].sort(
+      (a, b) =>
+        (order.get(a.videoCode) ?? 99) - (order.get(b.videoCode) ?? 99) ||
+        a.title.localeCompare(b.title)
+    )
+  }, [careAssets])
+
+  const assetCounts = useMemo(
+    () => ({
+      all: sortedAssets.length,
+      published: sortedAssets.filter(
+        (a) => careAssetUsage(careAssignments, a.id).kind === "published"
+      ).length,
+      unused: sortedAssets.filter(
+        (a) => careAssetUsage(careAssignments, a.id).kind === "unused"
+      ).length,
+      rightsPending: sortedAssets.filter((a) => !a.rightsCleared).length,
+    }),
+    [sortedAssets, careAssignments]
+  )
+
+  const listedAssets = useMemo(
+    () =>
+      sortedAssets.filter((a) => {
+        if (assetFilter === "all") return true
+        if (assetFilter === "rights_pending") return !a.rightsCleared
+        return careAssetUsage(careAssignments, a.id).kind === assetFilter
+      }),
+    [sortedAssets, careAssignments, assetFilter]
   )
 
   return (
@@ -274,6 +323,104 @@ export default function CareVideosPage() {
               })}
             </TableBody>
           </Table>
+        </div>
+      </Card>
+
+      {/*
+        登録済みの動画はここでしか一覧できない。枠の表と差し替えダイアログは
+        「その枠の今」しか出さないため、権利未確認の動画を探せる場所が無かった。
+        §7.1 の「本部が提供者・内容・権利・承認状態・公開期間・対象 scope を
+        確認する」はこの一覧が受け持つ。
+      */}
+      <Card className="py-0">
+        <CardHeader className="flex-row items-center justify-between gap-2 pt-6">
+          <CardTitle className="flex items-center gap-1.5 text-base">
+            登録済み動画
+            <InfoHint label="登録済み動画について">
+              固定 13 枠に登録されている動画です。1 つの枠に複数の動画を登録でき、
+              そのうち 1 本だけが公開されます。権利確認が済んでいない動画は
+              公開できません。枠そのものは V1 では増やせません。
+            </InfoHint>
+          </CardTitle>
+          <Select
+            value={assetFilter}
+            onValueChange={(v) => setAssetFilter(v as typeof assetFilter)}
+          >
+            <SelectTrigger className="h-9 w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">すべて ({assetCounts.all})</SelectItem>
+              <SelectItem value="published">
+                公開中 ({assetCounts.published})
+              </SelectItem>
+              <SelectItem value="unused">未使用 ({assetCounts.unused})</SelectItem>
+              <SelectItem value="rights_pending">
+                権利未確認 ({assetCounts.rightsPending})
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </CardHeader>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>タイトル</TableHead>
+                <TableHead>提供者</TableHead>
+                <TableHead>枠</TableHead>
+                <TableHead className="text-right">尺</TableHead>
+                <TableHead>状態</TableHead>
+                <TableHead>権利</TableHead>
+                <TableHead>ファイル</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {listedAssets.map((a) => {
+                const usage = careAssetUsage(careAssignments, a.id)
+                const slot = getCareSlot(a.videoCode)
+                return (
+                  <TableRow key={a.id}>
+                    <TableCell className="text-sm font-medium">{a.title}</TableCell>
+                    <TableCell className="text-sm">{a.provider}</TableCell>
+                    <TableCell className="text-xs">
+                      <span className="font-mono">{a.videoCode}</span>
+                      {slot ? (
+                        <span className="block text-muted-foreground">
+                          {CARE_CATEGORY_LABEL[slot.category]} / {slot.targetLabel}
+                        </span>
+                      ) : null}
+                    </TableCell>
+                    <TableCell className="text-right text-sm tabular-nums">
+                      {a.durationSeconds}秒
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      {CARE_ASSET_USAGE_LABEL[usage.kind]}
+                      {usage.kind === "published" ? (
+                        <span className="block text-muted-foreground">
+                          {CARE_ASSET_SCOPE_LABEL[usage.scope]}
+                        </span>
+                      ) : null}
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      {a.rightsCleared ? (
+                        <span className="text-muted-foreground">確認済</span>
+                      ) : (
+                        <span className="text-amber-700">未確認</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="max-w-40 truncate text-xs text-muted-foreground">
+                      {a.sourceFileName ?? "—"}
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
+          {listedAssets.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              条件に合う動画はありません
+            </p>
+          ) : null}
         </div>
       </Card>
 

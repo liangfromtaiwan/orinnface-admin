@@ -8,7 +8,7 @@
 
 import { adminAccounts, analysisSessions, carePlaybacks, customers, storeDataLinks, stores, rawImageAssets, handoffTokens, recommendationRuns, NOW } from "@/lib/mock/seed"
 import { resolveScope, canViewCustomer, visibleCustomerIds, can, visibleScreens, canAccessScreen, viewScopeFor, companyAdminsOf, canManageMembership, applyMembershipChange, hasMembership, membershipAuditLabel } from "@/lib/domain/scope"
-import { CARE_VIDEO_SLOTS, careEntitlement, assertCareSlotInvariant, canPlaySlot, careSlotFor, decideCareReplacement, applyDirectReplacement, addCareAsset, assertKnownVideoCode } from "@/lib/domain/care-catalog"
+import { CARE_VIDEO_SLOTS, careEntitlement, assertCareSlotInvariant, canPlaySlot, careSlotFor, decideCareReplacement, applyDirectReplacement, addCareAsset, assertKnownVideoCode, careAssetUsage } from "@/lib/domain/care-catalog"
 import { matchesCustomerFilter, CUSTOMER_FILTER_ORDER } from "@/lib/domain/plans"
 import { decideRawImageView, usesB2bDisplay } from "@/lib/domain/scope"
 import { compareWithAgeBand, metricsByGroup } from "@/lib/domain/metrics"
@@ -159,6 +159,40 @@ console.log("── care 差し替えと動画追加 (§7.1, §12) ──")
   let threw2 = false
   try { assertKnownVideoCode("is_starter") } catch { threw2 = true }
   check("禁止されている枠名も弾く", threw2)
+}
+
+console.log("── 登録済み動画の一覧 (§7.1) ──")
+{
+  check("登録済み動画がある", careAssets.length > 0, `(${careAssets.length} 本)`)
+  // 🔴 13 枠の外に動画が居ないこと
+  check("すべての動画が固定 13 枠に属する",
+    careAssets.every(a => CARE_VIDEO_SLOTS.some(s => s.videoCode === a.videoCode)))
+
+  const published = careAssets.filter(a => careAssetUsage(careAssignments, a.id).kind === "published")
+  /*
+    🔴 1 枠に active が複数あっても重複ではない。本部デフォルトと会社・店舗の
+       差し替えは別の scope として同時に存在し、resolveAssignment() が
+       店舗 > 会社 > 本部 で 1 件に解決する。
+       重複として拒否すべきなのは「同じ scope で 2 件」(§13)。
+  */
+  const activeByScope = new Map<string, number>()
+  for (const a of careAssignments.filter(a => a.status === "active")) {
+    const scope = a.scope.storeId ?? a.scope.companyId ?? "default"
+    const key = `${a.videoCode}/${scope}`
+    activeByScope.set(key, (activeByScope.get(key) ?? 0) + 1)
+  }
+  check("同じ枠・同じ範囲で有効な assignment は 1 件以下",
+    [...activeByScope.values()].every(n => n <= 1),
+    `(公開中 ${published.length} 本 / ${activeByScope.size} 組)`)
+  check("どの枠も本部デフォルトが 1 件解決できる",
+    CARE_VIDEO_SLOTS.every(s => (activeByScope.get(`${s.videoCode}/default`) ?? 0) === 1))
+  // 🔴 権利確認が済んでいない動画は公開できない (§7.1)
+  check("公開中の動画はすべて権利確認済み", published.every(a => a.rightsCleared))
+
+  const usages = careAssets.map(a => careAssetUsage(careAssignments, a.id).kind)
+  check("どの動画にも状態が付く", usages.every(k => k !== undefined))
+  console.log(`  状態の内訳: ${[...new Set(usages)].map(k =>
+    `${k}=${usages.filter(u => u === k).length}`).join(" ")}`)
 }
 
 console.log("── 分析の状態 (§13) ──")
