@@ -6,6 +6,10 @@
 import { createContext, useContext } from "react"
 
 import type { Branding } from "@/lib/domain/branding"
+import type {
+  RecommendationPose,
+  SetAction,
+} from "@/lib/domain/recommendation"
 import type { MembershipTarget, Scope } from "@/lib/domain/scope"
 import type {
   AccountId,
@@ -15,6 +19,8 @@ import type {
   CareVideoAsset,
   CompanyId,
   AnalysisSession,
+  RecommendationBaselineSet,
+  RecommendationPolicySet,
   CarePlayback,
   Company,
   Customer,
@@ -87,6 +93,45 @@ export type SessionValue = {
     rightsCleared: boolean
     sourceFileName?: string
   }) => string
+
+  /* ---- 推奨基準値・方針 (§8) ---- */
+
+  baselineSets: RecommendationBaselineSet[]
+  policySets: RecommendationPolicySet[]
+  /**
+   * 基準値の draft を作る。
+   * 🔴 呼ぶ前に `decideDraftCreate()` で可否を判定すること。
+   * 🔴 作れるのは draft だけ。active を直接書き換える関数は用意しない (§8)。
+   */
+  createBaselineDraft: (input: {
+    values: { poseCode: RecommendationPose; baseline: number }[]
+    note?: string
+  }) => void
+  /** 方針の draft を作る。判定は同じく `decideDraftCreate()`。 */
+  createPolicyDraft: (input: {
+    tieBreak: string
+    missingValueHandling: string
+    fallback: string
+    note?: string
+  }) => void
+  /**
+   * 承認・有効化・有効化予約・rollback を実行する。
+   * 🔴 呼ぶ前に `decideSetAction()` で可否を判定すること。
+   * 🔴 rollback は retired を戻すのではなく新 draft を起こす (§8)。
+   * 🔴 どの操作も §11 の変更監査に 1 件残る(基準値 / 方針 / rollback)。
+   */
+  runBaselineAction: (
+    version: string,
+    action: SetAction,
+    reason: string,
+    scheduledAt?: string
+  ) => void
+  runPolicyAction: (
+    version: string,
+    action: SetAction,
+    reason: string,
+    scheduledAt?: string
+  ) => void
 
   /* ---- 視点(どの組織を見ているか) ---- */
 

@@ -165,19 +165,24 @@
 | ☐ | 要求（仕様書） | 実装 | 判定 | メモ |
 |---|---|---|---|---|
 | ☐ | baseline_version（5動作の基準値 set）と policy_version（順位・tie-break・欠損・fallback）を分離 | 画面が2セクションに分離 | ✅ | |
-| ☐ | draft 作成 | — | ❌ | **draft を作る操作が無い**（既存 set の表示のみ） |
-| ☐ | 差分 | — | ❌ | version 間の差分表示が無い |
-| ☐ | 影響 preview | ボタンあり | ⚠️ | toast のみ。中身が無い |
-| ☐ | approve / activate | ボタンあり | ⚠️ | toast のみ |
-| ☐ | scheduled activate | `scheduledActivateAt` 表示 | ⚠️ | 表示のみ。予約操作が無い |
-| ☐ | rollback は新 version として実行 | ボタンあり | ⚠️ | toast のみだが、**文言は「新 version として実行」で正しい** |
+| ☐ | draft 作成 | `createBaselineDraft()` / `createPolicyDraft()`、`BaselineDraftDialog` / `PolicyDraftDialog` | ✅ | 既存版をコピーして直す形。コピー元と同じ値では作れない |
+| ☐ | 差分 | `diffBaselineSets()` / `diffPolicySets()`、`RecommendationDiff` | ✅ | 各カードに「何と比べた差分か」付きで常時表示。比較対象は `comparisonBaseFor()`（draft→active / active→直前の退役版） |
+| ☐ | 影響 preview | `previewBaselineImpact()` / `previewPolicyImpact()` | ✅ | 基準値=draft で推奨を引き直し、現行 run と突き合わせた**試算**（保存しない・過去 run を書き換えない。smoke 有守）。方針は文章なので結果を計算せず「その規則が効く分析の件数」を出す |
+| ☐ | approve / activate | `applyBaselineAction()` / `applyPolicyAction()` | ✅ | 理由入力必須・監査に残る。有効化で前の active は自動で retired（active は常に 1 件） |
+| ☐ | scheduled activate | `SetActionButton` の `schedule` | ✅ | approved のみ。日時を入れて予約、有効化で予約は消える |
+| ☐ | rollback は新 version として実行 | `applySetAction()` の `rollback` | ✅ | retired を戻さず**同じ値の新 draft** を起こす。元の retired はそのまま残り、承認からやり直す |
 | ☐ | active 値の直接更新は禁止。過去 run を再計算・上書きしない | 編集 UI をそもそも出していない | ✅ | |
 | ☐ | average_version / threshold_version / 推奨基準 version を同じ値として扱わない | `types.ts` で別フィールド | ✅ | |
 | ☐ | 操作権限: draft 作成・承認・有効化・rollback は operator のみ。他 role は自 scope の結果根拠のみ閲覧 | `scope.ts` | ✅ | smoke 有守 |
-| ☐ | 初期推奨基準値と policy version | — | ➖ | §16 P0 未決。**実測＋事業承認まで active 化不可**なので今は入れられない |
+| ☐ | 初期推奨基準値と policy version | — | ➖ | §16 P0 未決。**実測＋事業承認まで active 化不可**。有効化・予約の確認ダイアログに警告を出す（`p0_undecided`）が、操作自体は塞いでいない |
 
-> **ここが一番の穴**: 画面はあるが「draft → 承認 → 有効化」の**操作が丸ごとダミー**。
-> 永続化は後端だが、**draft 作成 UI と差分表示は前端の仕事**なので、やるならここ。
+- **2026-09-15 実装**: draft 作成・差分・影響 preview・承認・有効化・予約・rollback を実装。
+  可否判定は `decideDraftCreate()` / `decideSetAction()` の 2 関数だけが持ち、画面は role を直接見ない。
+  状態で出せる操作は `availableActions()`（draft→承認 / approved→有効化・予約 / retired→rollback / active→なし）。
+- **作成者と承認者**: §8 は「分離を**推奨**」なので、自分の draft の承認は**止めず警告する**（`self_approval`）。
+- **推奨の計算は seed と共有**: `rankRecommendedPoses()` を seed の `recommendationRuns` も通す。
+  管理画面が別計算を持つと「preview では変わると出たのに実際は変わらない」が起きるため。
+- ⚠️ **永続化は無い**（backend 担当）。リロードで消える。
 
 ---
 
@@ -294,7 +299,7 @@
 
 | 優先 | 未実装 | 仕様の根拠 | なぜ今できるか |
 |---|---|---|---|
-| 1 | **推奨設定の draft 作成・差分・影響 preview** | §8 | 画面はあるのに操作が全部ダミー。前端の責務範囲がいちばん広い |
+| ~~1~~ | ~~推奨設定の draft 作成・差分・影響 preview~~ | ~~§8~~ | **✅ 2026-09-15 実装済み** |
 | 2 | **store_staff の操作画面**（撮影開始・同意確認・staff note・handoff 発行） | §4.4 / §9 | role は作ってあるのに、その role の主業務の画面が無い |
 | ~~3~~ | ~~membership の付与・剥奪~~ | ~~§4.2 / §4.3~~ | **✅ 2026-09-13 実装済み** |
 | 4 | **差し替え申請の永続化と履歴／rollback 画面** | §7.1 | 型と seed はある。履歴一覧を足せば rollback の根拠が出せる |

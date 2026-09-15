@@ -20,6 +20,8 @@ import { monthlyActiveUsers, totalAnalyses, continuingUsers, churnRiskUsers, imp
 import { buildPeriod } from "@/lib/domain/periods"
 import { careAssets, careAssignments } from "@/lib/mock/seed"
 import { BADGE_HINT } from "@/components/badge-hints"
+import { baselineSets, policySets } from "@/lib/mock/seed"
+import { availableActions, applyBaselineAction, applyPolicyAction, comparisonBaseFor, createBaselineDraft, decideDraftCreate, decideSetAction, diffBaselineSets, nextVersion, previewBaselineImpact, previewPolicyImpact, rankRecommendedPoses, baselineValuesOf, RECOMMENDATION_POSES } from "@/lib/domain/recommendation"
 
 let failed = 0
 function check(name: string, cond: boolean, detail = "") {
@@ -671,6 +673,166 @@ console.log("── ブランド設定 (吉田さん確定 2026-09-08) ──")
         storeIds: ["st_lumiere_ginza", "st_aoyama_main"] },
       stores) === undefined,
     "(どちらのブランドか決まらないため)")
+}
+
+
+console.log("── §8 推奨基準値・方針の版管理 ──")
+{
+  const opScope = resolveScope(adminAccounts[0], stores)
+  const caScope = resolveScope(adminAccounts[1], stores)
+  const active = baselineSets.find(s => s.status === "active")!
+  const draft = baselineSets.find(s => s.status === "draft")!
+  const retired = baselineSets.find(s => s.status === "retired")!
+  const now = NOW.toISOString()
+
+  check("draft 作成は本部のみ", decideDraftCreate(opScope).kind === "allowed")
+  check("契約企業管理者は draft を作れない", decideDraftCreate(caScope).kind === "denied")
+  check("契約企業管理者は承認もできない",
+    decideSetAction(caScope, draft, "approve", "高橋 由紀").kind === "denied")
+
+  check("active は承認し直せない",
+    decideSetAction(opScope, active, "approve", "吉田").kind === "denied",
+    "(active 値の直接更新禁止)")
+  check("draft はいきなり有効化できない",
+    decideSetAction(opScope, draft, "activate", "吉田").kind === "denied",
+    "(draft → 承認 → 有効化)")
+  {
+    const d = decideSetAction(opScope, draft, "approve", draft.createdBy)
+    check("作成者本人の承認は止めないが警告する",
+      d.kind === "allowed" && d.warnings.includes("self_approval"),
+      "(§8 は分離を推奨・禁止ではない)")
+    const other = decideSetAction(opScope, draft, "approve", "本部 品質責任者")
+    check("別の人の承認では警告が出ない",
+      other.kind === "allowed" && other.warnings.length === 0)
+  }
+  {
+    const approved = { ...draft, status: "approved" as const }
+    const d = decideSetAction(opScope, approved, "activate", "吉田")
+    check("有効化には §16 P0 未決の警告が付く",
+      d.kind === "allowed" && d.warnings.includes("p0_undecided"),
+      "(実測 + 事業承認まで確定していない)")
+  }
+
+  {
+    const approved = applyBaselineAction(baselineSets, draft.version, "approve",
+      { actorName: "本部 品質責任者", now })
+    check("承認すると approvedBy が入る",
+      approved.find(s => s.version === draft.version)?.approvedBy === "本部 品質責任者")
+    const activated = applyBaselineAction(approved, draft.version, "activate",
+      { actorName: "吉田", now })
+    check("有効化すると active は 1 件だけ",
+      activated.filter(s => s.status === "active").length === 1)
+    check("今まで有効だった版は退役する",
+      activated.find(s => s.version === active.version)?.status === "retired")
+    check("有効化しても過去の版は消えない",
+      activated.length === baselineSets.length)
+  }
+
+  {
+    const rolled = applyBaselineAction(baselineSets, retired.version, "rollback",
+      { actorName: "吉田", now })
+    check("rollback は退役版を戻さず新しい draft を作る",
+      rolled.length === baselineSets.length + 1 &&
+      rolled[0].status === "draft" &&
+      rolled[0].version !== retired.version,
+      `(${rolled[0].version})`)
+    check("rollback 元の退役版はそのまま残る",
+      rolled.find(s => s.version === retired.version)?.status === "retired")
+    check("rollback で作った draft は承認からやり直す",
+      rolled[0].approvedBy === undefined && rolled[0].activatedAt === undefined)
+    check("rollback した値は元の版と同じ",
+      diffBaselineSets(retired, rolled[0]).every(r => r.delta === 0))
+  }
+
+  check("version は同じ月の中で連番になる",
+    nextVersion("rb", [{ version: "rb-2026.08.1" }, { version: "rb-2026.08.3" }],
+      "2026-08-30T12:00:00+09:00") === "rb-2026.08.4")
+
+  {
+    const made = createBaselineDraft(baselineSets, {
+      values: RECOMMENDATION_POSES.map(pose => ({ poseCode: pose, baseline: 13 })),
+      actorName: "吉田", now,
+    })
+    check("draft 作成は draft 状態で入る", made[0].status === "draft")
+    check("draft を作っても active は動かない",
+      made.find(s => s.version === active.version)?.status === "active")
+  }
+
+  // 影響 preview
+  {
+    const period = buildPeriod("last_12m")
+    const before = JSON.stringify(recommendationRuns)
+    const impact = previewBaselineImpact(recommendationRuns, analysisSessions,
+      active, draft, period)
+    check("影響 preview は過去の run を書き換えない",
+      JSON.stringify(recommendationRuns) === before,
+      "(試算であって recommendation_run ではない)")
+    check("影響 preview は母数を返す",
+      impact.aggregate.denominator === impact.comparable && impact.comparable > 0,
+      `(${impact.changed}/${impact.comparable} 件)`)
+    check("影響 preview は使った version を併記する",
+      impact.aggregate.version === `${active.version} → ${draft.version}`)
+    check("分子は動作の入れ替わりだけ(順位のみは含めない)",
+      impact.aggregate.numerator === impact.changed)
+    check("順位だけの変化も件数としては見せる", impact.reordered >= 0,
+      `(${impact.reordered} 件)`)
+    check("influence の sample は変化した run だけ",
+      impact.samples.length === impact.changed + impact.reordered)
+
+    const same = previewBaselineImpact(recommendationRuns, analysisSessions,
+      active, active, period)
+    check("同じ値どうしなら影響は 0 件", same.changed === 0 && same.samples.length === 0)
+  }
+
+  {
+    const period = buildPeriod("last_12m")
+    const policy = previewPolicyImpact(recommendationRuns, analysisSessions,
+      baselineSets.find(s => s.status === "active")!, period)
+    check("方針の影響は率ではなく件数で返す",
+      policy.total > 0 && policy.tieAffected <= policy.total,
+      `(tie ${policy.tieAffected} / 欠損 ${policy.missingAffected} / fallback ${policy.fallbackAffected} ・母数 ${policy.total})`)
+  }
+
+  // 推奨の計算そのもの
+  {
+    const values = baselineValuesOf(active)
+    const session = analysisSessions.find(s => s.analysisType === "face" && s.status === "completed")!
+    const ranked = rankRecommendedPoses(session.metrics, values)
+    check("推奨は 2 動作", ranked.length === 2)
+    check("推奨は乖離度の大きい順", ranked[0].deviation! >= ranked[1].deviation!)
+    check("欠測の動作は推奨候補から外す",
+      rankRecommendedPoses(session.metrics.filter(m => !m.metricCode.endsWith("_range")), values).length === 0,
+      "(active 方針: 欠測は候補から除外)")
+  }
+
+  // 方針側の状態遷移
+  {
+    const approvedPolicy = policySets.find(s => s.status === "approved")!
+    const activated = applyPolicyAction(policySets, approvedPolicy.version, "activate",
+      { actorName: "吉田", now })
+    check("方針も有効化で active が 1 件になる",
+      activated.filter(s => s.status === "active").length === 1)
+    check("方針の有効化で予約は消える",
+      activated.find(s => s.version === approvedPolicy.version)?.scheduledActivateAt === undefined)
+    const scheduled = applyPolicyAction(policySets, approvedPolicy.version, "schedule",
+      { actorName: "吉田", now, scheduledAt: "2026-10-01T00:00:00+09:00" })
+    check("予約は日時だけを更新し状態は approved のまま",
+      scheduled.find(s => s.version === approvedPolicy.version)?.status === "approved")
+  }
+
+  check("draft でできるのは承認だけ",
+    availableActions("draft").join() === "approve")
+  check("approved でできるのは有効化と予約",
+    availableActions("approved").sort().join() === "activate,schedule")
+  check("active には次に進める操作が無い",
+    availableActions("active").length === 0, "(直接編集も再承認もしない)")
+  check("retired からは rollback だけ",
+    availableActions("retired").join() === "rollback")
+
+  check("draft の比較対象は active",
+    comparisonBaseFor(baselineSets, draft)?.version === active.version)
+  check("active の比較対象は直前の退役版",
+    comparisonBaseFor(baselineSets, active)?.version === retired.version)
 }
 
 console.log(failed === 0 ? "\n✅ 全部 pass" : `\n❌ ${failed} 件 fail`)

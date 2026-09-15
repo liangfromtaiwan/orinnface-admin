@@ -17,7 +17,20 @@ import AuditPage from "@/pages/AuditPage"
 import BrandingPage from "@/pages/BrandingPage"
 import AccountPage from "@/pages/AccountPage"
 import LoginPage from "@/pages/LoginPage"
-import { analysisSessions } from "@/lib/mock/seed"
+import { AggregateStat } from "@/components/AggregateStat"
+import { BaselineDiff, PolicyDiff } from "@/components/RecommendationDiff"
+import {
+  diffBaselineSets,
+  diffPolicySets,
+  previewBaselineImpact,
+} from "@/lib/domain/recommendation"
+import { buildPeriod } from "@/lib/domain/periods"
+import {
+  analysisSessions,
+  baselineSets,
+  policySets,
+  recommendationRuns,
+} from "@/lib/mock/seed"
 
 const pages: [string, string, React.ComponentType][] = [
   ["ダッシュボード", "/dashboard", DashboardPage],
@@ -72,5 +85,60 @@ for (const [name, rawPath, Page] of pages) {
     console.log(`  FAIL  ${name} — ${(e as Error).message.split("\n")[0]}`)
   }
 }
+/*
+  ダイアログの中身は閉じている間 render されないので、ページ巡回では通らない。
+  推奨設定の差分・影響 preview は中身が重いので、部品単体でも 1 度描いておく。
+*/
+{
+  const activeBaseline = baselineSets.find((s) => s.status === "active")!
+  const draftBaseline = baselineSets.find((s) => s.status === "draft")!
+  const activePolicy = policySets.find((s) => s.status === "active")!
+  const otherPolicy = policySets.find((s) => s.status !== "active")!
+  const impact = previewBaselineImpact(
+    recommendationRuns,
+    analysisSessions,
+    activeBaseline,
+    draftBaseline,
+    buildPeriod("last_12m")
+  )
+  const parts: [string, React.ReactElement][] = [
+    [
+      "基準値の差分",
+      <BaselineDiff
+        rows={diffBaselineSets(activeBaseline, draftBaseline)}
+        fromVersion={activeBaseline.version}
+        toVersion={draftBaseline.version}
+      />,
+    ],
+    [
+      "方針の差分",
+      <PolicyDiff
+        rows={diffPolicySets(activePolicy, otherPolicy)}
+        fromVersion={activePolicy.version}
+      />,
+    ],
+    [
+      "影響 preview の集計",
+      <AggregateStat
+        title="推奨動作が入れ替わる割合"
+        aggregate={impact.aggregate}
+        format="rate"
+      />,
+    ],
+  ]
+  for (const [name, node] of parts) {
+    try {
+      const html = renderToString(<TooltipProvider>{node}</TooltipProvider>)
+      if (html.length < 100) {
+        failed++
+        console.log(`  FAIL  ${name} — 出力が短すぎる (${html.length})`)
+      } else console.log(`  ok    ${name.padEnd(12)} ${html.length} bytes`)
+    } catch (e) {
+      failed++
+      console.log(`  FAIL  ${name} — ${(e as Error).message.split("\n")[0]}`)
+    }
+  }
+}
+
 console.log(failed === 0 ? "\n✅ 全ページ render OK" : `\n❌ ${failed} ページ失敗`)
 process.exit(failed === 0 ? 0 : 1)

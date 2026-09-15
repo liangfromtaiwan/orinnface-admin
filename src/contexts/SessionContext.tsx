@@ -23,6 +23,14 @@ import {
   careAssetIdFor,
 } from "@/lib/domain/care-catalog"
 import {
+  applyBaselineAction,
+  applyPolicyAction,
+  createBaselineDraft as buildBaselineDraft,
+  createPolicyDraft as buildPolicyDraft,
+  type RecommendationPose,
+  type SetAction,
+} from "@/lib/domain/recommendation"
+import {
   applyInvite,
   applyMembershipChange,
   membershipAuditLabel,
@@ -39,23 +47,50 @@ import type {
   CareVideoAsset,
   CompanyId,
   DataSubjectId,
+  RecommendationBaselineSet,
+  RecommendationPolicySet,
 } from "@/lib/domain/types"
 import {
   adminAccounts as seededAccounts,
   analysisSessions,
   auditEvents as seededAuditEvents,
+  baselineSets as seededBaselineSets,
   careAssets as seededCareAssets,
   careAssignments as seededCareAssignments,
   carePlaybacks,
   companies,
   companyBrandings,
   customers,
+  policySets as seededPolicySets,
   storeDataLinks,
   stores,
 } from "@/lib/mock/seed"
 
 /** 差し替え履歴に残す catalog version。seed と同じ値を使う。 */
 const CARE_CATALOG_VERSION = "cc-2026.08.1"
+
+/**
+ * 版操作の監査ラベル。
+ * rollback は「元の版」と「新しく起きた draft」の両方を残す。どちらか片方だと
+ * あとから追えない。
+ */
+function setActionAuditLabel(
+  kind: "基準値" | "方針",
+  version: string,
+  action: SetAction,
+  newVersion?: string
+): string {
+  switch (action) {
+    case "approve":
+      return `${kind} set ${version} を承認`
+    case "activate":
+      return `${kind} set ${version} を有効化`
+    case "schedule":
+      return `${kind} set ${version} の有効化を予約`
+    case "rollback":
+      return `${kind} set ${version} の値へ戻す draft ${newVersion ?? ""} を作成`
+  }
+}
 
 /** 監査の request ID を seed と同じ桁で揃える。 */
 function pad6(n: number): string {
@@ -77,6 +112,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [careAssignments, setCareAssignments] = useState<CareAssignment[]>(
     seededCareAssignments
   )
+  /** 推奨基準値・方針の版。draft 作成と状態遷移で動く。永続化は backend 側。 */
+  const [baselineSets, setBaselineSets] =
+    useState<RecommendationBaselineSet[]>(seededBaselineSets)
+  const [policySets, setPolicySets] =
+    useState<RecommendationPolicySet[]>(seededPolicySets)
 
   /** アカウントを変えたら視点は全社横断に戻す(他社の視点を持ち越さない)。 */
   function switchAccount(id: string) {
@@ -189,6 +229,108 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     [accounts, pushAudit]
   )
 
+  /* ---- 推奨基準値・方針 (§8) ---- */
+
+  /**
+   * 🔴 可否は呼び出し側の decideDraftCreate()。ここは state と監査だけ。
+   * 🔴 作れるのは draft。active を書き換える経路はどこにも用意しない。
+   */
+  const createBaselineDraft = useCallback(
+    (input: {
+      values: { poseCode: RecommendationPose; baseline: number }[]
+      note?: string
+    }) => {
+      const actor =
+        seededAccounts.find((a) => a.id === accountId) ?? seededAccounts[0]
+      const now = new Date().toISOString()
+      /*
+        🔴 監査ラベルに新しい version 番号が要る。更新関数は StrictMode で
+           2 回呼ばれるので、中で採番すると監査とずれる。ここで確定させる。
+      */
+      const next = buildBaselineDraft(baselineSets, {
+        ...input,
+        actorName: actor.displayName,
+        now,
+      })
+      setBaselineSets(next)
+      pushAudit(
+        "baseline_change",
+        `基準値 set ${next[0].version} を draft として作成`,
+        input.note?.trim() || "draft 作成"
+      )
+    },
+    [accountId, baselineSets, pushAudit]
+  )
+
+  const createPolicyDraft = useCallback(
+    (input: {
+      tieBreak: string
+      missingValueHandling: string
+      fallback: string
+      note?: string
+    }) => {
+      const actor =
+        seededAccounts.find((a) => a.id === accountId) ?? seededAccounts[0]
+      const now = new Date().toISOString()
+      const next = buildPolicyDraft(policySets, {
+        ...input,
+        actorName: actor.displayName,
+        now,
+      })
+      setPolicySets(next)
+      pushAudit(
+        "policy_change",
+        `方針 set ${next[0].version} を draft として作成`,
+        input.note?.trim() || "draft 作成"
+      )
+    },
+    [accountId, policySets, pushAudit]
+  )
+
+  /**
+   * 🔴 可否は呼び出し側の decideSetAction()。ここは state と監査だけ。
+   * 🔴 rollback は監査カテゴリも rollback にする (§11 に別項目として挙がっている)。
+   */
+  const runBaselineAction = useCallback(
+    (version: string, action: SetAction, reason: string, scheduledAt?: string) => {
+      const actor =
+        seededAccounts.find((a) => a.id === accountId) ?? seededAccounts[0]
+      const now = new Date().toISOString()
+      const next = applyBaselineAction(baselineSets, version, action, {
+        actorName: actor.displayName,
+        now,
+        scheduledAt,
+      })
+      setBaselineSets(next)
+      pushAudit(
+        action === "rollback" ? "rollback" : "baseline_change",
+        setActionAuditLabel("基準値", version, action, next[0]?.version),
+        reason
+      )
+    },
+    [accountId, baselineSets, pushAudit]
+  )
+
+  const runPolicyAction = useCallback(
+    (version: string, action: SetAction, reason: string, scheduledAt?: string) => {
+      const actor =
+        seededAccounts.find((a) => a.id === accountId) ?? seededAccounts[0]
+      const now = new Date().toISOString()
+      const next = applyPolicyAction(policySets, version, action, {
+        actorName: actor.displayName,
+        now,
+        scheduledAt,
+      })
+      setPolicySets(next)
+      pushAudit(
+        action === "rollback" ? "rollback" : "policy_change",
+        setActionAuditLabel("方針", version, action, next[0]?.version),
+        reason
+      )
+    },
+    [accountId, policySets, pushAudit]
+  )
+
   /** 🔴 可否は呼び出し側の decideMembershipEdit()。ここは state と監査だけ。 */
   const changeMembership = useCallback(
     (
@@ -267,6 +409,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       careAssignments,
       replaceCareAsset,
       addCareVideoAsset,
+      baselineSets,
+      policySets,
+      createBaselineDraft,
+      createPolicyDraft,
+      runBaselineAction,
+      runPolicyAction,
       viewCompanyId: effectiveCompanyId,
       viewableCompanies,
       setViewCompany: setViewCompanyId,
@@ -295,6 +443,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     careAssignments,
     replaceCareAsset,
     addCareVideoAsset,
+    baselineSets,
+    policySets,
+    createBaselineDraft,
+    createPolicyDraft,
+    runBaselineAction,
+    runPolicyAction,
   ])
 
   return (

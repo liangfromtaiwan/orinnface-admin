@@ -226,6 +226,10 @@
 - **禁止直接更新 active 值**;**不可重算或覆寫過去的 `recommendation_run`**。
 - `average_version`(同年代平均)、AI `threshold_version`、推奨基準 version **是三個不同的東西**。
 - 只有 `operator` 可 draft/承認/有効化/rollback(rollback 以新 version 執行,建議作成者與承認者分離)。其他 role 只能看自己 scope 的結果根據。
+- 實作:`src/lib/domain/recommendation.ts`(判定・差分・影響試算・状態遷移)、
+  `RecommendationDialogs.tsx`(操作)、`RecommendationDiff.tsx`(差分表示)。
+  🔴 方針(tie-break/欠損/fallback)是**文章**,不能從文章算出結果。影響 preview 只出
+  「該規則實際會生效的分析件數」,不做成比率。
 
 ## 9. B2B 未連携分析
 
@@ -366,6 +370,15 @@ scripts/              仕様不変条件の smoke test
 - 品質の表示は `QualityBadge` だけ。画面ごとに span を書かない。説明文は
   `badge-hints.ts` に 1 箇所。🔴 **母数の扱い(warn は含める / insufficient は除外)を
   書いた文面は `isEligible()` と必ず一致させる**。`npm run smoke` が突き合わせる
+- 推奨の版操作は `decideDraftCreate()` / `decideSetAction()` を通す。画面側で role を
+  直接見て分岐しない。状態で出せる操作は `availableActions()` が決める
+  (draft→承認 / approved→有効化・予約 / retired→rollback / **active は何もできない**)。
+  🔴 `rollback` は retired を active に戻さず**同じ値の新 draft** を起こす。元の版は残す。
+  🔴 有効化すると前の active は自動で retired。active は常に 1 件 (`npm run smoke` で検証)。
+  🔴 §8 は「作成者と承認者の分離を**推奨**」なので、自分の draft の承認は止めず警告する。
+- 推奨の計算は `rankRecommendedPoses()` の 1 本だけ。seed の `recommendationRuns` も
+  これを通す。🔴 影響 preview が別計算を持つと「preview では変わると出たのに実際は
+  変わらない」が起きる。影響 preview は**試算**で、保存も過去 run の書き換えもしない
 - membership の付与・剥奪は `decideMembershipEdit()` を通す。画面側で role を
   直接見て分岐しない。契約企業管理者の指名は本部のみ、**店舗管理者は担当店舗の
   スタッフのみ追加・削除できる**(吉田 2026-09-14。§4.3 の「確認する」は実態と不一致)。
@@ -389,13 +402,15 @@ npm run smoke         # スコープ判定・entitlement・KPI 母数などの�
 npm run smoke:render  # 全ページを SSR して実行時エラーを検出
 ```
 
-`npm run lint` は継承した shadcn の `ui/*` と `hooks/use-mobile.ts` で 5 件のエラーが出る。
-これは複製時点から存在するもので、v1.0 対応で増やしたものではない。
+`npm run lint` は 0 件。継承した shadcn の `ui/*` は eslint.config.js で
+component + cva の同居を許可しているため、以前出ていた 5 件は解消済み。
 
 ### 未実装(意図的)
 実 API 接続(`src/lib/api/` は未作成。現在は `src/lib/mock/seed.ts` を直接参照)、実認証と 2FA、
 差し替え申請・承認の永続化(現在は toast のみ)、CSV export、管理画面のビジュアル(§16 P2)、
 ブランド設定の保存(ロゴは画面内の preview のみ。反映も画面内 state で backend 未接続)。
+推奨設定の版操作(draft 作成・承認・有効化・予約・rollback)は**画面 state までは動く**が、
+保存は backend 担当なのでリロードで消える。
 
 ## 17. 未決事項(動工前確認)
 
@@ -435,6 +450,12 @@ npm run smoke:render  # 全ページを SSR して実行時エラーを検出
 16. ✅ アカウントは**招待制**(吉田 2026-09-14)。メールアドレスで招待 → 本人がパスワードを設定。
     契約後の**スタッフ追加は店舗管理者**ができる。外すこともできる
     ← 残り: アカウント認証 v1.0 が未入手(招待メール送信・初期パスワード・2FA の正本)
+17. 🟡 推奨の「方針 set」を文章のままにするか、選択肢にするか(2026-09-15 起票)
+    ← 文章のままだと変更後の推奨を計算できない。今は「その規則が効く分析の件数」だけ出している
+18. 🟡 「作成者と承認者の分離」は推奨か必須か(§8 は「推奨」と記載・2026-09-15 起票)
+    ← 今は止めずに警告のみ。必須にするなら 1 行で塞げる
+19. 🟡 有効化の「予約」を実行するのは誰か・job 失敗をどこで気付くか(2026-09-15 起票)
+    ← 同じ版の予約は有効化時に消す実装。別の版の予約は消していない(backend と要すり合わせ)
 
 暫定実装には `provisional` フラグや ⓘ の注意書きを必ず添え、
 **確定していない値が確定値として読まれないようにする**。

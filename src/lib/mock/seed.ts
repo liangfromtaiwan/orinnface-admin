@@ -9,6 +9,11 @@
  */
 
 import { CARE_VIDEO_SLOTS, careSlotFor } from "../domain/care-catalog"
+import {
+  RECOMMENDATION_POSES,
+  baselineValuesOf,
+  rankRecommendedPoses,
+} from "../domain/recommendation"
 import { METRIC_CATALOG, type AgeBandAverages } from "../domain/metrics"
 import type { CompanyBranding } from "@/lib/domain/branding"
 import type {
@@ -665,41 +670,8 @@ export const ageBandAverages: AgeBandAverages = {
  * 推奨 (正式推奨は Backend のみが生成する)
  * ------------------------------------------------------------------ */
 
-const POSES = ["smile", "pucker", "jaw_open", "eye_open", "brow_furrow"] as const
-
-export const recommendationRuns: RecommendationRun[] = analysisSessions
-  .filter((s) => s.analysisType === "face" && s.status === "completed")
-  .map((s, i) => {
-    // 動作は同じで尺だけプランで切り替える (AI推奨 v1.2)。
-    // 🔴 推奨されるのは標準動画なので、尺は本人のプランで決まる
-    //    (連携済みでも Member なら 1分)。店舗提供動画は別軸。
-    const plan = customers.find((c) => c.dataSubjectId === s.dataSubjectId)?.plan
-    const duration = plan === "premium" ? ("3m" as const) : ("1m" as const)
-    // 可動域の乖離度が大きい下位 2 動作を推奨する (AI推奨 v1.2)。左右差は使わない。
-    const ranked = POSES.map((pose) => {
-      const value = s.metrics.find((m) => m.metricCode === `${pose}_range`)?.value ?? 0
-      const baseline = 12
-      return { pose, value, baseline, deviation: Number((baseline - value).toFixed(2)) }
-    })
-      .sort((a, b) => b.deviation - a.deviation)
-      .slice(0, 2)
-
-    return {
-      id: `rr_${pad(i + 1, 4)}`,
-      analysisSessionId: s.id,
-      baselineVersion: ACTIVE_BASELINE_VERSION,
-      policyVersion: ACTIVE_POLICY_VERSION,
-      runAt: s.completedAt ?? daysAgo(1),
-      items: ranked.map((r, rank) => ({
-        rank: rank + 1,
-        poseCode: r.pose,
-        score: r.value,
-        baseline: r.baseline,
-        deviation: r.deviation,
-        videoCode: careSlotFor(r.pose, duration)!.videoCode,
-      })),
-    }
-  })
+/** 5 動作の並び順は推奨 module が正。seed 側で別に持たない。 */
+const POSES = RECOMMENDATION_POSES
 
 export const baselineSets: RecommendationBaselineSet[] = [
   {
@@ -715,7 +687,15 @@ export const baselineSets: RecommendationBaselineSet[] = [
   {
     version: "rb-2026.09.1",
     status: "draft",
-    values: POSES.map((pose, i) => ({ poseCode: pose, baseline: 12 + (i % 2 ? 0.5 : -0.5) })),
+    /*
+      動作ごとに実測の分布が違うので、一律ではなく動作別に動かした調整案。
+      🔴 全動作を同じ幅で動かすと順位は動かず影響 preview が常に 0 件になる。
+         推奨は「動作間の乖離度の比較」で決まるため、差がつく値にしてある。
+    */
+    values: [12.4, 12.0, 11.6, 12.2, 11.9].map((baseline, i) => ({
+      poseCode: POSES[i],
+      baseline,
+    })),
     createdBy: "吉田",
     createdAt: daysAgo(4),
     note: "8月実測の分布を反映した調整案。影響 preview 確認待ち。",
@@ -730,6 +710,43 @@ export const baselineSets: RecommendationBaselineSet[] = [
     activatedAt: daysAgo(75),
   },
 ]
+
+/** 現行 active の基準値。run の計算はこの値で行う。 */
+const ACTIVE_BASELINE_VALUES = baselineValuesOf(
+  baselineSets.find((set) => set.status === "active")!
+)
+
+export const recommendationRuns: RecommendationRun[] = analysisSessions
+  .filter((s) => s.analysisType === "face" && s.status === "completed")
+  .map((s, i) => {
+    // 動作は同じで尺だけプランで切り替える (AI推奨 v1.2)。
+    // 🔴 推奨されるのは標準動画なので、尺は本人のプランで決まる
+    //    (連携済みでも Member なら 1分)。店舗提供動画は別軸。
+    const plan = customers.find((c) => c.dataSubjectId === s.dataSubjectId)?.plan
+    const duration = plan === "premium" ? ("3m" as const) : ("1m" as const)
+    /*
+      可動域の乖離度が大きい下位 2 動作を推奨する (AI推奨 v1.2)。左右差は使わない。
+      🔴 計算は管理画面の影響 preview と同じ関数を通す。ここに別計算を書くと
+         「preview では変わると出たのに実際は変わらない」が起きる。
+    */
+    const ranked = rankRecommendedPoses(s.metrics, ACTIVE_BASELINE_VALUES)
+
+    return {
+      id: `rr_${pad(i + 1, 4)}`,
+      analysisSessionId: s.id,
+      baselineVersion: ACTIVE_BASELINE_VERSION,
+      policyVersion: ACTIVE_POLICY_VERSION,
+      runAt: s.completedAt ?? daysAgo(1),
+      items: ranked.map((r, rank) => ({
+        rank: rank + 1,
+        poseCode: r.poseCode,
+        score: r.value ?? 0,
+        baseline: r.baseline,
+        deviation: r.deviation ?? 0,
+        videoCode: careSlotFor(r.poseCode, duration)!.videoCode,
+      })),
+    }
+  })
 
 export const policySets: RecommendationPolicySet[] = [
   {
