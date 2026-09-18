@@ -103,6 +103,8 @@
 - [x] `MembershipDialog` ✅ 2026-09-13 - membership の付与・剥奪(§4.1/§4.2)。理由入力必須・監査に role_change を残す
 - [x] `RecommendationDiff` ✅ 2026-09-15 - 基準値・方針の版間の差分表示(§8)。「何と比べた差分か」を必ず添える
 - [x] `RecommendationDialogs` ✅ 2026-09-15 - 推奨の draft 作成 / 影響 preview / 承認・有効化・予約・rollback(§8)。可否は decideDraftCreate() / decideSetAction() の 1 箇所・理由入力必須
+- [x] `CareVideoPreview` ✅ 2026-09-15 - care 動画の中身の確認プレイヤー。登録済みはモック再生元(`src/lib/mock/care-video-source.ts`)、選んだファイルはその場で再生。⚠️ モック注記を消さない
+- [x] `CareRequestReviewDialog` ✅ 2026-09-15 - 差し替え申請の確認と承認(§7.1)。今出ている動画と並べて再生・権利未確認は承認不可・却下は理由必須。**承認導線はここだけ**
 - [ ] `EmptyState` - 空狀態顯示
 
 > ⚠️ v1.0 対応で削除: `CompanySwitcher` / `AdminDashboard` / `B2BDashboard` / `OEMDashboard`

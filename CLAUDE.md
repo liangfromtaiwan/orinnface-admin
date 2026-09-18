@@ -362,6 +362,14 @@ scripts/              仕様不変条件の smoke test
 - care の差し替えは `decideCareReplacement()` を通す。🔴 **申請するのは契約企業・店舗で、
   本部は承認する側 (§7.1)**。本部に申請を出させない。`applyDirectReplacement()` は
   同じ枠に有効な本部デフォルトを 2 件作らない(§13「重複有効を publish 前に拒否」)
+- 差し替え申請の承認は `CareRequestReviewDialog` からだけ。一覧に承認ボタンを置かない。
+  🔴 §7.1 は「提供者・**内容**・権利・承認状態・公開期間・対象 scope を確認して approve」
+  なので、中身を見ずに承認できる導線を作らない。今その範囲に出ている動画と並べて出す。
+- 登録済み動画の再生元は `src/lib/mock/care-video-source.ts` の **モック 1 本だけ**。
+  🔴 `CareVideoAsset` に URL を持たせない(配信・署名 URL は backend の担当)。
+  中身はテストパターンなので、`CareVideoPreview` のモック注記を消さない
+- 適用範囲は `careScopeLabel()`。🔴 「会社全体」とだけ書かない。本部は全社を横断して
+  見るので、会社名を落とすと「全ての契約企業に出る」と読まれる
 - care の動画ファイルは**画面では読むだけで保存しない**。尺だけ実ファイルから読んで
   埋め、ファイル名は `CareVideoAsset.sourceFileName` に残す。保存・変換・配信・
   署名 URL は backend の担当(この repo はフロントエンドのみ)

@@ -15,9 +15,10 @@
  */
 
 import { useEffect, useRef, useState } from "react"
-import { FilmIcon, UploadIcon } from "lucide-react"
+import { UploadIcon } from "lucide-react"
 import { toast } from "sonner"
 
+import { CareVideoPreview } from "@/components/CareVideoPreview"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -122,46 +123,11 @@ function useVideoFile() {
 /* ------------------------------------------------------------------ *
  * 動画の中身の確認
  *
- * 🔴 登録済みの動画はこの画面では再生できない。配信(署名 URL の発行)は
- *    backend の担当なので、代わりに素性を出して取り違えを防ぐ。
- *    これから上げる動画は手元のファイルなのでその場で再生できる。
+ * 🔴 承認・差し替えの前に中身を見られるようにする (§7.1「内容を確認して approve」)。
+ *    プレイヤーは CareVideoPreview に寄せてある。登録済みの動画はモックの再生元、
+ *    これから上げる動画は手元のファイルをそのまま再生する。
  * ------------------------------------------------------------------ */
 
-function CareVideoPreview({
-  previewUrl,
-  label,
-}: {
-  previewUrl?: string
-  label: string
-}) {
-  if (previewUrl) {
-    return (
-      <div className="space-y-1">
-        <p className="text-xs text-muted-foreground">{label}</p>
-        <video
-          src={previewUrl}
-          controls
-          preload="metadata"
-          className="max-h-56 w-full rounded-md bg-black"
-        />
-      </div>
-    )
-  }
-  return (
-    <div className="space-y-1">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <div className="flex min-h-20 flex-col items-center justify-center gap-1 rounded-md border border-dashed bg-muted/40 p-3 text-center">
-        <FilmIcon className="size-4 text-muted-foreground" />
-        <p className="text-[11px] text-muted-foreground">
-          登録済みの動画はこの画面では再生できません
-        </p>
-        <p className="text-[11px] text-muted-foreground">
-          再生には backend の配信(署名 URL)が必要です
-        </p>
-      </div>
-    </div>
-  )
-}
 
 /** 動画の素性。どれを選んでいるかを取り違えないための一覧。 */
 function AssetFacts({
@@ -491,7 +457,7 @@ export function CareReplaceDialog({
                       : []),
                   ]}
                 />
-                <CareVideoPreview label="中身の確認" />
+                <CareVideoPreview asset={current} label="中身の確認" />
               </>
             ) : (
               <p className="text-xs text-destructive">
@@ -574,7 +540,7 @@ export function CareReplaceDialog({
                 <div className="space-y-2">
                   <h3 className="text-xs font-medium">切り替え先</h3>
                   <AssetFacts asset={picked} />
-                  <CareVideoPreview label="中身の確認" />
+                  <CareVideoPreview asset={picked} label="中身の確認" />
                 </div>
               ) : null}
 

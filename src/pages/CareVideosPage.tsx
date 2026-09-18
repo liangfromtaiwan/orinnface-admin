@@ -11,6 +11,7 @@ import { useMemo, useState } from "react"
 import { toast } from "sonner"
 
 import { CareAssetAddDialog, CareReplaceDialog } from "@/components/CareAssetDialog"
+import { CareRequestReviewDialog } from "@/components/CareRequestReviewDialog"
 import { InfoHint } from "@/components/InfoHint"
 import { PageHeader, SpecNote } from "@/components/PageHeader"
 import { Badge } from "@/components/ui/badge"
@@ -72,6 +73,8 @@ export default function CareVideosPage() {
   const [assetFilter, setAssetFilter] = useState<
     "all" | "published" | "unused" | "rights_pending"
   >("all")
+  /** 確認ダイアログを開いている差し替え申請。 */
+  const [reviewing, setReviewing] = useState<string | null>(null)
 
   const assetById = useMemo(
     () => new Map(careAssets.map((a) => [a.id, a])),
@@ -105,6 +108,7 @@ export default function CareVideosPage() {
   const requests = careAssignments.filter(
     (a) => a.status !== "active" || a.scope.companyId || a.scope.storeId
   )
+  const reviewingRequest = requests.find((r) => r.id === reviewing)
 
   /** 表示順は枠の並び順に揃える(13 枠の表と読み比べられるように)。 */
   const sortedAssets = useMemo(() => {
@@ -271,7 +275,11 @@ export default function CareVideosPage() {
               {requests.map((r) => {
                 const asset = assetById.get(r.careAssetId)
                 return (
-                  <TableRow key={r.id}>
+                  <TableRow
+                    key={r.id}
+                    className="cursor-pointer"
+                    onClick={() => setReviewing(r.id)}
+                  >
                     <TableCell className="font-mono text-xs">{r.videoCode}</TableCell>
                     <TableCell className="text-sm">
                       {careScopeLabel(r.scope, scopeNames)}
@@ -291,35 +299,20 @@ export default function CareVideosPage() {
                         <span className="text-amber-700">未確認</span>
                       )}
                     </TableCell>
-                    <TableCell className="space-x-1 text-right">
+                    <TableCell className="text-right">
+                      {/*
+                        🔴 承認・却下は確認ダイアログの中だけ。§7.1 は「内容を確認して
+                           approve」なので、一覧から中身を見ずに承認できるようにしない。
+                      */}
                       <Button
                         variant="outline"
                         size="sm"
-                        disabled={
-                          !canApprove ||
-                          r.status !== "pending_approval" ||
-                          !asset?.rightsCleared
-                        }
-                        title={
-                          !asset?.rightsCleared
-                            ? "権利確認が未完了のため承認できません"
-                            : undefined
-                        }
-                        onClick={() =>
-                          toast.success("承認しました", {
-                            description: "有効日時に care_asset_id を切り替えます。",
-                          })
-                        }
+                        onClick={() => setReviewing(r.id)}
                       >
-                        承認
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={!canApprove || r.status !== "pending_approval"}
-                        onClick={() => toast.info("却下しました")}
-                      >
-                        却下
+                        内容を確認
+                        {r.status === "pending_approval" && canApprove
+                          ? "・承認"
+                          : ""}
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -437,6 +430,16 @@ export default function CareVideosPage() {
         Member = 選定2動作の1分 care を JST 暦月10回、Premium = 1分・3分・リンパ・神経で
         商品上の月間上限なしです。
       </SpecNote>
+
+      {reviewingRequest ? (
+        <CareRequestReviewDialog
+          request={reviewingRequest}
+          open
+          onOpenChange={(next) => {
+            if (!next) setReviewing(null)
+          }}
+        />
+      ) : null}
     </div>
   )
 }
