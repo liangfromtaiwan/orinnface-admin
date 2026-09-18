@@ -31,13 +31,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { useSession } from "@/contexts/session-context"
 import {
-  CARE_ASSET_SCOPE_LABEL,
+  useCompanyName,
+  useSession,
+  useStoreName,
+} from "@/contexts/session-context"
+import {
   CARE_ASSET_USAGE_LABEL,
   CARE_CATEGORY_LABEL,
   CARE_VIDEO_SLOTS,
   careAssetUsage,
+  careScopeLabel,
   decideCareReplacement,
   getCareSlot,
   providerOf,
@@ -53,6 +57,10 @@ import {
 
 export default function CareVideosPage() {
   const { scope, careAssets, careAssignments } = useSession()
+  /* 🔴 適用範囲は「どの会社・どの店舗か」まで出す (careScopeLabel)。 */
+  const companyName = useCompanyName()
+  const storeName = useStoreName()
+  const scopeNames = { company: companyName, store: storeName }
   const canApprove = can(scope, "care.approve")
   /*
     🔴 申請するのは契約企業・店舗で、本部は承認する側 (§7.1)。
@@ -266,11 +274,7 @@ export default function CareVideosPage() {
                   <TableRow key={r.id}>
                     <TableCell className="font-mono text-xs">{r.videoCode}</TableCell>
                     <TableCell className="text-sm">
-                      {r.scope.storeId
-                        ? "店舗限定"
-                        : r.scope.companyId
-                          ? "会社全体"
-                          : "本部デフォルト"}
+                      {careScopeLabel(r.scope, scopeNames)}
                     </TableCell>
                     <TableCell className="text-sm">{r.requestedBy}</TableCell>
                     <TableCell className="text-sm">
@@ -397,7 +401,7 @@ export default function CareVideosPage() {
                       {CARE_ASSET_USAGE_LABEL[usage.kind]}
                       {usage.kind === "published" ? (
                         <span className="block text-muted-foreground">
-                          {CARE_ASSET_SCOPE_LABEL[usage.scope]}
+                          {careScopeLabel(usage, scopeNames)}
                         </span>
                       ) : null}
                     </TableCell>

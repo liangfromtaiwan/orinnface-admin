@@ -118,8 +118,13 @@ export default function AnalysisPage() {
         description={`表示 ${rows.length} 件(うち適格分析 ${eligibleCount} 件) / スコープ内 全 ${analysisSessions.length} 件`}
         actions={
           <>
+            {/*
+              🔴 幅は固定しない。種別と状態を並べて置いているので選択肢の文言を
+                 「すべて」まで縮められず、w-36 では件数の閉じ括弧が切れていた。
+                 下限だけ決めて、桁が増えたら伸びるようにする。
+            */}
             <Select value={type} onValueChange={(v) => setType(v as AnalysisType | "all")}>
-              <SelectTrigger className="h-9 w-36">
+              <SelectTrigger className="h-9 w-fit min-w-44">
                 <SelectValue placeholder="種別" />
               </SelectTrigger>
               <SelectContent>
@@ -136,7 +141,7 @@ export default function AnalysisPage() {
               value={status}
               onValueChange={(v) => setStatus(v as AnalysisStatus | "all")}
             >
-              <SelectTrigger className="h-9 w-36">
+              <SelectTrigger className="h-9 w-fit min-w-44">
                 <SelectValue placeholder="状態" />
               </SelectTrigger>
               <SelectContent>

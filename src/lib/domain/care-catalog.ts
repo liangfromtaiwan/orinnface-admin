@@ -360,8 +360,17 @@ export function assertKnownVideoCode(videoCode: string): void {
  * ------------------------------------------------------------------ */
 
 export type CareAssetUsage =
-  /** どこかの枠で公開されている */
-  | { kind: "published"; scope: SlotProvider | "company" }
+  /**
+   * どこかの枠で公開されている。
+   * 🔴 「会社」「店舗」だけでなく **どの** 会社・店舗かも返す。本部は全社を横断して
+   *    見るので、範囲の種類だけだと「全社共通」と読み違える。
+   */
+  | {
+      kind: "published"
+      scope: SlotProvider | "company"
+      companyId?: CompanyId
+      storeId?: StoreId
+    }
   /** 承認済みで公開待ち */
   | { kind: "scheduled" }
   /** 差し替え申請の対象になっている */
@@ -391,6 +400,8 @@ export function careAssetUsage(
         : active.scope.companyId
           ? "company"
           : "standard",
+      companyId: active.scope.companyId,
+      storeId: active.scope.storeId,
     }
   }
   if (mine.some((a) => a.status === "scheduled" || a.status === "approved")) {
@@ -403,12 +414,17 @@ export function careAssetUsage(
   return { kind: "unused" }
 }
 
-/** 公開されている場合の適用範囲の表示。 */
-export const CARE_ASSET_SCOPE_LABEL: Record<
-  Extract<CareAssetUsage, { kind: "published" }>["scope"],
-  string
-> = {
-  standard: "本部デフォルト",
-  company: "会社全体",
-  store: "店舗限定",
+/**
+ * 適用範囲の表示。
+ * 🔴 会社・店舗の名前を必ず添える。「会社全体」とだけ書くと、全社横断で見ている
+ *    本部には「全ての契約企業」と読まれる。実際は申請元の 1 社の中だけ。
+ * 名前の解決は画面側 (`useCompanyName()` / `useStoreName()`) から渡す。
+ */
+export function careScopeLabel(
+  scope: { companyId?: CompanyId; storeId?: StoreId },
+  names: { company: (id?: string) => string; store: (id?: string) => string }
+): string {
+  if (scope.storeId) return `${names.store(scope.storeId)} のみ`
+  if (scope.companyId) return `${names.company(scope.companyId)} の全店舗`
+  return "本部デフォルト(全社共通)"
 }

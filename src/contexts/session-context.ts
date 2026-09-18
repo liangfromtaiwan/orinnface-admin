@@ -27,7 +27,10 @@ import type {
   Store,
   StoreDataLink,
 } from "@/lib/domain/types"
-import { stores as allStores } from "@/lib/mock/seed"
+import {
+  companies as allCompanies,
+  stores as allStores,
+} from "@/lib/mock/seed"
 
 export type SessionValue = {
   account: AdminAccount
@@ -166,6 +169,22 @@ export function useSession(): SessionValue {
   const ctx = useContext(SessionContext)
   if (!ctx) throw new Error("useSession must be used within SessionProvider")
   return ctx
+}
+
+/**
+ * 会社名の解決。
+ * 🔴 適用範囲などを「会社全体」とだけ書かない。本部は全社を横断して見るので、
+ *    どの会社かを書かないと「全社共通」と読まれる。
+ */
+export function useCompanyName() {
+  const { companies } = useSession()
+  return (companyId?: string) => {
+    if (!companyId) return "—"
+    const found =
+      companies.find((c) => c.id === companyId) ??
+      allCompanies.find((c) => c.id === companyId)
+    return found?.name ?? companyId
+  }
 }
 
 /** 店舗名の解決。画面表示は「店舗」で統一する (partner を出さない)。 */
