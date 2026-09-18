@@ -698,7 +698,7 @@ export const baselineSets: RecommendationBaselineSet[] = [
     })),
     createdBy: "吉田",
     createdAt: daysAgo(4),
-    note: "8月実測の分布を反映した調整案。影響 preview 確認待ち。",
+    note: "8月実測の分布を反映した調整案。影響の試算を確認待ち。",
   },
   {
     version: "rb-2026.07.1",
@@ -770,7 +770,7 @@ export const policySets: RecommendationPolicySet[] = [
     approvedBy: "本部 品質責任者",
     createdAt: daysAgo(6),
     scheduledActivateAt: daysAhead(5),
-    note: "有効化予約済み。activate 前に影響 preview を再確認すること。",
+    note: "有効化を予約済み。有効化の前に影響の試算を再確認すること。",
   },
 ]
 

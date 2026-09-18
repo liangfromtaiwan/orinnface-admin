@@ -175,7 +175,7 @@ function PolicyCard({
         ) : (
           <dl className="space-y-1">
             <div>
-              <dt className="text-xs text-muted-foreground">tie-break</dt>
+              <dt className="text-xs text-muted-foreground">同値のときの扱い</dt>
               <dd>{set.tieBreak}</dd>
             </div>
             <div>
@@ -183,7 +183,7 @@ function PolicyCard({
               <dd>{set.missingValueHandling}</dd>
             </div>
             <div>
-              <dt className="text-xs text-muted-foreground">fallback</dt>
+              <dt className="text-xs text-muted-foreground">候補が足りないときの扱い</dt>
               <dd>{set.fallback}</dd>
             </div>
           </dl>
@@ -222,13 +222,13 @@ export default function RecommendationPage() {
     <div className="space-y-4">
       <PageHeader
         title="推奨設定"
-        description="基準値 set と方針 set は別 version として管理します。値を変えるときは draft を作り、承認してから有効化します。"
+        description="基準値セットと方針セットは別の版として管理します。値を変えるときは下書きを作り、承認してから有効化します。"
       />
 
       <section className="space-y-2">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-sm font-medium">
-            基準値 set (recommendation_baseline_version)
+            基準値セット (recommendation_baseline_version)
           </h2>
           <BaselineDraftDialog sets={baselineSets} />
         </div>
@@ -245,7 +245,7 @@ export default function RecommendationPage() {
       <section className="space-y-2">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-sm font-medium">
-            方針 set (recommendation_policy_version)
+            方針セット (recommendation_policy_version)
           </h2>
           <PolicyDraftDialog sets={policySets} />
         </div>
@@ -261,11 +261,11 @@ export default function RecommendationPage() {
       </section>
 
       <SpecNote>
-        同年代平均の average_version、AI の threshold_version、推奨基準の version は
-        それぞれ別のものです。同じ値として扱わないでください。初期の推奨基準値と policy
-        version は仕様書 §16 の P0 未決事項(実測 + 事業承認待ち)のため、draft の作成・
-        差分・影響 preview まではできますが、実測と事業承認が揃うまで有効化しないで
-        ください。画面上の変更は backend 未接続のため保存されません。
+        同年代平均の版(average_version)、AI の閾値の版(threshold_version)、推奨基準の版は
+        それぞれ別のものです。同じ値として扱わないでください。初期の推奨基準値と方針の版は
+        仕様書 §16 の P0 未決事項(実測 + 事業承認待ち)のため、下書きの作成・差分・
+        影響の試算まではできますが、実測と事業承認が揃うまで有効化しないでください。
+        画面上の変更はサーバー未接続のため保存されません。
       </SpecNote>
     </div>
   )

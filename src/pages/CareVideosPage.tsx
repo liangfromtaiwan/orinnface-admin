@@ -611,7 +611,7 @@ export default function CareVideosPage() {
         承認者なので、申請を挟まず本部デフォルトを直接差し替えます。動画は既存の枠に
         追加できますが、V1 で slot・pose・video_code を新設することはできません。差し替え時は care_asset_id だけを切り替え、元 asset・
         差し替え asset・申請者・承認者・理由・開始終了・取消・catalog version を履歴として
-        保持します。会員権限は Guest = 推奨2件を lock 表示 + 登録 CTA(再生不可)、
+        保持します。会員権限は Guest = 推奨2件をロック表示 + 登録の案内(再生不可)、
         Member = 選定2動作の1分 care を JST 暦月10回、Premium = 1分・3分・リンパ・神経で
         商品上の月間上限なしです。
       </SpecNote>

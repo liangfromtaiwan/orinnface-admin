@@ -291,7 +291,7 @@ export default function CustomerDetailPage() {
               <div className="pl-3">
                 再生: {entitlement.canPlay ? "可" : "不可"}
                 {entitlement.showLockedWithCta
-                  ? "(推奨2件は lock 表示 + 登録 CTA。非表示にはしない)"
+                  ? "(推奨2件はロック表示 + 登録の案内。非表示にはしない)"
                   : ""}
               </div>
               <div className="pl-3">

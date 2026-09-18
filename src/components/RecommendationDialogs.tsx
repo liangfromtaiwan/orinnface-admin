@@ -113,7 +113,7 @@ export function BaselineDraftDialog({
 
   function submit() {
     createBaselineDraft({ values: parsed, note: note.trim() || undefined })
-    toast.success("基準値の draft を作成しました", {
+    toast.success("基準値の下書きを作成しました", {
       description: "承認と有効化は別の操作です。有効化するまで推奨は変わりません。",
     })
     setOpen(false)
@@ -129,11 +129,11 @@ export function BaselineDraftDialog({
       }}
     >
       <DialogTrigger asChild>
-        <Button size="sm">draft を作成</Button>
+        <Button size="sm">下書きを作成</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>基準値 set の draft を作成</DialogTitle>
+          <DialogTitle>基準値セットの下書きを作成</DialogTitle>
           <DialogDescription>
             {base ? (
               <>
@@ -185,7 +185,7 @@ export function BaselineDraftDialog({
           rows={2}
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="この draft の根拠(任意・監査に残ります)"
+          placeholder="この下書きの根拠(任意・監査に残ります)"
         />
 
         <p className="text-xs text-muted-foreground">
@@ -203,12 +203,12 @@ export function BaselineDraftDialog({
               !allValid
                 ? "5 動作すべてに正の数値を入れてください"
                 : changedCount === 0
-                  ? "コピー元と同じ値では draft を作れません"
+                  ? "コピー元と同じ値では下書きを作れません"
                   : undefined
             }
             onClick={submit}
           >
-            draft を作成
+            下書きを作成
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -256,7 +256,7 @@ export function PolicyDraftDialog({ sets }: { sets: RecommendationPolicySet[] })
       fallback: form.fallback.trim(),
       note: note.trim() || undefined,
     })
-    toast.success("方針の draft を作成しました", {
+    toast.success("方針の下書きを作成しました", {
       description: "承認と有効化は別の操作です。有効化するまで推奨は変わりません。",
     })
     setOpen(false)
@@ -266,7 +266,7 @@ export function PolicyDraftDialog({ sets }: { sets: RecommendationPolicySet[] })
   const fields: { key: keyof typeof form; label: string; hint: string }[] = [
     {
       key: "tieBreak",
-      label: "tie-break",
+      label: "同値のときの扱い",
       hint: "乖離度が同値になったときにどちらを採るか",
     },
     {
@@ -276,7 +276,7 @@ export function PolicyDraftDialog({ sets }: { sets: RecommendationPolicySet[] })
     },
     {
       key: "fallback",
-      label: "fallback",
+      label: "候補が足りないときの扱い",
       hint: "候補が 2 件に満たないときにどうするか",
     },
   ]
@@ -290,11 +290,11 @@ export function PolicyDraftDialog({ sets }: { sets: RecommendationPolicySet[] })
       }}
     >
       <DialogTrigger asChild>
-        <Button size="sm">draft を作成</Button>
+        <Button size="sm">下書きを作成</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>方針 set の draft を作成</DialogTitle>
+          <DialogTitle>方針セットの下書きを作成</DialogTitle>
           <DialogDescription>
             {base ? (
               <>
@@ -330,7 +330,7 @@ export function PolicyDraftDialog({ sets }: { sets: RecommendationPolicySet[] })
           rows={2}
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="この draft の根拠(任意・監査に残ります)"
+          placeholder="この下書きの根拠(任意・監査に残ります)"
         />
 
         <DialogFooter>
@@ -343,12 +343,12 @@ export function PolicyDraftDialog({ sets }: { sets: RecommendationPolicySet[] })
               !filled
                 ? "3 項目とも入力してください"
                 : !changed
-                  ? "コピー元と同じ内容では draft を作れません"
+                  ? "コピー元と同じ内容では下書きを作れません"
                   : undefined
             }
             onClick={submit}
           >
-            draft を作成
+            下書きを作成
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -378,7 +378,7 @@ export function BaselineImpactDialog({
   if (!activeSet || activeSet.version === target.version) {
     return (
       <Button variant="outline" size="sm" disabled title="比較する有効な版がありません">
-        影響 preview
+        影響の試算
       </Button>
     )
   }
@@ -398,13 +398,13 @@ export function BaselineImpactDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
-          影響 preview
+          影響の試算
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>
-            <span className="font-mono text-base">{target.version}</span> の影響 preview
+            <span className="font-mono text-base">{target.version}</span> の影響の試算
           </DialogTitle>
           <DialogDescription>
             有効化した場合に次回以降の推奨がどう変わるかの試算です。保存しません。
@@ -458,7 +458,7 @@ export function BaselineImpactDialog({
                     <tr className="text-xs text-muted-foreground">
                       <th className="py-1 pr-3 text-left font-normal">分析</th>
                       <th className="py-1 pr-3 text-left font-normal">現在</th>
-                      <th className="py-1 text-left font-normal">draft 適用後</th>
+                      <th className="py-1 text-left font-normal">下書き適用後</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -517,7 +517,7 @@ export function PolicyImpactDialog({
   if (!activeSet || activeSet.version === target.version || !activeBaseline) {
     return (
       <Button variant="outline" size="sm" disabled title="比較する有効な版がありません">
-        影響 preview
+        影響の試算
       </Button>
     )
   }
@@ -532,13 +532,13 @@ export function PolicyImpactDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
-          影響 preview
+          影響の試算
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>
-            <span className="font-mono text-base">{target.version}</span> の影響 preview
+            <span className="font-mono text-base">{target.version}</span> の影響の試算
           </DialogTitle>
           <DialogDescription>
             方針は文章で定義されているため、変更後の推奨をここで計算することはできません。
@@ -556,7 +556,7 @@ export function PolicyImpactDialog({
               {[
                 { label: "対象の分析", value: impact.total, hint: "期間内の推奨" },
                 {
-                  label: "tie-break が効く",
+                  label: "同値のときの扱いが効く",
                   value: impact.tieAffected,
                   hint: "2 位と 3 位が同値",
                 },
@@ -566,7 +566,7 @@ export function PolicyImpactDialog({
                   hint: "測れなかった動作がある",
                 },
                 {
-                  label: "fallback が効く",
+                  label: "候補不足の扱いが効く",
                   value: impact.fallbackAffected,
                   hint: "候補が 2 件未満",
                 },
@@ -663,7 +663,7 @@ export function SetActionButton({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {kind} set <span className="font-mono text-base">{set.version}</span> を
+            {kind}セット <span className="font-mono text-base">{set.version}</span> を
             {SET_ACTION_LABEL[action]}
           </DialogTitle>
           <DialogDescription>{ACTION_DESCRIPTION[action](kind)}</DialogDescription>
@@ -716,9 +716,9 @@ export function SetActionButton({
 const ACTION_DESCRIPTION: Record<SetAction, (kind: string) => string> = {
   approve: () => "承認しても推奨はまだ変わりません。有効化は別の操作です。",
   activate: (kind) =>
-    `次回以降の推奨がこの版で計算されます。今まで有効だった${kind} set は退役します。過去の推奨は再計算しません。`,
+    `次回以降の推奨がこの版で計算されます。今まで有効だった${kind}セットは退役します。過去の推奨は再計算しません。`,
   schedule: () =>
     "指定した日時に有効化されます。実行までは今の版が有効なままです。",
   rollback: () =>
-    "この版の値を持つ draft を新しく作ります。退役した版を直接戻すことはしません。作った draft は承認と有効化が必要です。",
+    "この版の値を持つ下書きを新しく作ります。退役した版を直接戻すことはしません。作った下書きは承認と有効化が必要です。",
 }

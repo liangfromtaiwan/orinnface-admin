@@ -312,7 +312,8 @@ export type VersionedSetStatus =
   | "retired"
 
 export const VERSIONED_SET_STATUS_LABEL: Record<VersionedSetStatus, string> = {
-  draft: "draft",
+  // 分析・care の状態ラベルと同じ語を使う(同じ状態を画面ごとに呼び分けない)
+  draft: "下書き",
   approved: "承認済",
   active: "有効",
   retired: "退役",

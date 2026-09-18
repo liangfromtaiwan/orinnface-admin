@@ -136,10 +136,14 @@ export function diffBaselineSets(
 
 export type PolicyField = "tieBreak" | "missingValueHandling" | "fallback"
 
+/*
+  🔴 画面は日本語で統一する。DB・API 側の項目名(tie_break / fallback)は変えない。
+     ここは表示名だけの対応表。
+*/
 export const POLICY_FIELD_LABEL: Record<PolicyField, string> = {
-  tieBreak: "tie-break",
+  tieBreak: "同値のときの扱い",
   missingValueHandling: "欠損の扱い",
-  fallback: "fallback",
+  fallback: "候補が足りないときの扱い",
 }
 
 export type PolicyDiffRow = {
@@ -268,7 +272,7 @@ export function previewBaselineImpact(
       missing: inRange.length - denominator,
       period,
       conditionLabel:
-        "期間内に現行の基準値 version で走った推奨のうち、draft を有効化すると" +
+        "期間内に現行の基準値 version で走った推奨のうち、下書きを有効化すると" +
         "推奨動作そのものが入れ替わるものの割合。順位だけの入れ替わりは分子に" +
         "含めない。別 version で走った推奨は突き合わせの基準が違うため欠測に数える。",
       version: `${activeSet.version} → ${draftSet.version}`,

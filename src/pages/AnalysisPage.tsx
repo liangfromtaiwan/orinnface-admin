@@ -169,7 +169,7 @@ export default function AnalysisPage() {
                 <TableHead>適格</TableHead>
                 <TableHead>品質</TableHead>
                 <TableHead>店舗</TableHead>
-                <TableHead>model</TableHead>
+                <TableHead>モデル版</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

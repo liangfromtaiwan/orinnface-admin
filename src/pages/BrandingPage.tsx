@@ -277,7 +277,7 @@ function BrandingEditor({
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
                 未設定の場合はブランド表示名の文字を出します。PNG / SVG。
-                この画面では preview のみで、保存先は backend 実装時に接続します。
+                この画面ではプレビューのみで、保存先はサーバー実装時に接続します。
               </p>
             </Field>
 
