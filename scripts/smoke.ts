@@ -815,24 +815,20 @@ console.log("── §8 推奨基準値・方針の版管理 ──")
 
   check("draft 作成は本部のみ", decideDraftCreate(opScope).kind === "allowed")
   check("契約企業管理者は draft を作れない", decideDraftCreate(caScope).kind === "denied")
-  check("契約企業管理者は承認もできない",
-    decideSetAction(caScope, draft, "approve").kind === "denied")
+  check("契約企業管理者は有効化もできない",
+    decideSetAction(caScope, draft, "activate").kind === "denied")
 
-  check("active は承認し直せない",
-    decideSetAction(opScope, active, "approve").kind === "denied",
+  check("有効な版をもう一度有効化はできない",
+    decideSetAction(opScope, active, "activate").kind === "denied",
     "(active 値の直接更新禁止)")
   check("下書きから直接有効化できる",
     decideSetAction(opScope, draft, "activate").kind === "allowed",
     "(承認は同じ人が押すだけなので飛ばせる・使用者確定 2026-09-18)")
   check("下書きから直接予約もできる",
     decideSetAction(opScope, draft, "schedule").kind === "allowed")
-  {
-    // 作成者と承認者を分けない(使用者確定 2026-09-18)
-    const d = decideSetAction(opScope, draft, "approve")
-    check("自分が作った下書きをそのまま承認できる",
-      d.kind === "allowed" && d.warnings.length === 0,
-      "(本部の管理者が自分で決めてよい範囲)")
-  }
+  check("承認は操作として存在しない",
+    availableActions("draft").every(a => a !== ("approve" as string)),
+    "(本部が 1 人なら同じ人がもう一度押すだけ・使用者確定 2026-09-18)")
   {
     const approved = { ...draft, status: "approved" as const }
     const d = decideSetAction(opScope, approved, "activate")
@@ -842,11 +838,7 @@ console.log("── §8 推奨基準値・方針の版管理 ──")
   }
 
   {
-    const approved = applyBaselineAction(baselineSets, draft.version, "approve",
-      { actorName: "本部 品質責任者", now })
-    check("承認すると approvedBy が入る",
-      approved.find(s => s.version === draft.version)?.approvedBy === "本部 品質責任者")
-    const activated = applyBaselineAction(approved, draft.version, "activate",
+    const activated = applyBaselineAction(baselineSets, draft.version, "activate",
       { actorName: "吉田", now })
     check("有効化すると active は 1 件だけ",
       activated.filter(s => s.status === "active").length === 1)
@@ -861,9 +853,9 @@ console.log("── §8 推奨基準値・方針の版管理 ──")
     const direct = applyBaselineAction(baselineSets, draft.version, "activate",
       { actorName: "吉田", now })
     const d = direct.find(s => s.version === draft.version)!
-    check("承認を飛ばして有効化できる", d.status === "active")
-    check("飛ばしても承認者は記録される", d.approvedBy === "吉田")
-    check("飛ばした場合も前の有効版は退役する",
+    check("下書きから有効化すると公開される", d.status === "active")
+    check("承認の操作が無くても決めた人は記録される", d.approvedBy === "吉田")
+    check("前の有効版は退役する",
       direct.find(s => s.version === active.version)?.status === "retired")
 
     const scheduled = applyBaselineAction(baselineSets, draft.version, "schedule",
@@ -884,7 +876,7 @@ console.log("── §8 推奨基準値・方針の版管理 ──")
       `(${rolled[0].version})`)
     check("rollback 元の退役版はそのまま残る",
       rolled.find(s => s.version === retired.version)?.status === "retired")
-    check("rollback で作った draft は承認からやり直す",
+    check("復元で作った下書きは有効化からやり直す",
       rolled[0].approvedBy === undefined && rolled[0].activatedAt === undefined)
     check("rollback した値は元の版と同じ",
       diffBaselineSets(retired, rolled[0]).every(r => r.delta === 0))
@@ -966,9 +958,9 @@ console.log("── §8 推奨基準値・方針の版管理 ──")
       scheduled.find(s => s.version === approvedPolicy.version)?.status === "approved")
   }
 
-  check("下書きでは有効化・予約・承認が出る",
-    availableActions("draft").join() === "activate,schedule,approve",
-    "(有効化を先頭に置く)")
+  check("下書きでは有効化と予約が出る",
+    availableActions("draft").join() === "activate,schedule",
+    "(承認は置かない)")
   check("承認済でできるのは有効化と予約",
     availableActions("approved").join() === "activate,schedule")
   check("active には次に進める操作が無い",

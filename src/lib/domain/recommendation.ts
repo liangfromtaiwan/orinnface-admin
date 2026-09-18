@@ -346,10 +346,15 @@ export function previewPolicyImpact(
  * 4. 版の操作
  * ------------------------------------------------------------------ */
 
-export type SetAction = "approve" | "activate" | "schedule" | "rollback"
+/*
+  🔴 「承認」は操作として置かない(使用者確定 2026-09-18)。本部の管理者が 1 人なら、
+     同じ人がもう一度ボタンを押すだけの手順にしかならない。承認済という状態は残る
+     (予約すると入る)が、そこへ進むのは「有効化を予約」したときだけ。
+     §8 の操作表には approve があるので、これは意図的な逸脱として吉田さんに共有する。
+*/
+export type SetAction = "activate" | "schedule" | "rollback"
 
 export const SET_ACTION_LABEL: Record<SetAction, string> = {
-  approve: "承認",
   activate: "有効化",
   schedule: "有効化を予約",
   /*
@@ -401,21 +406,18 @@ type VersionedSet = {
 
 /*
   どの状態から行えるか。
-  🔴 下書きからそのまま有効化・予約できる(使用者確定 2026-09-18)。本部の管理者が
-     1 人なら、承認は同じ人がもう一度押すだけの手順にしかならないため。
-     承認を飛ばした場合も承認者は記録する(誰が決めたかは残す)。
-  🔴 承認そのものは残す。§8 が操作として挙げているうえ、「今決めて、切り替えは後」を
-     予約以外の形でやりたいときに要る。
+  🔴 下書きからそのまま有効化・予約できる(使用者確定 2026-09-18)。承認の操作は
+     置いていないが、誰が決めたかは approvedBy に記録する。
+  🔴 「今決めて、切り替えは後」は**有効化を予約**で行う。予約すると承認済に入る。
 */
 const ALLOWED_STATUS: Record<SetAction, VersionedSetStatus[]> = {
-  approve: ["draft"],
   activate: ["draft", "approved"],
   schedule: ["draft", "approved"],
   rollback: ["retired"],
 }
 
 /** 画面に出す順。有効化を主にし、承認は残すが控えめに置く。 */
-const ACTION_ORDER: SetAction[] = ["activate", "schedule", "approve", "rollback"]
+const ACTION_ORDER: SetAction[] = ["activate", "schedule", "rollback"]
 
 /**
  * その状態で出す操作。
@@ -510,12 +512,6 @@ function applySetAction<T extends VersionedSet>(
   if (!target || !ALLOWED_STATUS[action].includes(target.status)) return sets
 
   switch (action) {
-    case "approve":
-      return sets.map((s) =>
-        s.version === version
-          ? { ...s, status: "approved" as const, approvedBy: ctx.actorName }
-          : s
-      )
     case "schedule":
       /*
         🔴 下書きから予約したときは承認済へ進める。下書きのまま予約を持たせると、

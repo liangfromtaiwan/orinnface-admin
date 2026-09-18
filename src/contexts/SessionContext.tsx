@@ -86,8 +86,6 @@ function setActionAuditLabel(
   newVersion?: string
 ): string {
   switch (action) {
-    case "approve":
-      return `${kind} set ${version} を承認`
     case "activate":
       return `${kind} set ${version} を有効化`
     case "schedule":

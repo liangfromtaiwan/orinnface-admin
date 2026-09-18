@@ -776,7 +776,6 @@ const ACTION_DESCRIPTION: Record<
   SetAction,
   (kind: string, fromDraft: boolean) => string
 > = {
-  approve: () => "承認しても推奨はまだ変わりません。有効化は別の操作です。",
   activate: (kind, fromDraft) =>
     `次回以降の推奨がこの版で計算されます。今まで有効だった${kind}セットは退役します。過去の推奨は再計算しません。` +
     (fromDraft ? "この操作で承認も同時に記録します。" : ""),
