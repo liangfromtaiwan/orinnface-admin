@@ -184,7 +184,7 @@
 - **2026-09-15 実装**: draft 作成・差分・影響 preview・承認・有効化・予約・rollback を実装。
   可否判定は `decideDraftCreate()` / `decideSetAction()` の 2 関数だけが持ち、画面は role を直接見ない。
   状態で出せる操作は `availableActions()`（draft→承認 / approved→有効化・予約 / retired→rollback / active→なし）。
-- **作成者と承認者**: §8 は「分離を**推奨**」なので、自分の draft の承認は**止めず警告する**（`self_approval`）。
+- **作成者と承認者は分けない**（使用者確定 2026-09-18）: 本部の管理者が自分で決めてよい範囲なので、自分が作った下書きをそのまま承認できる。§8 は分離を「**推奨**」と書いているだけで必須ではないため、警告も出さない。分離する運用に変えるなら `decideSetAction()` で `createdBy === actorName` を弾く 1 行で済む。
 - **推奨の計算は seed と共有**: `rankRecommendedPoses()` を seed の `recommendationRuns` も通す。
   管理画面が別計算を持つと「preview では変わると出たのに実際は変わらない」が起きるため。
 - ⚠️ **永続化は無い**（backend 担当）。リロードで消える。

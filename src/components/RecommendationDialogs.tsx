@@ -621,8 +621,8 @@ export function SetActionButton({
   onRun: (reason: string, scheduledAt?: string) => void
   variant?: "outline" | "ghost"
 }) {
-  const { scope, account } = useSession()
-  const decision = decideSetAction(scope, set, action, account.displayName)
+  const { scope } = useSession()
+  const decision = decideSetAction(scope, set, action)
   const [open, setOpen] = useState(false)
   const [reason, setReason] = useState("")
   const [scheduledAt, setScheduledAt] = useState("")

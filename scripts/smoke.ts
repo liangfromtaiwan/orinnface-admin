@@ -816,26 +816,24 @@ console.log("── §8 推奨基準値・方針の版管理 ──")
   check("draft 作成は本部のみ", decideDraftCreate(opScope).kind === "allowed")
   check("契約企業管理者は draft を作れない", decideDraftCreate(caScope).kind === "denied")
   check("契約企業管理者は承認もできない",
-    decideSetAction(caScope, draft, "approve", "高橋 由紀").kind === "denied")
+    decideSetAction(caScope, draft, "approve").kind === "denied")
 
   check("active は承認し直せない",
-    decideSetAction(opScope, active, "approve", "吉田").kind === "denied",
+    decideSetAction(opScope, active, "approve").kind === "denied",
     "(active 値の直接更新禁止)")
   check("draft はいきなり有効化できない",
-    decideSetAction(opScope, draft, "activate", "吉田").kind === "denied",
+    decideSetAction(opScope, draft, "activate").kind === "denied",
     "(draft → 承認 → 有効化)")
   {
-    const d = decideSetAction(opScope, draft, "approve", draft.createdBy)
-    check("作成者本人の承認は止めないが警告する",
-      d.kind === "allowed" && d.warnings.includes("self_approval"),
-      "(§8 は分離を推奨・禁止ではない)")
-    const other = decideSetAction(opScope, draft, "approve", "本部 品質責任者")
-    check("別の人の承認では警告が出ない",
-      other.kind === "allowed" && other.warnings.length === 0)
+    // 作成者と承認者を分けない(使用者確定 2026-09-18)
+    const d = decideSetAction(opScope, draft, "approve")
+    check("自分が作った下書きをそのまま承認できる",
+      d.kind === "allowed" && d.warnings.length === 0,
+      "(本部の管理者が自分で決めてよい範囲)")
   }
   {
     const approved = { ...draft, status: "approved" as const }
-    const d = decideSetAction(opScope, approved, "activate", "吉田")
+    const d = decideSetAction(opScope, approved, "activate")
     check("有効化には §16 P0 未決の警告が付く",
       d.kind === "allowed" && d.warnings.includes("p0_undecided"),
       "(実測 + 事業承認まで確定していない)")

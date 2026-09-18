@@ -372,16 +372,12 @@ export const SET_ACTION_DENIAL_LABEL: Record<SetActionDenial, string> = {
 }
 
 export type SetActionWarning =
-  /** 作成者と承認者が同じ。§8「作成者と承認者の分離を推奨」。禁止ではない。 */
-  | "self_approval"
   /** §16 P0: 初期の基準値・policy は実測 + 事業承認まで確定していない。 */
   | "p0_undecided"
   /** すでに有効化を予約済み。上書きになる。 */
   | "reschedule"
 
 export const SET_ACTION_WARNING_LABEL: Record<SetActionWarning, string> = {
-  self_approval:
-    "作成者と承認者が同じです。§8 は作成者と承認者を分けることを推奨しています。",
   p0_undecided:
     "初期の推奨基準値・policy version は §16 P0 の未決事項です(実測 + 事業承認待ち)。承認が取れるまで有効化しないでください。",
   reschedule: "すでに有効化を予約済みです。実行すると予約日時を上書きします。",
@@ -445,8 +441,7 @@ export function decideDraftCreate(scope: Scope): SetActionDecision {
 export function decideSetAction(
   scope: Scope,
   set: SetActionTarget,
-  action: SetAction,
-  actorName: string
+  action: SetAction
 ): SetActionDecision {
   if (!can(scope, "recommendation.approve")) {
     return { kind: "denied", reason: "not_operator" }
@@ -455,8 +450,13 @@ export function decideSetAction(
     return { kind: "denied", reason: "wrong_status" }
   }
 
+  /*
+    🔴 作成者と承認者を分けない(使用者確定 2026-09-18)。本部の管理者が自分で決めて
+       よい範囲なので、自分が作った下書きをそのまま承認できる。§8 は分離を「推奨」と
+       書いているが必須ではないため、警告も出さない。
+       分離する運用に変えるなら、ここで createdBy === actorName を弾く。
+  */
   const warnings: SetActionWarning[] = []
-  if (action === "approve" && set.createdBy === actorName) warnings.push("self_approval")
   if (action === "activate" || action === "schedule") warnings.push("p0_undecided")
   if (action === "schedule" && set.scheduledActivateAt) warnings.push("reschedule")
   return { kind: "allowed", warnings }
