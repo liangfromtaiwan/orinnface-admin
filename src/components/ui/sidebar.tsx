@@ -446,7 +446,16 @@ function SidebarMenu({ className, ...props }: React.ComponentProps<"ul">) {
     <ul
       data-slot="sidebar-menu"
       data-sidebar="menu"
-      className={cn("flex w-full min-w-0 flex-col gap-0", className)}
+      className={cn(
+        "flex w-full min-w-0 flex-col gap-0",
+        /*
+          🔴 アイコン表示では項目を中央に置く。data-collapsible は切り替えた瞬間に
+             付くが、レールの幅は 200ms かけて縮む。左寄せのままだと、その間
+             アイコンが左にずれて見える(畳む操作のたびに一瞬ガタつく)。
+        */
+        "group-data-[collapsible=icon]:items-center",
+        className
+      )}
       {...props}
     />
   )
