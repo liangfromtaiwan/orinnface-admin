@@ -86,6 +86,46 @@ for (const [name, rawPath, Page] of pages) {
   }
 }
 /*
+  role で出し分ける画面は、本部だけ描いても分岐が通らない。
+  🔴 care 画面は審査の列・ボタンを本部にしか出さないので、他 role でも描いておく。
+*/
+{
+  const roles: [string, string][] = [
+    ["契約企業管理者", "acc_company_admin"],
+    ["店舗管理者", "acc_store_admin"],
+  ]
+  for (const [label, accountId] of roles) {
+    for (const [name, path, Page] of [
+      ["care動画", "/care", CareVideosPage],
+      ["顧客一覧", "/customers", CustomersPage],
+    ] as [string, string, React.ComponentType][]) {
+      try {
+        const html = renderToString(
+          <SessionProvider initialAccountId={accountId}>
+            <NotificationsProvider>
+              <TooltipProvider>
+                <MemoryRouter initialEntries={[path]}>
+                  <Routes>
+                    <Route path="*" element={<Page />} />
+                  </Routes>
+                </MemoryRouter>
+              </TooltipProvider>
+            </NotificationsProvider>
+          </SessionProvider>
+        )
+        if (html.length < 200) {
+          failed++
+          console.log(`  FAIL  ${label} / ${name} — 出力が短すぎる (${html.length})`)
+        } else console.log(`  ok    ${`${label} / ${name}`.padEnd(20)} ${html.length} bytes`)
+      } catch (e) {
+        failed++
+        console.log(`  FAIL  ${label} / ${name} — ${(e as Error).message.split("\n")[0]}`)
+      }
+    }
+  }
+}
+
+/*
   ダイアログの中身は閉じている間 render されないので、ページ巡回では通らない。
   推奨設定の差分・影響 preview は中身が重いので、部品単体でも 1 度描いておく。
 */

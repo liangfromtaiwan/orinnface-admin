@@ -100,8 +100,20 @@ function pad6(n: number): string {
   return String(n).padStart(6, "0")
 }
 
-export function SessionProvider({ children }: { children: ReactNode }) {
-  const [accountId, setAccountId] = useState(seededAccounts[0].id)
+export function SessionProvider({
+  children,
+  initialAccountId,
+}: {
+  children: ReactNode
+  /**
+   * 最初に見せるアカウント。`npm run smoke:render` が role ごとの分岐を
+   * 描き分けるために使う。画面からの切替は switchAccount。
+   */
+  initialAccountId?: string
+}) {
+  const [accountId, setAccountId] = useState(
+    initialAccountId ?? seededAccounts[0].id
+  )
   /** 本部が 1 社に絞って見ているときだけ入る。undefined = 全社横断。 */
   const [viewCompanyId, setViewCompanyId] = useState<CompanyId | undefined>()
   /**
