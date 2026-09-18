@@ -19,6 +19,7 @@ import { UploadIcon } from "lucide-react"
 import { toast } from "sonner"
 
 import { CareVideoPreview } from "@/components/CareVideoPreview"
+import { ReasonField } from "@/components/ReasonField"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -595,11 +596,10 @@ export function CareReplaceDialog({
             </>
           )}
 
-          <Input
+          <ReasonField
             value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            placeholder="切り替えの理由(監査に残ります)"
-            className="h-9"
+            onChange={setReason}
+            label="切り替えの理由"
           />
 
           <div className="flex justify-end gap-2">

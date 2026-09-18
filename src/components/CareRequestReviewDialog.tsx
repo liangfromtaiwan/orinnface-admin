@@ -7,8 +7,8 @@
  *    一覧に承認ボタンを戻すと、中身を見ずに承認できてしまう。
  * 🔴 「今この範囲に出ている動画」と並べる。差し替えは置き換えの判断なので、
  *    切り替え先だけ見ても判断できない。
- * 🔴 権利未確認の動画は承認できない (§7.1)。
- * 理由は任意。入れた場合だけ監査と申請元への説明に残る(使用者確定 2026-09-18)。
+ * 🔴 権利未確認の動画は承認できない (§7.1)。理由は必須 (§13)。
+ *    却下・取消の理由は申請元にも伝わる。伝わらないと同じ申請が繰り返される。
  * 🔴 承認すると、同じ枠・同じ範囲で公開中だったものは終了する (§13 の重複有効の禁止)。
  * ⚠️ 状態は画面の state にだけ残る。保存は backend 担当なのでリロードで戻る。
  */
@@ -27,7 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
+import { ReasonField } from "@/components/ReasonField"
 import {
   useCompanyName,
   useSession,
@@ -254,11 +254,10 @@ export function CareRequestReviewDialog({
           ) : null}
 
           {reviewable.length > 0 ? (
-            <Input
-              className="h-9"
+            <ReasonField
               value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="理由(任意・監査に残ります)"
+              onChange={setReason}
+              hint="却下・取消の理由は申請元にも伝わります。"
             />
           ) : null}
         </div>
@@ -272,12 +271,13 @@ export function CareRequestReviewDialog({
             <Button
               key={action}
               variant={action === "approve" ? "default" : "outline"}
-              /* 🔴 理由は任意。入れれば監査と申請元への説明に残る */
-              disabled={decision.kind !== "allowed"}
+              disabled={decision.kind !== "allowed" || !reason.trim()}
               title={
                 decision.kind !== "allowed"
                   ? CARE_REQUEST_DENIAL_LABEL[decision.reason]
-                  : undefined
+                  : !reason.trim()
+                    ? "理由を入力してください"
+                    : undefined
               }
               onClick={() => run(action)}
             >

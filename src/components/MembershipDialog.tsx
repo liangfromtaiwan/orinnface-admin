@@ -27,6 +27,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { ReasonField } from "@/components/ReasonField"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -222,11 +223,10 @@ function RoleSection({ target }: { target: MembershipTarget }) {
               付与
             </Button>
           </div>
-          <Input
+          <ReasonField
             value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            placeholder="変更の理由(監査に残ります)"
-            className="h-9"
+            onChange={setReason}
+            label="変更の理由"
           />
 
           {/*

@@ -27,6 +27,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { ReasonField } from "@/components/ReasonField"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useSession } from "@/contexts/session-context"
@@ -184,7 +185,7 @@ export function BaselineDraftDialog({
           rows={2}
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="この draft の根拠(監査に残ります)"
+          placeholder="この draft の根拠(任意・監査に残ります)"
         />
 
         <p className="text-xs text-muted-foreground">
@@ -329,7 +330,7 @@ export function PolicyDraftDialog({ sets }: { sets: RecommendationPolicySet[] })
           rows={2}
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="この draft の根拠(監査に残ります)"
+          placeholder="この draft の根拠(任意・監査に残ります)"
         />
 
         <DialogFooter>
@@ -693,12 +694,7 @@ export function SetActionButton({
           </div>
         ) : null}
 
-        <Input
-          className="h-9"
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          placeholder="理由(監査に残ります)"
-        />
+        <ReasonField value={reason} onChange={setReason} />
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => setOpen(false)}>
