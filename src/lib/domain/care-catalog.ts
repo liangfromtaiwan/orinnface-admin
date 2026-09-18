@@ -293,6 +293,168 @@ export function applyDirectReplacement(
   ]
 }
 
+
+/* ------------------------------------------------------------------ *
+ * 差し替え申請の審査 (§7.1)
+ *
+ * 🔴 承認・却下・取消ができるのは本部だけ (§4.2: 契約企業・店舗は申請はできるが
+ *    承認・公開はできない)。判定はこの 1 箇所で行い、画面で role を直接見ない。
+ * 🔴 権利未確認の動画は承認できない。権利確認は §16 P0 の棚卸し待ち項目でもある。
+ * 🔴 承認しても即公開とは限らない。開始日時が未来なら「公開予約」に入れる
+ *    (§7.1「approve 後に assignment を予約する」)。
+ * ------------------------------------------------------------------ */
+
+export type CareRequestAction = "approve" | "reject" | "cancel"
+
+export const CARE_REQUEST_ACTION_LABEL: Record<CareRequestAction, string> = {
+  approve: "承認",
+  reject: "却下",
+  cancel: "公開を取り消す",
+}
+
+export type CareRequestDenial =
+  /** 本部以外。申請はできるが審査はできない。 */
+  | "not_operator"
+  /** その状態では行えない操作。 */
+  | "wrong_status"
+  /** 権利確認が未完了。 */
+  | "rights_pending"
+
+export const CARE_REQUEST_DENIAL_LABEL: Record<CareRequestDenial, string> = {
+  not_operator: "承認・却下は本部のみが行えます。",
+  wrong_status: "今の状態ではこの操作はできません。",
+  rights_pending: "権利確認が未完了のため承認できません。",
+}
+
+export type CareRequestDecision =
+  | { kind: "allowed" }
+  | { kind: "denied"; reason: CareRequestDenial }
+
+export function decideCareRequestAction(
+  scope: Scope,
+  request: CareAssignment,
+  asset: CareVideoAsset | undefined,
+  action: CareRequestAction
+): CareRequestDecision {
+  if (!can(scope, "care.approve")) {
+    return { kind: "denied", reason: "not_operator" }
+  }
+  if (action === "cancel") {
+    // 公開中・予約中のものを引っ込める操作。本部デフォルトは「差し替え」で戻す
+    const cancellable =
+      (request.status === "active" || request.status === "scheduled") &&
+      Boolean(request.scope.companyId || request.scope.storeId)
+    return cancellable
+      ? { kind: "allowed" }
+      : { kind: "denied", reason: "wrong_status" }
+  }
+  if (request.status !== "pending_approval") {
+    return { kind: "denied", reason: "wrong_status" }
+  }
+  if (action === "approve" && !asset?.rightsCleared) {
+    return { kind: "denied", reason: "rights_pending" }
+  }
+  return { kind: "allowed" }
+}
+
+/**
+ * 審査の結果を反映する。
+ * 🔴 可否は decideCareRequestAction() が決める。ここは状態を進めるだけ。
+ * 🔴 公開すると、同じ枠・同じ範囲で公開中だったものは終了する。同じ範囲に
+ *    有効な assignment を 2 件作らない (§13「重複有効を publish 前に拒否」)。
+ * 🔴 切り替わるのは care_asset_id だけ。video_code / pose_code は触らない。
+ */
+export function applyCareRequestAction(
+  assignments: CareAssignment[],
+  requestId: string,
+  action: CareRequestAction,
+  ctx: { actorName: string; now: string; reason: string }
+): CareAssignment[] {
+  const target = assignments.find((a) => a.id === requestId)
+  if (!target) return assignments
+
+  if (action === "reject") {
+    return assignments.map((a) =>
+      a.id === requestId
+        ? {
+            ...a,
+            status: "rejected" as const,
+            approvedBy: ctx.actorName,
+            decisionReason: ctx.reason,
+            decidedAt: ctx.now,
+          }
+        : a
+    )
+  }
+
+  if (action === "cancel") {
+    return assignments.map((a) =>
+      a.id === requestId
+        ? {
+            ...a,
+            status: "ended" as const,
+            endAt: ctx.now,
+            decisionReason: ctx.reason,
+            decidedAt: ctx.now,
+          }
+        : a
+    )
+  }
+
+  // approve: 開始日時が未来なら公開予約、そうでなければ即公開
+  const startsLater = Boolean(target.startAt && target.startAt > ctx.now)
+  const sameScope = (a: CareAssignment) =>
+    a.videoCode === target.videoCode &&
+    a.scope.companyId === target.scope.companyId &&
+    a.scope.storeId === target.scope.storeId
+  const replaced = startsLater
+    ? undefined
+    : assignments.find((a) => a.id !== requestId && sameScope(a) && a.status === "active")
+
+  return assignments.map((a) => {
+    if (a.id === requestId) {
+      return {
+        ...a,
+        status: startsLater ? ("scheduled" as const) : ("active" as const),
+        approvedBy: ctx.actorName,
+        decisionReason: ctx.reason,
+        decidedAt: ctx.now,
+        startAt: a.startAt ?? ctx.now,
+        previousCareAssetId: replaced?.careAssetId ?? a.previousCareAssetId,
+      }
+    }
+    if (replaced && a.id === replaced.id) {
+      return { ...a, status: "ended" as const, endAt: ctx.now }
+    }
+    return a
+  })
+}
+
+/**
+ * その scope に見せてよい差し替え申請・履歴。
+ * 🔴 本部以外は**自分に効くものだけ**。他社の申請が見えると、どこがどの動画を
+ *    使っているかが漏れる。本部デフォルトは全員の店舗に出ているので見える。
+ * 🔴 前端の絞り込みは表示のためのもの。実 API では同じ条件を backend でも検証する。
+ */
+export function visibleCareRequests(
+  assignments: CareAssignment[],
+  scope: Scope,
+  stores: { id: StoreId; companyId: CompanyId }[]
+): CareAssignment[] {
+  if (scope.crossCompany) return assignments
+
+  const myStoreIds = new Set<StoreId>(scope.storeIds)
+  const myCompanyIds = new Set<CompanyId>()
+  if (scope.companyId) myCompanyIds.add(scope.companyId)
+  for (const s of stores) if (myStoreIds.has(s.id)) myCompanyIds.add(s.companyId)
+
+  return assignments.filter((a) => {
+    if (a.scope.storeId) return myStoreIds.has(a.scope.storeId)
+    if (a.scope.companyId) return myCompanyIds.has(a.scope.companyId)
+    return true // 本部デフォルトは自店にも出ているので見える
+  })
+}
+
 /**
  * 既存の枠に動画(asset)を追加する。
  *

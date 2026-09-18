@@ -19,8 +19,11 @@ import {
 } from "@/lib/domain/branding"
 import {
   addCareAsset,
+  applyCareRequestAction,
   applyDirectReplacement,
   careAssetIdFor,
+  CARE_REQUEST_ACTION_LABEL,
+  type CareRequestAction,
 } from "@/lib/domain/care-catalog"
 import {
   applyBaselineAction,
@@ -229,6 +232,37 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     [accounts, pushAudit]
   )
 
+  /**
+   * 差し替え申請の審査 (§7.1)。
+   * 🔴 可否は呼び出し側の decideCareRequestAction()。ここは state と監査だけ。
+   */
+  const reviewCareRequest = useCallback(
+    (requestId: string, action: CareRequestAction, reason: string) => {
+      const actor =
+        seededAccounts.find((a) => a.id === accountId) ?? seededAccounts[0]
+      const now = new Date().toISOString()
+      /*
+        🔴 監査ラベルに枠と範囲が要るので、更新関数の中ではなくここで対象を引く。
+           更新関数は StrictMode で 2 回呼ばれるため、中で監査を積むと二重になる。
+      */
+      const target = careAssignments.find((a) => a.id === requestId)
+      setCareAssignments((prev) =>
+        applyCareRequestAction(prev, requestId, action, {
+          actorName: actor.displayName,
+          now,
+          reason,
+        })
+      )
+      if (!target) return
+      pushAudit(
+        "care_replacement",
+        `${target.videoCode} の差し替え申請(${target.requestedBy})を${CARE_REQUEST_ACTION_LABEL[action]}`,
+        reason
+      )
+    },
+    [accountId, careAssignments, pushAudit]
+  )
+
   /* ---- 推奨基準値・方針 (§8) ---- */
 
   /**
@@ -409,6 +443,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       careAssignments,
       replaceCareAsset,
       addCareVideoAsset,
+      reviewCareRequest,
       baselineSets,
       policySets,
       createBaselineDraft,
@@ -443,6 +478,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     careAssignments,
     replaceCareAsset,
     addCareVideoAsset,
+    reviewCareRequest,
     baselineSets,
     policySets,
     createBaselineDraft,

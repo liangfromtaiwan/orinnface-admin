@@ -44,11 +44,13 @@ import {
   careAssetUsage,
   careScopeLabel,
   decideCareReplacement,
+  visibleCareRequests,
   getCareSlot,
   providerOf,
   resolveAssignment,
 } from "@/lib/domain/care-catalog"
-import { formatDate } from "@/lib/domain/kpi"
+import { formatDate, formatDateTime } from "@/lib/domain/kpi"
+import { stores as allStores } from "@/lib/mock/seed"
 import { can } from "@/lib/domain/scope"
 import {
   CARE_ASSIGNMENT_STATUS_LABEL,
@@ -105,10 +107,39 @@ export default function CareVideosPage() {
     return map
   }, [now, careAssignments])
 
-  const requests = careAssignments.filter(
-    (a) => a.status !== "active" || a.scope.companyId || a.scope.storeId
+  /*
+    🔴 本部以外には**自分に効くものだけ**見せる。他社の申請が見えると、どこがどの
+       動画を使っているかが漏れる。実 API では同じ条件を backend でも検証する。
+  */
+  const scopedAssignments = useMemo(
+    () => visibleCareRequests(careAssignments, scope, allStores),
+    [careAssignments, scope]
   )
-  const reviewingRequest = requests.find((r) => r.id === reviewing)
+
+  /** 処理中の差し替え申請。終わったものは履歴へ送る。 */
+  const requests = scopedAssignments.filter(
+    (a) =>
+      (a.scope.companyId || a.scope.storeId) &&
+      a.status !== "ended" &&
+      a.status !== "rejected"
+  )
+
+  /**
+   * 差し替えの履歴 (§7.1)。元 asset・差し替え asset・申請者・承認者・理由・
+   * 開始終了・取消・catalog version を残す。本部が直接差し替えたものも含める
+   * (申請を経ないだけで、履歴としては同じ差し替え)。
+   */
+  const history = useMemo(
+    () =>
+      [...scopedAssignments].sort((a, b) =>
+        (b.decidedAt ?? b.startAt ?? b.createdAt).localeCompare(
+          a.decidedAt ?? a.startAt ?? a.createdAt
+        )
+      ),
+    [scopedAssignments]
+  )
+
+  const reviewingRequest = scopedAssignments.find((r) => r.id === reviewing)
 
   /** 表示順は枠の並び順に揃える(13 枠の表と読み比べられるように)。 */
   const sortedAssets = useMemo(() => {
@@ -320,6 +351,112 @@ export default function CareVideosPage() {
               })}
             </TableBody>
           </Table>
+        </div>
+      </Card>
+
+      {/*
+        §7.1 の履歴保持。元 asset・差し替え asset・申請者・承認者・理由・開始終了・
+        取消・catalog version を残す。rollback(公開の取り消し)の根拠になるので、
+        却下・終了したものも消さずに並べる。本部が申請を経ずに直接差し替えたものも
+        同じ履歴に入れる(経路が違うだけで、起きたことは同じ差し替え)。
+      */}
+      <Card className="py-0">
+        <CardHeader className="flex-row items-center justify-between gap-2 pt-6">
+          <CardTitle className="flex items-center gap-1.5 text-base">
+            差し替え履歴
+            <InfoHint label="差し替え履歴について">
+              <p>
+                元の動画・差し替え後の動画・申請者・承認者・理由・開始終了・catalog
+                version を残します。公開中のものは行を開いて取り消せます(本部のみ)。
+              </p>
+              <p className="mt-1">
+                取り消すと、その範囲は一段広い範囲の動画(会社 → 本部デフォルト)に
+                戻ります。枠そのものは変わりません。
+              </p>
+            </InfoHint>
+          </CardTitle>
+        </CardHeader>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>日時</TableHead>
+                <TableHead>video_code</TableHead>
+                <TableHead>適用範囲</TableHead>
+                <TableHead>動画</TableHead>
+                <TableHead>状態</TableHead>
+                <TableHead>期間</TableHead>
+                <TableHead>申請者 / 承認者</TableHead>
+                <TableHead>理由</TableHead>
+                <TableHead>catalog</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {history.map((a) => {
+                const asset = assetById.get(a.careAssetId)
+                const previous = a.previousCareAssetId
+                  ? assetById.get(a.previousCareAssetId)
+                  : undefined
+                return (
+                  <TableRow
+                    key={a.id}
+                    className="cursor-pointer align-top"
+                    onClick={() => setReviewing(a.id)}
+                  >
+                    <TableCell className="text-xs tabular-nums text-muted-foreground">
+                      {formatDateTime(a.decidedAt ?? a.startAt ?? a.createdAt)}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">{a.videoCode}</TableCell>
+                    <TableCell className="text-xs">
+                      {careScopeLabel(a.scope, scopeNames)}
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      {previous ? (
+                        <span className="block text-muted-foreground line-through">
+                          {previous.title}
+                        </span>
+                      ) : null}
+                      <span className="block">{asset?.title ?? a.careAssetId}</span>
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      {CARE_ASSIGNMENT_STATUS_LABEL[a.status]}
+                    </TableCell>
+                    <TableCell className="text-xs tabular-nums text-muted-foreground">
+                      {a.startAt ? formatDate(a.startAt) : "—"}
+                      {a.endAt ? ` 〜 ${formatDate(a.endAt)}` : ""}
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      <span className="block">{a.requestedBy}</span>
+                      <span className="block text-muted-foreground">
+                        {a.approvedBy ?? "未承認"}
+                      </span>
+                    </TableCell>
+                    <TableCell className="max-w-56 text-xs">
+                      <span className="block truncate" title={a.reason}>
+                        {a.reason}
+                      </span>
+                      {a.decisionReason ? (
+                        <span
+                          className="block truncate text-muted-foreground"
+                          title={a.decisionReason}
+                        >
+                          {a.decisionReason}
+                        </span>
+                      ) : null}
+                    </TableCell>
+                    <TableCell className="font-mono text-[11px] text-muted-foreground">
+                      {a.catalogVersion}
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
+          {history.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              差し替えの履歴はまだありません
+            </p>
+          ) : null}
         </div>
       </Card>
 

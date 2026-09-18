@@ -416,6 +416,14 @@ export type CareAssignment = {
   reason: string
   startAt?: string
   endAt?: string
+  /**
+   * 承認・却下・取消の理由。申請理由 (`reason`) とは別物。
+   * 🔴 §7.1 の履歴要件は申請者・承認者・理由をすべて残すこと。1 つの欄に上書きすると
+   *    「誰の言い分か」が消えるため分けている。
+   */
+  decisionReason?: string
+  /** 承認・却下・取消を行った日時。 */
+  decidedAt?: string
   /** 差し替え前の asset。rollback と履歴表示に使う。 */
   previousCareAssetId?: string
   catalogVersion: string

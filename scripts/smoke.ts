@@ -9,6 +9,7 @@
 import { adminAccounts, analysisSessions, carePlaybacks, customers, storeDataLinks, stores, rawImageAssets, handoffTokens, recommendationRuns, NOW } from "@/lib/mock/seed"
 import { resolveScope, canViewCustomer, visibleCustomerIds, can, visibleScreens, canAccessScreen, viewScopeFor, companyAdminsOf, canManageMembership, applyMembershipChange, hasMembership, membershipAuditLabel, decideInvite, applyInvite, isEmailLike } from "@/lib/domain/scope"
 import { CARE_VIDEO_SLOTS, careEntitlement, assertCareSlotInvariant, canPlaySlot, careSlotFor, decideCareReplacement, applyDirectReplacement, addCareAsset, assertKnownVideoCode, careAssetUsage } from "@/lib/domain/care-catalog"
+import { applyCareRequestAction, decideCareRequestAction, resolveAssignment, visibleCareRequests } from "@/lib/domain/care-catalog"
 import { matchesCustomerFilter, CUSTOMER_FILTER_ORDER } from "@/lib/domain/plans"
 import { decideRawImageView, usesB2bDisplay } from "@/lib/domain/scope"
 import { compareWithAgeBand, metricsByGroup } from "@/lib/domain/metrics"
@@ -675,6 +676,133 @@ console.log("── ブランド設定 (吉田さん確定 2026-09-08) ──")
     "(どちらのブランドか決まらないため)")
 }
 
+
+console.log("── §7.1 差し替え申請の審査 ──")
+{
+  const opScope = resolveScope(adminAccounts[0], stores)
+  const caScope = resolveScope(adminAccounts[1], stores)   // ルミエールの契約企業管理者
+  const saScope = resolveScope(adminAccounts[2], stores)   // ルミエール 銀座・渋谷の店舗管理者
+  const now = NOW.toISOString()
+  const assetOf = (id: string) => careAssets.find(a => a.id === id)
+  const req = (id: string) => careAssignments.find(a => a.id === id)!
+
+  const pending = req("asg_req_001")          // 承認待ち・権利確認済
+  const rejected = req("asg_req_003")         // 却下済・権利未確認
+  const scheduled = req("asg_req_002")        // 公開予約
+  const activeCompany = req("asg_switched_pucker")
+
+  check("本部は承認できる",
+    decideCareRequestAction(opScope, pending, assetOf(pending.careAssetId), "approve").kind === "allowed")
+  check("契約企業管理者は承認できない(申請はできるが審査はできない)",
+    decideCareRequestAction(caScope, pending, assetOf(pending.careAssetId), "approve").kind === "denied")
+  check("店舗管理者も承認できない",
+    decideCareRequestAction(saScope, pending, assetOf(pending.careAssetId), "approve").kind === "denied")
+  {
+    const d = decideCareRequestAction(opScope, rejected, assetOf(rejected.careAssetId), "approve")
+    check("却下済みは承認し直せない", d.kind === "denied")
+  }
+  {
+    // 権利未確認の動画を承認待ちに置いたら承認できない
+    const rightsPending = { ...pending, careAssetId: rejected.careAssetId }
+    const d = decideCareRequestAction(opScope, rightsPending, assetOf(rejected.careAssetId), "approve")
+    check("権利未確認は承認できない",
+      d.kind === "denied" && d.reason === "rights_pending",
+      "(§7.1 権利確認は承認の前提)")
+    check("権利未確認でも却下はできる",
+      decideCareRequestAction(opScope, rightsPending, assetOf(rejected.careAssetId), "reject").kind === "allowed")
+  }
+  check("公開中の差し替えは取り消せる",
+    decideCareRequestAction(opScope, activeCompany, assetOf(activeCompany.careAssetId), "cancel").kind === "allowed")
+  check("公開予約も取り消せる",
+    decideCareRequestAction(opScope, scheduled, assetOf(scheduled.careAssetId), "cancel").kind === "allowed")
+  check("承認待ちは取り消しではなく却下",
+    decideCareRequestAction(opScope, pending, assetOf(pending.careAssetId), "cancel").kind === "denied")
+  check("本部デフォルトは取り消しの対象にしない",
+    decideCareRequestAction(opScope, req("asg_default_care_1m_smile"), undefined, "cancel").kind === "denied",
+    "(戻すときは差し替えで行う)")
+
+  {
+    const after = applyCareRequestAction(careAssignments, "asg_req_001", "approve",
+      { actorName: "吉田", now, reason: "内容と権利を確認" })
+    const approved = after.find(a => a.id === "asg_req_001")!
+    check("承認すると公開中になる", approved.status === "active")
+    check("承認者が残る", approved.approvedBy === "吉田")
+    check("承認理由は申請理由と別に残る",
+      approved.decisionReason === "内容と権利を確認" && approved.reason === pending.reason)
+    const sameScopeActive = after.filter(a =>
+      a.videoCode === "care_1m_pucker" &&
+      a.scope.companyId === "co_lumiere" &&
+      a.status === "active")
+    check("同じ枠・同じ範囲に有効な差し替えは 1 件だけ",
+      sameScopeActive.length === 1, "(§13 重複有効の禁止)")
+    check("前に公開していたものは終了する",
+      after.find(a => a.id === "asg_switched_pucker")?.status === "ended")
+    check("本部デフォルトは終了させない",
+      after.find(a => a.id === "asg_default_care_1m_pucker")?.status === "active",
+      "(範囲が違うので取り違えない)")
+  }
+
+  {
+    // 開始日時が未来なら公開予約に入る (§7.1 approve 後に予約)
+    const future = careAssignments.map(a =>
+      a.id === "asg_req_001" ? { ...a, startAt: new Date(NOW.getTime() + 86400000).toISOString() } : a)
+    const after = applyCareRequestAction(future, "asg_req_001", "approve",
+      { actorName: "吉田", now, reason: "来週から" })
+    check("開始が未来なら公開予約",
+      after.find(a => a.id === "asg_req_001")?.status === "scheduled")
+    check("予約の時点では今の公開を終了させない",
+      after.find(a => a.id === "asg_switched_pucker")?.status === "active")
+  }
+
+  {
+    const after = applyCareRequestAction(careAssignments, "asg_req_001", "reject",
+      { actorName: "吉田", now, reason: "音声が途中で切れている" })
+    const r = after.find(a => a.id === "asg_req_001")!
+    check("却下すると却下状態になる", r.status === "rejected")
+    check("却下理由が残る(申請元に伝わる)", r.decisionReason === "音声が途中で切れている")
+  }
+
+  {
+    const after = applyCareRequestAction(careAssignments, "asg_switched_pucker", "cancel",
+      { actorName: "吉田", now, reason: "契約終了のため" })
+    const c = after.find(a => a.id === "asg_switched_pucker")!
+    check("取り消すと終了になる", c.status === "ended" && c.endAt === now)
+    check("取り消すと一段広い範囲へ戻る",
+      resolveAssignment(after, "care_1m_pucker", { companyId: "co_lumiere" }, now)?.careAssetId
+        === "ca_default_care_1m_pucker")
+  }
+}
+
+console.log("── 差し替え申請の見える範囲 ──")
+{
+  const opScope = resolveScope(adminAccounts[0], stores)
+  const caScope = resolveScope(adminAccounts[1], stores)
+  const saScope = resolveScope(adminAccounts[2], stores)
+
+  const all = visibleCareRequests(careAssignments, opScope, stores)
+  const ca = visibleCareRequests(careAssignments, caScope, stores)
+  const sa = visibleCareRequests(careAssignments, saScope, stores)
+
+  check("本部は全件見える", all.length === careAssignments.length)
+  check("契約企業管理者に他社の申請は見えない",
+    !ca.some(a => a.scope.companyId === "co_aoyama"),
+    "(どこがどの動画を使っているかが漏れる)")
+  check("契約企業管理者は自社の申請が見える",
+    ca.some(a => a.scope.companyId === "co_lumiere"))
+  check("契約企業管理者は配下店舗の申請も見える",
+    ca.some(a => a.scope.storeId === "st_lumiere_ginza"))
+  check("店舗管理者は自店の申請が見える",
+    sa.some(a => a.scope.storeId === "st_lumiere_ginza"))
+  check("店舗管理者は自社の会社全体の差し替えも見える",
+    sa.some(a => a.scope.companyId === "co_lumiere"),
+    "(自店に出るものなので)")
+  check("店舗管理者に他社のものは見えない",
+    !sa.some(a => a.scope.companyId === "co_aoyama"))
+  check("本部デフォルトは誰にでも見える",
+    ca.some(a => !a.scope.companyId && !a.scope.storeId) &&
+    sa.some(a => !a.scope.companyId && !a.scope.storeId),
+    "(自店に実際に出ているもの)")
+}
 
 console.log("── §8 推奨基準値・方針の版管理 ──")
 {

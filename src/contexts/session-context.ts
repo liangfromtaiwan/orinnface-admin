@@ -6,6 +6,7 @@
 import { createContext, useContext } from "react"
 
 import type { Branding } from "@/lib/domain/branding"
+import type { CareRequestAction } from "@/lib/domain/care-catalog"
 import type {
   RecommendationPose,
   SetAction,
@@ -96,6 +97,18 @@ export type SessionValue = {
     rightsCleared: boolean
     sourceFileName?: string
   }) => string
+
+  /**
+   * 差し替え申請の審査 (§7.1)。
+   * 🔴 呼ぶ前に `decideCareRequestAction()` で可否を判定すること。
+   * 🔴 承認すると、同じ枠・同じ範囲で公開中だったものは終了する。
+   * 🔴 §11 の変更監査に care_replacement として 1 件残る。
+   */
+  reviewCareRequest: (
+    requestId: string,
+    action: CareRequestAction,
+    reason: string
+  ) => void
 
   /* ---- 推奨基準値・方針 (§8) ---- */
 

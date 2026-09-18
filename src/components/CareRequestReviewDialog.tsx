@@ -9,7 +9,8 @@
  *    切り替え先だけ見ても判断できない。
  * 🔴 権利未確認の動画は承認できない (§7.1)。却下は理由を必須にする。
  *    申請元に理由が伝わらないと、同じ申請が繰り返される。
- * ⚠️ 承認・却下の結果は永続化しない(backend 担当)。リロードで戻る。
+ * 🔴 承認すると、同じ枠・同じ範囲で公開中だったものは終了する (§13 の重複有効の禁止)。
+ * ⚠️ 状態は画面の state にだけ残る。保存は backend 担当なのでリロードで戻る。
  */
 
 import { useState } from "react"
@@ -34,12 +35,15 @@ import {
 } from "@/contexts/session-context"
 import {
   CARE_CATEGORY_LABEL,
+  CARE_REQUEST_ACTION_LABEL,
+  CARE_REQUEST_DENIAL_LABEL,
   careScopeLabel,
+  decideCareRequestAction,
   getCareSlot,
   resolveAssignment,
+  type CareRequestAction,
 } from "@/lib/domain/care-catalog"
 import { formatDate, formatDateTime } from "@/lib/domain/kpi"
-import { can } from "@/lib/domain/scope"
 import {
   CARE_ASSIGNMENT_STATUS_LABEL,
   type CareAssignment,
@@ -63,12 +67,11 @@ export function CareRequestReviewDialog({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
-  const { scope, careAssets, careAssignments } = useSession()
+  const { scope, careAssets, careAssignments, reviewCareRequest } = useSession()
   const companyName = useCompanyName()
   const storeName = useStoreName()
   const [reason, setReason] = useState("")
 
-  const canApprove = can(scope, "care.approve")
   const slot = getCareSlot(request.videoCode)
   const asset = careAssets.find((a) => a.id === request.careAssetId)
 
@@ -86,8 +89,38 @@ export function CareRequestReviewDialog({
     (a) => a.id === currentAssignment?.careAssetId
   )
 
-  const pending = request.status === "pending_approval"
   const rightsCleared = asset?.rightsCleared ?? false
+
+  /*
+    🔴 可否は decideCareRequestAction() だけが決める。
+       本部以外には審査のボタンを出さない(押せないボタンを並べても、
+       誰が審査するのかが伝わらない)。状態に合う操作だけを出す。
+  */
+  const decisions = (["cancel", "reject", "approve"] as CareRequestAction[]).map(
+    (action) => ({
+      action,
+      decision: decideCareRequestAction(scope, request, asset, action),
+    })
+  )
+  const reviewable = decisions.filter(
+    (d) =>
+      d.decision.kind === "allowed" ||
+      (d.decision.kind === "denied" && d.decision.reason === "rights_pending")
+  )
+  const notOperator = decisions.every(
+    (d) => d.decision.kind === "denied" && d.decision.reason === "not_operator"
+  )
+
+  function run(action: CareRequestAction) {
+    reviewCareRequest(request.id, action, reason.trim())
+    toast.success(`${CARE_REQUEST_ACTION_LABEL[action]}しました`, {
+      description:
+        action === "approve"
+          ? "有効日時に care_asset_id を切り替えます。"
+          : reason.trim(),
+    })
+    close()
+  }
 
   function close() {
     onOpenChange(false)
@@ -195,19 +228,37 @@ export function CareRequestReviewDialog({
             </div>
           </div>
 
-          {pending && !rightsCleared ? (
+          {reviewable.some(
+            (d) => d.decision.kind === "denied" && d.decision.reason === "rights_pending"
+          ) ? (
             <p className="rounded-md border border-amber-300 bg-amber-50/60 px-3 py-2 text-xs leading-relaxed text-amber-800">
-              権利確認が未完了のため承認できません。提供元に権利の確認を依頼するか、
-              却下してください。
+              {CARE_REQUEST_DENIAL_LABEL.rights_pending}
+              提供元に権利の確認を依頼するか、却下してください。
             </p>
           ) : null}
 
-          {pending && canApprove ? (
+          {request.decisionReason ? (
+            <div>
+              <p className="text-xs text-muted-foreground">
+                {request.status === "rejected" ? "却下理由" : "審査時の記録"}
+              </p>
+              <p className="text-sm">{request.decisionReason}</p>
+            </div>
+          ) : null}
+
+          {notOperator ? (
+            <p className="text-xs text-muted-foreground">
+              {CARE_REQUEST_DENIAL_LABEL.not_operator}
+              この画面では申請の状況を確認できます。
+            </p>
+          ) : null}
+
+          {reviewable.length > 0 ? (
             <Input
               className="h-9"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="却下する場合の理由(申請元に伝わります)"
+              placeholder="理由(監査に残ります)"
             />
           ) : null}
         </div>
@@ -216,45 +267,24 @@ export function CareRequestReviewDialog({
           <Button variant="ghost" onClick={close}>
             閉じる
           </Button>
-          <Button
-            variant="outline"
-            disabled={!canApprove || !pending || !reason.trim()}
-            title={
-              !canApprove
-                ? "承認・却下は本部のみが行えます"
-                : !pending
-                  ? "承認待ちの申請ではありません"
+          {/* 🔴 出すのは今の状態で行える操作だけ。可否は decideCareRequestAction() */}
+          {reviewable.map(({ action, decision }) => (
+            <Button
+              key={action}
+              variant={action === "approve" ? "default" : "outline"}
+              disabled={decision.kind !== "allowed" || !reason.trim()}
+              title={
+                decision.kind !== "allowed"
+                  ? CARE_REQUEST_DENIAL_LABEL[decision.reason]
                   : !reason.trim()
-                    ? "却下の理由を入力してください"
+                    ? "理由を入力してください"
                     : undefined
-            }
-            onClick={() => {
-              toast.info("却下しました", { description: reason.trim() })
-              close()
-            }}
-          >
-            却下
-          </Button>
-          <Button
-            disabled={!canApprove || !pending || !rightsCleared}
-            title={
-              !canApprove
-                ? "承認・却下は本部のみが行えます"
-                : !pending
-                  ? "承認待ちの申請ではありません"
-                  : !rightsCleared
-                    ? "権利確認が未完了のため承認できません"
-                    : undefined
-            }
-            onClick={() => {
-              toast.success("承認しました", {
-                description: "有効日時に care_asset_id を切り替えます。",
-              })
-              close()
-            }}
-          >
-            承認
-          </Button>
+              }
+              onClick={() => run(action)}
+            >
+              {CARE_REQUEST_ACTION_LABEL[action]}
+            </Button>
+          ))}
         </DialogFooter>
       </DialogContent>
     </Dialog>
