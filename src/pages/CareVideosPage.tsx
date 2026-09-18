@@ -507,7 +507,12 @@ export default function CareVideosPage() {
         「その枠の今」しか出さないため、権利未確認の動画を探せる場所が無かった。
         §7.1 の「本部が提供者・内容・権利・承認状態・公開期間・対象 scope を
         確認する」はこの一覧が受け持つ。
+        🔴 権利の棚卸しは本部の仕事なので**本部にだけ出す**。契約企業・店舗に
+           在庫一覧は要らないうえ、`CareVideoAsset` に持ち主の情報が無いため
+           他社が登録した動画の題名・提供者まで見えてしまう
+           (持ち主の持ち方は docs/QUESTIONS_FOR_YOSHIDA.md #20 で確認中)。
       */}
+      {canApprove ? (
       <Card className="py-0">
         <CardHeader className="flex-row items-center justify-between gap-2 pt-6">
           <CardTitle className="flex items-center gap-1.5 text-base">
@@ -599,6 +604,7 @@ export default function CareVideosPage() {
           ) : null}
         </div>
       </Card>
+      ) : null}
 
       <SpecNote>
         差し替えを申請するのは契約企業・店舗で、本部はそれを承認します。本部は自分が

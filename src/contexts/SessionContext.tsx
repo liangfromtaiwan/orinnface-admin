@@ -156,7 +156,8 @@ export function SessionProvider({
             actorAccountId: actor.id,
             actorName: actor.displayName,
             targetLabel,
-            reason,
+            // 理由が任意の操作もあるので、空文字を残さない
+            reason: reason.trim() || undefined,
             occurredAt: new Date().toISOString(),
             requestId: `req_live_${pad6(prev.length + 1)}`,
           },
