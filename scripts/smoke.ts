@@ -821,9 +821,11 @@ console.log("── §8 推奨基準値・方針の版管理 ──")
   check("active は承認し直せない",
     decideSetAction(opScope, active, "approve").kind === "denied",
     "(active 値の直接更新禁止)")
-  check("draft はいきなり有効化できない",
-    decideSetAction(opScope, draft, "activate").kind === "denied",
-    "(draft → 承認 → 有効化)")
+  check("下書きから直接有効化できる",
+    decideSetAction(opScope, draft, "activate").kind === "allowed",
+    "(承認は同じ人が押すだけなので飛ばせる・使用者確定 2026-09-18)")
+  check("下書きから直接予約もできる",
+    decideSetAction(opScope, draft, "schedule").kind === "allowed")
   {
     // 作成者と承認者を分けない(使用者確定 2026-09-18)
     const d = decideSetAction(opScope, draft, "approve")
@@ -852,6 +854,24 @@ console.log("── §8 推奨基準値・方針の版管理 ──")
       activated.find(s => s.version === active.version)?.status === "retired")
     check("有効化しても過去の版は消えない",
       activated.length === baselineSets.length)
+  }
+
+  {
+    // 承認を飛ばして有効化しても、誰が決めたかは残す
+    const direct = applyBaselineAction(baselineSets, draft.version, "activate",
+      { actorName: "吉田", now })
+    const d = direct.find(s => s.version === draft.version)!
+    check("承認を飛ばして有効化できる", d.status === "active")
+    check("飛ばしても承認者は記録される", d.approvedBy === "吉田")
+    check("飛ばした場合も前の有効版は退役する",
+      direct.find(s => s.version === active.version)?.status === "retired")
+
+    const scheduled = applyBaselineAction(baselineSets, draft.version, "schedule",
+      { actorName: "吉田", now, scheduledAt: "2026-10-01T00:00:00+09:00" })
+    const sc = scheduled.find(s => s.version === draft.version)!
+    check("下書きから予約すると承認済へ進む", sc.status === "approved",
+      "(下書きのまま予約すると、まだ決めていない版が有効化される)")
+    check("予約でも承認者は記録される", sc.approvedBy === "吉田")
   }
 
   {
@@ -946,10 +966,11 @@ console.log("── §8 推奨基準値・方針の版管理 ──")
       scheduled.find(s => s.version === approvedPolicy.version)?.status === "approved")
   }
 
-  check("draft でできるのは承認だけ",
-    availableActions("draft").join() === "approve")
-  check("approved でできるのは有効化と予約",
-    availableActions("approved").sort().join() === "activate,schedule")
+  check("下書きでは有効化・予約・承認が出る",
+    availableActions("draft").join() === "activate,schedule,approve",
+    "(有効化を先頭に置く)")
+  check("承認済でできるのは有効化と予約",
+    availableActions("approved").join() === "activate,schedule")
   check("active には次に進める操作が無い",
     availableActions("active").length === 0, "(直接編集も再承認もしない)")
   check("retired からは rollback だけ",

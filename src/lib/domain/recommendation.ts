@@ -399,12 +399,23 @@ type VersionedSet = {
   note?: string
 }
 
-const REQUIRED_STATUS: Record<SetAction, VersionedSetStatus> = {
-  approve: "draft",
-  activate: "approved",
-  schedule: "approved",
-  rollback: "retired",
+/*
+  どの状態から行えるか。
+  🔴 下書きからそのまま有効化・予約できる(使用者確定 2026-09-18)。本部の管理者が
+     1 人なら、承認は同じ人がもう一度押すだけの手順にしかならないため。
+     承認を飛ばした場合も承認者は記録する(誰が決めたかは残す)。
+  🔴 承認そのものは残す。§8 が操作として挙げているうえ、「今決めて、切り替えは後」を
+     予約以外の形でやりたいときに要る。
+*/
+const ALLOWED_STATUS: Record<SetAction, VersionedSetStatus[]> = {
+  approve: ["draft"],
+  activate: ["draft", "approved"],
+  schedule: ["draft", "approved"],
+  rollback: ["retired"],
 }
+
+/** 画面に出す順。有効化を主にし、承認は残すが控えめに置く。 */
+const ACTION_ORDER: SetAction[] = ["activate", "schedule", "approve", "rollback"]
 
 /**
  * その状態で出す操作。
@@ -412,9 +423,7 @@ const REQUIRED_STATUS: Record<SetAction, VersionedSetStatus> = {
  * 読めなくなる。権限で押せない場合は decideSetAction() が理由を返す。
  */
 export function availableActions(status: VersionedSetStatus): SetAction[] {
-  return (Object.keys(REQUIRED_STATUS) as SetAction[]).filter(
-    (action) => REQUIRED_STATUS[action] === status
-  )
+  return ACTION_ORDER.filter((action) => ALLOWED_STATUS[action].includes(status))
 }
 
 /**
@@ -446,7 +455,7 @@ export function decideSetAction(
   if (!can(scope, "recommendation.approve")) {
     return { kind: "denied", reason: "not_operator" }
   }
-  if (set.status !== REQUIRED_STATUS[action]) {
+  if (!ALLOWED_STATUS[action].includes(set.status)) {
     return { kind: "denied", reason: "wrong_status" }
   }
 
@@ -498,7 +507,7 @@ function applySetAction<T extends VersionedSet>(
   ctx: ApplyContext
 ): T[] {
   const target = sets.find((s) => s.version === version)
-  if (!target || target.status !== REQUIRED_STATUS[action]) return sets
+  if (!target || !ALLOWED_STATUS[action].includes(target.status)) return sets
 
   switch (action) {
     case "approve":
@@ -508,8 +517,19 @@ function applySetAction<T extends VersionedSet>(
           : s
       )
     case "schedule":
+      /*
+        🔴 下書きから予約したときは承認済へ進める。下書きのまま予約を持たせると、
+           予約時刻に「まだ決めていない版」が有効化されてしまう。
+      */
       return sets.map((s) =>
-        s.version === version ? { ...s, scheduledActivateAt: ctx.scheduledAt } : s
+        s.version === version
+          ? {
+              ...s,
+              status: "approved" as const,
+              approvedBy: s.approvedBy ?? ctx.actorName,
+              scheduledActivateAt: ctx.scheduledAt,
+            }
+          : s
       )
     case "activate":
       return sets.map((s) => {
@@ -517,6 +537,8 @@ function applySetAction<T extends VersionedSet>(
           return {
             ...s,
             status: "active" as const,
+            // 承認を飛ばして有効化した場合も、誰が決めたかは残す
+            approvedBy: s.approvedBy ?? ctx.actorName,
             activatedAt: ctx.now,
             scheduledActivateAt: undefined,
           }

@@ -132,7 +132,7 @@ function BaselineCard({
               kind="基準値"
               set={set}
               action={action}
-              variant={action === "rollback" ? "ghost" : "outline"}
+              variant={action === "activate" ? "default" : "outline"}
               onRun={run(action)}
             />
           ))}
@@ -203,7 +203,7 @@ function PolicyCard({
               kind="方針"
               set={set}
               action={action}
-              variant={action === "rollback" ? "ghost" : "outline"}
+              variant={action === "activate" ? "default" : "outline"}
               onRun={run(action)}
             />
           ))}

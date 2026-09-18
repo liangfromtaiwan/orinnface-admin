@@ -619,7 +619,7 @@ export function SetActionButton({
   set: SetActionTarget
   action: SetAction
   onRun: (reason: string, scheduledAt?: string) => void
-  variant?: "outline" | "ghost"
+  variant?: "default" | "outline" | "ghost"
 }) {
   const { scope } = useSession()
   const decision = decideSetAction(scope, set, action)
@@ -666,7 +666,9 @@ export function SetActionButton({
             {kind}セット <span className="font-mono text-base">{set.version}</span> を
             {SET_ACTION_LABEL[action]}
           </DialogTitle>
-          <DialogDescription>{ACTION_DESCRIPTION[action](kind)}</DialogDescription>
+          <DialogDescription>
+            {ACTION_DESCRIPTION[action](kind, set.status === "draft")}
+          </DialogDescription>
         </DialogHeader>
 
         {decision.warnings.length > 0 ? (
@@ -713,12 +715,17 @@ export function SetActionButton({
   )
 }
 
-const ACTION_DESCRIPTION: Record<SetAction, (kind: string) => string> = {
+const ACTION_DESCRIPTION: Record<
+  SetAction,
+  (kind: string, fromDraft: boolean) => string
+> = {
   approve: () => "承認しても推奨はまだ変わりません。有効化は別の操作です。",
-  activate: (kind) =>
-    `次回以降の推奨がこの版で計算されます。今まで有効だった${kind}セットは退役します。過去の推奨は再計算しません。`,
-  schedule: () =>
-    "指定した日時に有効化されます。実行までは今の版が有効なままです。",
+  activate: (kind, fromDraft) =>
+    `次回以降の推奨がこの版で計算されます。今まで有効だった${kind}セットは退役します。過去の推奨は再計算しません。` +
+    (fromDraft ? "この操作で承認も同時に記録します。" : ""),
+  schedule: (_kind, fromDraft) =>
+    "指定した日時に有効化されます。実行までは今の版が有効なままです。" +
+    (fromDraft ? "予約すると承認済になります。" : ""),
   rollback: () =>
     "この版の値を持つ下書きを新しく作ります。退役した版を直接戻すことはしません。作った下書きは承認と有効化が必要です。",
 }

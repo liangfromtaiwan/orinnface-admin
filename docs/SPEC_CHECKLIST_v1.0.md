@@ -173,7 +173,7 @@
 | ☐ | draft 作成 | `createBaselineDraft()` / `createPolicyDraft()`、`BaselineDraftDialog` / `PolicyDraftDialog` | ✅ | 既存版をコピーして直す形。コピー元と同じ値では作れない |
 | ☐ | 差分 | `diffBaselineSets()` / `diffPolicySets()`、`RecommendationDiff` | ✅ | 各カードに「何と比べた差分か」付きで常時表示。比較対象は `comparisonBaseFor()`（draft→active / active→直前の退役版） |
 | ☐ | 影響 preview | `previewBaselineImpact()` / `previewPolicyImpact()` | ✅ | 基準値=draft で推奨を引き直し、現行 run と突き合わせた**試算**（保存しない・過去 run を書き換えない。smoke 有守）。方針は文章なので結果を計算せず「その規則が効く分析の件数」を出す |
-| ☐ | approve / activate | `applyBaselineAction()` / `applyPolicyAction()` | ✅ | 理由入力必須・監査に残る。有効化で前の active は自動で retired（active は常に 1 件） |
+| ☐ | approve / activate | `applyBaselineAction()` / `applyPolicyAction()` | ✅ | 理由入力必須・監査に残る。有効化で前の active は自動で retired（active は常に 1 件）。**下書きから承認を飛ばして直接有効化・予約できる**（使用者確定 2026-09-18。本部が 1 名なら承認は同じ人がもう一度押すだけのため）。飛ばしても `approvedBy` は記録する。承認の操作自体は残す（§8 の操作表にあるため） |
 | ☐ | scheduled activate | `SetActionButton` の `schedule` | ✅ | approved のみ。日時を入れて予約、有効化で予約は消える |
 | ☐ | rollback は新 version として実行 | `applySetAction()` の `rollback` | ✅ | retired を戻さず**同じ値の新 draft** を起こす。元の retired はそのまま残り、承認からやり直す |
 | ☐ | active 値の直接更新は禁止。過去 run を再計算・上書きしない | 編集 UI をそもそも出していない | ✅ | |
@@ -184,6 +184,7 @@
 - **2026-09-15 実装**: draft 作成・差分・影響 preview・承認・有効化・予約・rollback を実装。
   可否判定は `decideDraftCreate()` / `decideSetAction()` の 2 関数だけが持ち、画面は role を直接見ない。
   状態で出せる操作は `availableActions()`（draft→承認 / approved→有効化・予約 / retired→rollback / active→なし）。
+- **承認は飛ばせる**（使用者確定 2026-09-18）: 下書きカードに「有効化」「有効化を予約」「承認」が並ぶ。有効化を主ボタンにしてある。下書きから予約すると**承認済へ進める**（下書きのまま予約を持たせると、予約時刻に「まだ決めていない版」が有効化されてしまう）。
 - **作成者と承認者は分けない**（使用者確定 2026-09-18）: 本部の管理者が自分で決めてよい範囲なので、自分が作った下書きをそのまま承認できる。§8 は分離を「**推奨**」と書いているだけで必須ではないため、警告も出さない。分離する運用に変えるなら `decideSetAction()` で `createdBy === actorName` を弾く 1 行で済む。
 - **推奨の計算は seed と共有**: `rankRecommendedPoses()` を seed の `recommendationRuns` も通す。
   管理画面が別計算を持つと「preview では変わると出たのに実際は変わらない」が起きるため。
