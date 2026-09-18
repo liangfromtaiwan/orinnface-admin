@@ -562,7 +562,7 @@ export const AUDIT_CATEGORY_LABEL: Record<AuditCategory, string> = {
   baseline_change: "基準値変更",
   policy_change: "方針変更",
   deletion: "削除",
-  rollback: "rollback",
+  rollback: "版の復元",
   branding_change: "ブランド設定変更",
 }
 

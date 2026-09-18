@@ -348,7 +348,12 @@ export const SET_ACTION_LABEL: Record<SetAction, string> = {
   approve: "承認",
   activate: "有効化",
   schedule: "有効化を予約",
-  rollback: "rollback",
+  /*
+    仕様書は "rollback" と書いているが、画面は日本語で統一する。
+    🔴 「元に戻す」だと退役した版がそのまま復活すると読めてしまう。実際に起きるのは
+       **その値を持つ新しい draft を作る**ことなので、確認ダイアログでそう説明する。
+  */
+  rollback: "復元",
 }
 
 export type SetActionDenial =
