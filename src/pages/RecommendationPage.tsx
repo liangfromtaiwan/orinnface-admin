@@ -58,6 +58,7 @@ function SetMeta({
   set: {
     createdBy: string
     createdAt: string
+    editedAt?: string
     approvedBy?: string
     activatedAt?: string
     scheduledActivateAt?: string
@@ -66,6 +67,7 @@ function SetMeta({
   return (
     <CardDescription className="text-xs">
       作成 {set.createdBy} / {formatDate(set.createdAt)}
+      {set.editedAt ? ` ・編集 ${formatDate(set.editedAt)}` : ""}
       {set.approvedBy ? ` ・承認 ${set.approvedBy}` : ""}
       {set.activatedAt ? ` ・有効化 ${formatDate(set.activatedAt)}` : ""}
       {set.scheduledActivateAt
@@ -126,6 +128,8 @@ function BaselineCard({
         {/* 🔴 今の状態でできる操作だけを出す。可否は decideSetAction() が決める */}
         <div className="flex flex-wrap gap-2">
           <BaselineImpactDialog target={set} activeSet={activeSet} />
+          {/* 有効化していない版は中身を直せる (§8 が禁じているのは active の更新) */}
+          <BaselineDraftDialog sets={sets} target={set} />
           {availableActions(set.status).map((action) => (
             <SetActionButton
               key={action}
@@ -197,6 +201,7 @@ function PolicyCard({
             activeSet={activeSet}
             activeBaseline={activeBaseline}
           />
+          <PolicyDraftDialog sets={sets} target={set} />
           {availableActions(set.status).map((action) => (
             <SetActionButton
               key={action}

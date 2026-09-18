@@ -27,7 +27,9 @@ import {
 } from "@/lib/domain/care-catalog"
 import {
   applyBaselineAction,
+  applyBaselineEdit,
   applyPolicyAction,
+  applyPolicyEdit,
   createBaselineDraft as buildBaselineDraft,
   createPolicyDraft as buildPolicyDraft,
   type RecommendationPose,
@@ -334,6 +336,47 @@ export function SessionProvider({
     [accountId, policySets, pushAudit]
   )
 
+  /** 🔴 可否は呼び出し側の decideSetEdit()。ここは state と監査だけ。 */
+  const updateBaselineDraft = useCallback(
+    (
+      version: string,
+      input: {
+        values: { poseCode: RecommendationPose; baseline: number }[]
+        note?: string
+      }
+    ) => {
+      const now = new Date().toISOString()
+      setBaselineSets((prev) => applyBaselineEdit(prev, version, input, { now }))
+      pushAudit(
+        "baseline_change",
+        `基準値セット ${version} の中身を編集`,
+        input.note?.trim() || "下書きの編集"
+      )
+    },
+    [pushAudit]
+  )
+
+  const updatePolicyDraft = useCallback(
+    (
+      version: string,
+      input: {
+        tieBreak: string
+        missingValueHandling: string
+        fallback: string
+        note?: string
+      }
+    ) => {
+      const now = new Date().toISOString()
+      setPolicySets((prev) => applyPolicyEdit(prev, version, input, { now }))
+      pushAudit(
+        "policy_change",
+        `方針セット ${version} の中身を編集`,
+        input.note?.trim() || "下書きの編集"
+      )
+    },
+    [pushAudit]
+  )
+
   /**
    * 🔴 可否は呼び出し側の decideSetAction()。ここは state と監査だけ。
    * 🔴 rollback は監査カテゴリも rollback にする (§11 に別項目として挙がっている)。
@@ -461,6 +504,8 @@ export function SessionProvider({
       policySets,
       createBaselineDraft,
       createPolicyDraft,
+      updateBaselineDraft,
+      updatePolicyDraft,
       runBaselineAction,
       runPolicyAction,
       viewCompanyId: effectiveCompanyId,
@@ -496,6 +541,8 @@ export function SessionProvider({
     policySets,
     createBaselineDraft,
     createPolicyDraft,
+    updateBaselineDraft,
+    updatePolicyDraft,
     runBaselineAction,
     runPolicyAction,
   ])

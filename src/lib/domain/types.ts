@@ -327,6 +327,8 @@ export type RecommendationBaselineSet = {
   createdBy: string
   approvedBy?: string
   createdAt: string
+  /** 中身を直した日時。下書き・承認済のみ直せる (§8 は active の更新だけを禁じている)。 */
+  editedAt?: string
   activatedAt?: string
   scheduledActivateAt?: string
   note?: string
@@ -342,6 +344,8 @@ export type RecommendationPolicySet = {
   createdBy: string
   approvedBy?: string
   createdAt: string
+  /** 中身を直した日時。下書き・承認済のみ直せる (§8 は active の更新だけを禁じている)。 */
+  editedAt?: string
   activatedAt?: string
   scheduledActivateAt?: string
   note?: string

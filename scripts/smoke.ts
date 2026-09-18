@@ -22,7 +22,7 @@ import { buildPeriod } from "@/lib/domain/periods"
 import { careAssets, careAssignments } from "@/lib/mock/seed"
 import { BADGE_HINT } from "@/components/badge-hints"
 import { baselineSets, policySets } from "@/lib/mock/seed"
-import { availableActions, applyBaselineAction, applyPolicyAction, comparisonBaseFor, createBaselineDraft, decideDraftCreate, decideSetAction, diffBaselineSets, nextVersion, previewBaselineImpact, previewPolicyImpact, rankRecommendedPoses, baselineValuesOf, RECOMMENDATION_POSES } from "@/lib/domain/recommendation"
+import { applyBaselineEdit, applyPolicyEdit, decideSetEdit, availableActions, applyBaselineAction, applyPolicyAction, comparisonBaseFor, createBaselineDraft, decideDraftCreate, decideSetAction, diffBaselineSets, nextVersion, previewBaselineImpact, previewPolicyImpact, rankRecommendedPoses, baselineValuesOf, RECOMMENDATION_POSES } from "@/lib/domain/recommendation"
 
 let failed = 0
 function check(name: string, cond: boolean, detail = "") {
@@ -975,6 +975,52 @@ console.log("── §8 推奨基準値・方針の版管理 ──")
     availableActions("active").length === 0, "(直接編集も再承認もしない)")
   check("retired からは rollback だけ",
     availableActions("retired").join() === "rollback")
+
+  // 有効化していない版は中身を直せる(使用者確定 2026-09-18)
+  {
+    check("下書きは編集できる", decideSetEdit(opScope, draft).kind === "allowed")
+    check("承認済も編集できる",
+      decideSetEdit(opScope, { status: "approved" }).kind === "allowed")
+    check("有効な版は編集できない",
+      decideSetEdit(opScope, active).kind === "denied",
+      "(§8 active 値の直接更新は禁止)")
+    check("退役した版も編集できない",
+      decideSetEdit(opScope, retired).kind === "denied",
+      "(過去の推奨の根拠なので動かさない)")
+    check("契約企業管理者は編集できない",
+      decideSetEdit(caScope, draft).kind === "denied")
+
+    const edited = applyBaselineEdit(baselineSets, draft.version,
+      { values: RECOMMENDATION_POSES.map(p => ({ poseCode: p, baseline: 13 })), note: "実測を反映" },
+      { now })
+    const e = edited.find(s => s.version === draft.version)!
+    check("編集すると値が変わる", e.values.every(v => v.baseline === 13))
+    check("編集しても version は変わらない", e.version === draft.version)
+    check("編集した日時が残る", e.editedAt === now)
+
+    const approvedSet = baselineSets.map(s =>
+      s.version === draft.version
+        ? { ...s, status: "approved" as const, approvedBy: "吉田", scheduledActivateAt: "2026-10-01T00:00:00+09:00" }
+        : s)
+    const back = applyBaselineEdit(approvedSet, draft.version,
+      { values: RECOMMENDATION_POSES.map(p => ({ poseCode: p, baseline: 13 })) }, { now })
+    const b = back.find(s => s.version === draft.version)!
+    check("承認済を編集すると下書きに戻る", b.status === "draft" && b.approvedBy === undefined,
+      "(承認したのはその内容なので、中身が変われば承認は無効)")
+    check("承認済を編集すると予約も外れる", b.scheduledActivateAt === undefined,
+      "(そのままだと編集後の内容が予約時刻に有効化される)")
+
+    const activeEdit = applyBaselineEdit(baselineSets, active.version,
+      { values: RECOMMENDATION_POSES.map(p => ({ poseCode: p, baseline: 99 })) }, { now })
+    check("有効な版は編集関数を通しても変わらない",
+      activeEdit.find(s => s.version === active.version)?.values.every(v => v.baseline === 12),
+      "(画面に出さないだけでなく、関数側でも弾く)")
+
+    const p = applyPolicyEdit(policySets, policySets[1].version,
+      { tieBreak: "a", missingValueHandling: "b", fallback: "c" }, { now })
+    check("方針も同じように編集できる",
+      p.find(x => x.version === policySets[1].version)?.tieBreak === "a")
+  }
 
   check("draft の比較対象は active",
     comparisonBaseFor(baselineSets, draft)?.version === active.version)

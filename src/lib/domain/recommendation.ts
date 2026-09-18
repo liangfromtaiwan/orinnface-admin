@@ -582,6 +582,74 @@ export function applyPolicyAction(
   return applySetAction(sets, version, action, "rp", ctx)
 }
 
+/*
+  編集できる状態。
+  🔴 §8 が禁じているのは **active 値の直接更新**。まだ有効化していない下書き・承認済は
+     どの推奨にも使われていないので、作り直させる理由がない(使用者確定 2026-09-18)。
+  🔴 承認済を編集したら下書きへ戻す。承認したのは「その内容」なので、中身が変われば
+     承認は無効。予約も外す(そのままだと、編集後の内容が予約時刻に有効化される)。
+*/
+const EDITABLE_STATUS: VersionedSetStatus[] = ["draft", "approved"]
+
+export function decideSetEdit(
+  scope: Scope,
+  set: { status: VersionedSetStatus }
+): SetActionDecision {
+  if (!can(scope, "recommendation.draft")) {
+    return { kind: "denied", reason: "not_operator" }
+  }
+  if (!EDITABLE_STATUS.includes(set.status)) {
+    return { kind: "denied", reason: "wrong_status" }
+  }
+  return { kind: "allowed", warnings: [] }
+}
+
+/** 編集後の共通処理。承認済は下書きへ戻し、予約を外す。 */
+function editedStatus<T extends VersionedSet>(set: T, now: string): Partial<T> {
+  return {
+    status: "draft",
+    approvedBy: undefined,
+    scheduledActivateAt: undefined,
+    createdAt: set.createdAt,
+    // 直した時刻を残す。版そのものは同じなので version は変えない
+    editedAt: now,
+  } as unknown as Partial<T>
+}
+
+export function applyBaselineEdit(
+  sets: RecommendationBaselineSet[],
+  version: string,
+  input: {
+    values: { poseCode: Exclude<PoseCode, "neutral">; baseline: number }[]
+    note?: string
+  },
+  ctx: { now: string }
+): RecommendationBaselineSet[] {
+  return sets.map((s) =>
+    s.version === version && EDITABLE_STATUS.includes(s.status)
+      ? { ...s, ...editedStatus(s, ctx.now), values: input.values, note: input.note }
+      : s
+  )
+}
+
+export function applyPolicyEdit(
+  sets: RecommendationPolicySet[],
+  version: string,
+  input: {
+    tieBreak: string
+    missingValueHandling: string
+    fallback: string
+    note?: string
+  },
+  ctx: { now: string }
+): RecommendationPolicySet[] {
+  return sets.map((s) =>
+    s.version === version && EDITABLE_STATUS.includes(s.status)
+      ? { ...s, ...editedStatus(s, ctx.now), ...input }
+      : s
+  )
+}
+
 /**
  * 基準値の draft を作る。
  * 🔴 作れるのは draft だけ。active を直接編集する経路は作らない (§8)。

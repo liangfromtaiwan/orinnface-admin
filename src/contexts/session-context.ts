@@ -123,6 +123,27 @@ export type SessionValue = {
     values: { poseCode: RecommendationPose; baseline: number }[]
     note?: string
   }) => void
+  /**
+   * 下書き・承認済の中身を直す (§8 が禁じているのは active の更新)。
+   * 🔴 呼ぶ前に `decideSetEdit()` で可否を判定すること。
+   * 🔴 承認済を直すと下書きへ戻り、有効化の予約も外れる。
+   */
+  updateBaselineDraft: (
+    version: string,
+    input: {
+      values: { poseCode: RecommendationPose; baseline: number }[]
+      note?: string
+    }
+  ) => void
+  updatePolicyDraft: (
+    version: string,
+    input: {
+      tieBreak: string
+      missingValueHandling: string
+      fallback: string
+      note?: string
+    }
+  ) => void
   /** 方針の draft を作る。判定は同じく `decideDraftCreate()`。 */
   createPolicyDraft: (input: {
     tieBreak: string

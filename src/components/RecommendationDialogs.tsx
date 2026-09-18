@@ -42,6 +42,7 @@ import {
   baselineValuesOf,
   decideDraftCreate,
   decideSetAction,
+  decideSetEdit,
   diffBaselineSets,
   diffPolicySets,
   previewBaselineImpact,
@@ -73,13 +74,18 @@ const SAMPLE_LIMIT = 8
  */
 export function BaselineDraftDialog({
   sets,
+  /** 渡すと「新しく作る」ではなく、その版を**直す**ダイアログになる。 */
+  target,
 }: {
   sets: RecommendationBaselineSet[]
+  target?: RecommendationBaselineSet
 }) {
-  const { scope, createBaselineDraft } = useSession()
-  const decision = decideDraftCreate(scope)
+  const { scope, createBaselineDraft, updateBaselineDraft } = useSession()
+  const editing = Boolean(target)
+  const decision = target ? decideSetEdit(scope, target) : decideDraftCreate(scope)
   const [open, setOpen] = useState(false)
-  const base = sets.find((s) => s.status === "active") ?? sets[0]
+  /* 直すときは自分の値を出す。新規は有効な版をコピーする。 */
+  const base = target ?? sets.find((s) => s.status === "active") ?? sets[0]
   const [values, setValues] = useState<Record<RecommendationPose, string>>(() =>
     initialValues(base)
   )
@@ -103,19 +109,25 @@ export function BaselineDraftDialog({
     ? parsed.filter((p) => p.baseline !== baselineValuesOf(base)[p.poseCode]).length
     : parsed.length
 
-  if (decision.kind === "denied") {
-    return (
-      <Button size="sm" disabled title={SET_ACTION_DENIAL_LABEL[decision.reason]}>
-        draft を作成
-      </Button>
-    )
-  }
+  // 押せない操作のボタンは置かない(この画面自体が本部専用)
+  if (decision.kind === "denied") return null
 
   function submit() {
-    createBaselineDraft({ values: parsed, note: note.trim() || undefined })
-    toast.success("基準値の下書きを作成しました", {
-      description: "承認と有効化は別の操作です。有効化するまで推奨は変わりません。",
-    })
+    const input = { values: parsed, note: note.trim() || undefined }
+    if (target) {
+      updateBaselineDraft(target.version, input)
+      toast.success(`${target.version} を編集しました`, {
+        description:
+          target.status === "approved"
+            ? "承認済だったので下書きに戻しました。有効化の予約も外れています。"
+            : undefined,
+      })
+    } else {
+      createBaselineDraft(input)
+      toast.success("基準値の下書きを作成しました", {
+        description: "有効化するまで推奨は変わりません。",
+      })
+    }
     setOpen(false)
     setNote("")
   }
@@ -129,13 +141,27 @@ export function BaselineDraftDialog({
       }}
     >
       <DialogTrigger asChild>
-        <Button size="sm">下書きを作成</Button>
+        {editing ? (
+          <Button variant="outline" size="sm">
+            編集
+          </Button>
+        ) : (
+          <Button size="sm">下書きを作成</Button>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>基準値セットの下書きを作成</DialogTitle>
+          <DialogTitle>
+            {editing ? `${target!.version} を編集` : "基準値セットの下書きを作成"}
+          </DialogTitle>
           <DialogDescription>
-            {base ? (
+            {editing ? (
+              target!.status === "approved" ? (
+                "承認済です。直すと下書きに戻り、有効化の予約も外れます。"
+              ) : (
+                "まだ有効化していないので、この版をそのまま直せます。"
+              )
+            ) : base ? (
               <>
                 <span className="font-mono">{base.version}</span> の値をコピーしています。
                 直したところだけが差分になります。
@@ -203,12 +229,14 @@ export function BaselineDraftDialog({
               !allValid
                 ? "5 動作すべてに正の数値を入れてください"
                 : changedCount === 0
-                  ? "コピー元と同じ値では下書きを作れません"
+                  ? editing
+                    ? "値が変わっていません"
+                    : "コピー元と同じ値では下書きを作れません"
                   : undefined
             }
             onClick={submit}
           >
-            下書きを作成
+            {editing ? "保存" : "下書きを作成"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -216,12 +244,20 @@ export function BaselineDraftDialog({
   )
 }
 
-/** 方針の draft を作る。3 項目とも文章なので、コピー元から書き換える形にする。 */
-export function PolicyDraftDialog({ sets }: { sets: RecommendationPolicySet[] }) {
-  const { scope, createPolicyDraft } = useSession()
-  const decision = decideDraftCreate(scope)
+/** 方針の下書きを作る・直す。3 項目とも文章なので、元の文面から書き換える形にする。 */
+export function PolicyDraftDialog({
+  sets,
+  /** 渡すと「新しく作る」ではなく、その版を**直す**ダイアログになる。 */
+  target,
+}: {
+  sets: RecommendationPolicySet[]
+  target?: RecommendationPolicySet
+}) {
+  const { scope, createPolicyDraft, updatePolicyDraft } = useSession()
+  const editing = Boolean(target)
+  const decision = target ? decideSetEdit(scope, target) : decideDraftCreate(scope)
   const [open, setOpen] = useState(false)
-  const base = sets.find((s) => s.status === "active") ?? sets[0]
+  const base = target ?? sets.find((s) => s.status === "active") ?? sets[0]
   const [form, setForm] = useState(() => initialForm())
   const [note, setNote] = useState("")
 
@@ -241,24 +277,29 @@ export function PolicyDraftDialog({ sets }: { sets: RecommendationPolicySet[] })
     form.missingValueHandling !== base.missingValueHandling ||
     form.fallback !== base.fallback
 
-  if (decision.kind === "denied") {
-    return (
-      <Button size="sm" disabled title={SET_ACTION_DENIAL_LABEL[decision.reason]}>
-        draft を作成
-      </Button>
-    )
-  }
+  if (decision.kind === "denied") return null
 
   function submit() {
-    createPolicyDraft({
+    const input = {
       tieBreak: form.tieBreak.trim(),
       missingValueHandling: form.missingValueHandling.trim(),
       fallback: form.fallback.trim(),
       note: note.trim() || undefined,
-    })
-    toast.success("方針の下書きを作成しました", {
-      description: "承認と有効化は別の操作です。有効化するまで推奨は変わりません。",
-    })
+    }
+    if (target) {
+      updatePolicyDraft(target.version, input)
+      toast.success(`${target.version} を編集しました`, {
+        description:
+          target.status === "approved"
+            ? "承認済だったので下書きに戻しました。有効化の予約も外れています。"
+            : undefined,
+      })
+    } else {
+      createPolicyDraft(input)
+      toast.success("方針の下書きを作成しました", {
+        description: "有効化するまで推奨は変わりません。",
+      })
+    }
     setOpen(false)
     setNote("")
   }
@@ -290,13 +331,27 @@ export function PolicyDraftDialog({ sets }: { sets: RecommendationPolicySet[] })
       }}
     >
       <DialogTrigger asChild>
-        <Button size="sm">下書きを作成</Button>
+        {editing ? (
+          <Button variant="outline" size="sm">
+            編集
+          </Button>
+        ) : (
+          <Button size="sm">下書きを作成</Button>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>方針セットの下書きを作成</DialogTitle>
+          <DialogTitle>
+            {editing ? `${target!.version} を編集` : "方針セットの下書きを作成"}
+          </DialogTitle>
           <DialogDescription>
-            {base ? (
+            {editing ? (
+              target!.status === "approved" ? (
+                "承認済です。直すと下書きに戻り、有効化の予約も外れます。"
+              ) : (
+                "まだ有効化していないので、この版をそのまま直せます。"
+              )
+            ) : base ? (
               <>
                 <span className="font-mono">{base.version}</span> の文面をコピーしています。
               </>
@@ -343,12 +398,14 @@ export function PolicyDraftDialog({ sets }: { sets: RecommendationPolicySet[] })
               !filled
                 ? "3 項目とも入力してください"
                 : !changed
-                  ? "コピー元と同じ内容では下書きを作れません"
+                  ? editing
+                    ? "内容が変わっていません"
+                    : "コピー元と同じ内容では下書きを作れません"
                   : undefined
             }
             onClick={submit}
           >
-            下書きを作成
+            {editing ? "保存" : "下書きを作成"}
           </Button>
         </DialogFooter>
       </DialogContent>

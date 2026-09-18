@@ -176,7 +176,7 @@
 | ☐ | approve / activate | `applyBaselineAction()` / `applyPolicyAction()` | ✅ | 理由入力必須・監査に残る。有効化で前の active は自動で retired（active は常に 1 件）。**下書きから承認を飛ばして直接有効化・予約できる**（使用者確定 2026-09-18。本部が 1 名なら承認は同じ人がもう一度押すだけのため）。飛ばしても `approvedBy` は記録する。承認の操作自体は残す（§8 の操作表にあるため） |
 | ☐ | scheduled activate | `SetActionButton` の `schedule` | ✅ | approved のみ。日時を入れて予約、有効化で予約は消える |
 | ☐ | rollback は新 version として実行 | `applySetAction()` の `rollback` | ✅ | retired を戻さず**同じ値の新 draft** を起こす。元の retired はそのまま残り、承認からやり直す |
-| ☐ | active 値の直接更新は禁止。過去 run を再計算・上書きしない | 編集 UI をそもそも出していない | ✅ | |
+| ☐ | active 値の直接更新は禁止。過去 run を再計算・上書きしない | `decideSetEdit()` / `applyBaselineEdit()` | ✅ | **禁止されているのは active の更新だけ**と読み、下書き・承認済は中身を直せるようにした（使用者確定 2026-09-18。まだどの推奨にも使われていないため作り直させる理由がない）。有効・退役は画面にも関数にも編集の口を出さない。承認済を直すと**下書きに戻り予約も外れる**（承認したのはその内容なので）|
 | ☐ | average_version / threshold_version / 推奨基準 version を同じ値として扱わない | `types.ts` で別フィールド | ✅ | |
 | ☐ | 操作権限: draft 作成・承認・有効化・rollback は operator のみ。他 role は自 scope の結果根拠のみ閲覧 | `scope.ts` | ✅ | smoke 有守 |
 | ☐ | 初期推奨基準値と policy version | — | ➖ | §16 P0 未決。**実測＋事業承認まで active 化不可**。有効化・予約の確認ダイアログに警告を出す（`p0_undecided`）が、操作自体は塞いでいない |
