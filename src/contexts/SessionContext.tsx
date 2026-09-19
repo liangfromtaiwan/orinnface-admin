@@ -27,8 +27,10 @@ import {
 } from "@/lib/domain/care-catalog"
 import {
   applyBaselineAction,
+  applyBaselineDelete,
   applyBaselineEdit,
   applyPolicyAction,
+  applyPolicyDelete,
   applyPolicyEdit,
   createBaselineDraft as buildBaselineDraft,
   createPolicyDraft as buildPolicyDraft,
@@ -375,6 +377,24 @@ export function SessionProvider({
     [pushAudit]
   )
 
+  /** 🔴 可否は呼び出し側の decideSetDelete()。ここは state と監査だけ。 */
+  const deleteBaselineDraft = useCallback(
+    (version: string, reason: string) => {
+      setBaselineSets((prev) => applyBaselineDelete(prev, version))
+      // 🔴 消した記録は §11 の deletion に残す(消した事実まで消さない)
+      pushAudit("deletion", `基準値セット ${version} を削除`, reason)
+    },
+    [pushAudit]
+  )
+
+  const deletePolicyDraft = useCallback(
+    (version: string, reason: string) => {
+      setPolicySets((prev) => applyPolicyDelete(prev, version))
+      pushAudit("deletion", `方針セット ${version} を削除`, reason)
+    },
+    [pushAudit]
+  )
+
   /**
    * 🔴 可否は呼び出し側の decideSetAction()。ここは state と監査だけ。
    * 🔴 rollback は監査カテゴリも rollback にする (§11 に別項目として挙がっている)。
@@ -504,6 +524,8 @@ export function SessionProvider({
       createPolicyDraft,
       updateBaselineDraft,
       updatePolicyDraft,
+      deleteBaselineDraft,
+      deletePolicyDraft,
       runBaselineAction,
       runPolicyAction,
       viewCompanyId: effectiveCompanyId,
@@ -541,6 +563,8 @@ export function SessionProvider({
     createPolicyDraft,
     updateBaselineDraft,
     updatePolicyDraft,
+    deleteBaselineDraft,
+    deletePolicyDraft,
     runBaselineAction,
     runPolicyAction,
   ])

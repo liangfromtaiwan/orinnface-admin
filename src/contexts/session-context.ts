@@ -144,6 +144,14 @@ export type SessionValue = {
       note?: string
     }
   ) => void
+  /**
+   * 下書き・承認済を消す。
+   * 🔴 呼ぶ前に `decideSetDelete()` で可否を判定すること。
+   * 🔴 消せるのは有効化していない版だけ。退役した版は過去の推奨の根拠なので消さない。
+   * 🔴 §11 の変更監査に deletion として残る。理由は必須。
+   */
+  deleteBaselineDraft: (version: string, reason: string) => void
+  deletePolicyDraft: (version: string, reason: string) => void
   /** 方針の draft を作る。判定は同じく `decideDraftCreate()`。 */
   createPolicyDraft: (input: {
     tieBreak: string

@@ -600,6 +600,36 @@ export function decideSetEdit(
   return { kind: "allowed", warnings: [] }
 }
 
+/**
+ * 消せるか。
+ * 🔴 消せるのは編集できるのと同じ状態(下書き・承認済)だけ。有効・退役は**消さない**。
+ *    退役した版は過去の推奨の根拠で、消すと「なぜその推奨が出たか」を答えられなくなる。
+ */
+export function decideSetDelete(
+  scope: Scope,
+  set: { status: VersionedSetStatus }
+): SetActionDecision {
+  return decideSetEdit(scope, set)
+}
+
+export function applyBaselineDelete(
+  sets: RecommendationBaselineSet[],
+  version: string
+): RecommendationBaselineSet[] {
+  return sets.filter(
+    (s) => !(s.version === version && EDITABLE_STATUS.includes(s.status))
+  )
+}
+
+export function applyPolicyDelete(
+  sets: RecommendationPolicySet[],
+  version: string
+): RecommendationPolicySet[] {
+  return sets.filter(
+    (s) => !(s.version === version && EDITABLE_STATUS.includes(s.status))
+  )
+}
+
 /** 編集後の共通処理。承認済は下書きへ戻し、予約を外す。 */
 function editedStatus<T extends VersionedSet>(set: T, now: string): Partial<T> {
   return {

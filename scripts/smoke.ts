@@ -22,7 +22,7 @@ import { buildPeriod } from "@/lib/domain/periods"
 import { careAssets, careAssignments } from "@/lib/mock/seed"
 import { BADGE_HINT } from "@/components/badge-hints"
 import { baselineSets, policySets } from "@/lib/mock/seed"
-import { applyBaselineEdit, applyPolicyEdit, decideSetEdit, availableActions, applyBaselineAction, applyPolicyAction, comparisonBaseFor, createBaselineDraft, decideDraftCreate, decideSetAction, diffBaselineSets, nextVersion, previewBaselineImpact, previewPolicyImpact, rankRecommendedPoses, baselineValuesOf, RECOMMENDATION_POSES } from "@/lib/domain/recommendation"
+import { applyBaselineDelete, applyPolicyDelete, decideSetDelete, applyBaselineEdit, applyPolicyEdit, decideSetEdit, availableActions, applyBaselineAction, applyPolicyAction, comparisonBaseFor, createBaselineDraft, decideDraftCreate, decideSetAction, diffBaselineSets, nextVersion, previewBaselineImpact, previewPolicyImpact, rankRecommendedPoses, baselineValuesOf, RECOMMENDATION_POSES } from "@/lib/domain/recommendation"
 
 let failed = 0
 function check(name: string, cond: boolean, detail = "") {
@@ -1012,6 +1012,35 @@ console.log("── §8 推奨基準値・方針の版管理 ──")
       { tieBreak: "a", missingValueHandling: "b", fallback: "c" }, { now })
     check("方針も同じように編集できる",
       p.find(x => x.version === policySets[1].version)?.tieBreak === "a")
+  }
+
+  // 有効化していない版は消せる(使用者確定 2026-09-18)
+  {
+    check("下書きは削除できる", decideSetDelete(opScope, draft).kind === "allowed")
+    check("有効な版は削除できない",
+      decideSetDelete(opScope, active).kind === "denied",
+      "(使用中)")
+    check("退役した版は削除できない",
+      decideSetDelete(opScope, retired).kind === "denied",
+      "(過去の推奨の根拠。消すと、なぜその推奨が出たか答えられなくなる)")
+    check("契約企業管理者は削除できない",
+      decideSetDelete(caScope, draft).kind === "denied")
+
+    const afterDelete = applyBaselineDelete(baselineSets, draft.version)
+    check("削除すると一覧から消える",
+      !afterDelete.some(s => s.version === draft.version) &&
+      afterDelete.length === baselineSets.length - 1)
+    check("削除しても他の版は残る",
+      afterDelete.some(s => s.version === active.version) &&
+      afterDelete.some(s => s.version === retired.version))
+
+    check("有効な版は削除関数を通しても消えない",
+      applyBaselineDelete(baselineSets, active.version).length === baselineSets.length,
+      "(画面に出さないだけでなく、関数側でも弾く)")
+    check("退役した版も削除関数を通しても消えない",
+      applyBaselineDelete(baselineSets, retired.version).length === baselineSets.length)
+    check("方針も同じように削除できる",
+      applyPolicyDelete(policySets, policySets[1].version).length === policySets.length - 1)
   }
 
   check("draft の比較対象は active",

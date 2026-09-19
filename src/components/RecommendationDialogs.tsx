@@ -55,6 +55,7 @@ import { recommendationRuns } from "@/lib/mock/seed"
 import type {
   RecommendationBaselineSet,
   RecommendationPolicySet,
+  VersionedSetStatus,
 } from "@/lib/domain/types"
 
 /** 影響 preview の集計期間。画面で切り替えず、条件を固定して読み違いを防ぐ。 */
@@ -62,6 +63,76 @@ const IMPACT_PERIOD_KEY = "last_12m" as const
 
 /** 試算に出すサンプルの件数。全件出すと読めないので先頭だけ見せる。 */
 const SAMPLE_LIMIT = 8
+
+/* ------------------------------------------------------------------ *
+ * 下書きの削除
+ *
+ * 🔴 消せるのは有効化していない版だけ。有効・退役には出さない。退役した版は
+ *    過去の推奨の根拠で、消すと「なぜその推奨が出たか」を答えられなくなる。
+ * 🔴 §13「重い操作は確認画面と理由入力」。一度押しただけでは消えないようにし、
+ *    理由を必須にする。理由は §11 の変更監査 (deletion) に残る。
+ * ------------------------------------------------------------------ */
+
+function DeleteSetSection({
+  version,
+  status,
+  onDelete,
+}: {
+  version: string
+  status: VersionedSetStatus
+  onDelete: (reason: string) => void
+}) {
+  const [armed, setArmed] = useState(false)
+  const [reason, setReason] = useState("")
+
+  if (!armed) {
+    return (
+      <div className="border-t pt-3">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-auto px-0 text-xs text-destructive hover:text-destructive"
+          onClick={() => setArmed(true)}
+        >
+          この版を削除する
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-2 rounded-md border border-destructive/50 p-3">
+      <p className="text-xs leading-relaxed">
+        <span className="font-mono">{version}</span> を削除します。元に戻せません。
+        {status === "approved"
+          ? "有効化の予約も取り消されます。"
+          : ""}
+      </p>
+      <ReasonField value={reason} onChange={setReason} label="削除の理由" />
+      <div className="flex justify-end gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            setArmed(false)
+            setReason("")
+          }}
+        >
+          やめる
+        </Button>
+        <Button
+          variant="destructive"
+          size="sm"
+          disabled={!reason.trim()}
+          title={!reason.trim() ? "理由を入力してください" : undefined}
+          onClick={() => onDelete(reason.trim())}
+        >
+          削除する
+        </Button>
+      </div>
+    </div>
+  )
+}
 
 /* ------------------------------------------------------------------ *
  * draft 作成
@@ -80,7 +151,8 @@ export function BaselineDraftDialog({
   sets: RecommendationBaselineSet[]
   target?: RecommendationBaselineSet
 }) {
-  const { scope, createBaselineDraft, updateBaselineDraft } = useSession()
+  const { scope, createBaselineDraft, updateBaselineDraft, deleteBaselineDraft } =
+    useSession()
   const editing = Boolean(target)
   const decision = target ? decideSetEdit(scope, target) : decideDraftCreate(scope)
   const [open, setOpen] = useState(false)
@@ -215,9 +287,21 @@ export function BaselineDraftDialog({
         />
 
         <p className="text-xs text-muted-foreground">
-          draft を作っても推奨は変わりません。承認 → 有効化まで進めて初めて次回以降の
-          推奨に効きます。過去の推奨は再計算しません。
+          下書きのままでは推奨は変わりません。有効化して初めて次回以降の推奨に
+          効きます。過去の推奨は再計算しません。
         </p>
+
+        {target ? (
+          <DeleteSetSection
+            version={target.version}
+            status={target.status}
+            onDelete={(reason) => {
+              deleteBaselineDraft(target.version, reason)
+              toast.success(`${target.version} を削除しました`)
+              setOpen(false)
+            }}
+          />
+        ) : null}
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => setOpen(false)}>
@@ -253,7 +337,8 @@ export function PolicyDraftDialog({
   sets: RecommendationPolicySet[]
   target?: RecommendationPolicySet
 }) {
-  const { scope, createPolicyDraft, updatePolicyDraft } = useSession()
+  const { scope, createPolicyDraft, updatePolicyDraft, deletePolicyDraft } =
+    useSession()
   const editing = Boolean(target)
   const decision = target ? decideSetEdit(scope, target) : decideDraftCreate(scope)
   const [open, setOpen] = useState(false)
@@ -387,6 +472,18 @@ export function PolicyDraftDialog({
           onChange={(e) => setNote(e.target.value)}
           placeholder="この下書きの根拠(任意・監査に残ります)"
         />
+
+        {target ? (
+          <DeleteSetSection
+            version={target.version}
+            status={target.status}
+            onDelete={(reason) => {
+              deletePolicyDraft(target.version, reason)
+              toast.success(`${target.version} を削除しました`)
+              setOpen(false)
+            }}
+          />
+        ) : null}
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => setOpen(false)}>
