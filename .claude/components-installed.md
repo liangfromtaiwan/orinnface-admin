@@ -21,7 +21,7 @@
 - [x] `separator` ✅ Day 1
 - [x] `sheet` ✅ Day 1
 - [x] `sidebar` ✅ Day 1
-- [x] `tabs` ✅ Day 1
+- [x] `tabs` ✅ Day 1（2026-09-19: care動画ページの 動画 / 差し替え申請 / 登録済み動画 でも使用）
 
 ### 表單元件
 - [x] `button` ✅ Day 1

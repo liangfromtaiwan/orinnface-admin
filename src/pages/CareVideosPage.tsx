@@ -25,6 +25,12 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs"
+import {
   Table,
   TableBody,
   TableCell,
@@ -194,417 +200,446 @@ export default function CareVideosPage() {
         }
       />
 
-      <Card className="overflow-hidden py-0">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>区分</TableHead>
-                <TableHead>video_code</TableHead>
-                <TableHead>対象</TableHead>
-                <TableHead>権限</TableHead>
-                <TableHead>公開中の asset</TableHead>
-                <TableHead className="text-right">操作</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {CARE_VIDEO_SLOTS.map((slot) => {
-                const assignment = activeAssignmentByCode.get(slot.videoCode)
-                const asset = assignment ? assetById.get(assignment.careAssetId) : undefined
-                return (
-                  <TableRow key={slot.videoCode}>
-                    <TableCell>
-                      <Badge variant="secondary" className="text-[10px]">
-                        {CARE_CATEGORY_LABEL[slot.category]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="font-mono text-xs">{slot.videoCode}</TableCell>
-                    <TableCell className="text-sm">{slot.targetLabel}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {slot.requiredPlans.map((p) => PLAN_LABEL[p]).join(" / ")}
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {asset ? (
-                        <>
-                          <span className="flex flex-wrap items-center gap-1.5">
-                            {asset.title}
-                            {providerOf(assignment) === "store" ? (
-                              <Badge variant="secondary" className="px-1 py-0 text-[10px]">
-                                {asset.provider}提供
-                              </Badge>
-                            ) : null}
-                          </span>
-                          <div className="text-xs text-muted-foreground">
-                            {providerOf(assignment) === "store"
-                              ? "標準動画を差し替え中"
-                              : "本部標準"}
-                            {" / "}
-                            {asset.durationSeconds}秒
-                          </div>
-                        </>
-                      ) : (
-                        <span className="text-destructive">未解決</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {replacement.kind === "direct" ? (
-                        <CareReplaceDialog
-                          slot={slot}
-                          currentAssetId={assignment?.careAssetId}
-                        >
-                          {/*
-                            候補が無くてもダイアログ内から動画を上げられるので、
-                            ここでは止めない。候補の有無はダイアログ側で案内する。
-                          */}
-                          <Button variant="outline" size="sm">
-                            差し替え
-                          </Button>
-                        </CareReplaceDialog>
-                      ) : (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={replacement.kind === "denied"}
-                          onClick={() =>
-                            toast.info("差し替え申請", {
-                              description: `${slot.videoCode} の care_asset_id のみを切り替えます。video_code / pose_code は変更しません。`,
-                            })
-                          }
-                        >
-                          差し替え申請
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
-        </div>
-      </Card>
+      {/*
+        3 つの表は見る場面が違う(今どの動画が出ているか / 申請を捌く / 在庫の棚卸し)。
+        縦に並べると、目的の表に着くまで関係ない表を通り過ぎることになる。
+        🔴 登録済み動画は本部だけなので、タブ自体を出し分ける。
+      */}
+      <Tabs defaultValue="slots" className="gap-4">
+        <TabsList>
+          <TabsTrigger value="slots">動画</TabsTrigger>
+          <TabsTrigger value="requests">
+            差し替え申請
+            {requests.length > 0 ? ` (${requests.length})` : ""}
+          </TabsTrigger>
+          {canApprove ? (
+            <TabsTrigger value="assets">
+              登録済み動画 ({careAssets.length})
+            </TabsTrigger>
+          ) : null}
+        </TabsList>
 
-      <Card className="py-0">
-        <CardHeader className="pt-6">
-          <CardTitle className="flex items-center gap-1.5 text-base">
-            {canApprove ? "差し替え申請" : "自社の差し替え申請"}
-            <InfoHint label="差し替え申請について">
-              {canApprove ? (
-                <p>
-                  申請を出すのは契約企業・店舗で、本部が内容・権利・範囲を確認して承認
-                  します。行を開くと動画の中身を見てから承認・却下できます。
-                </p>
-              ) : (
-                <p>
-                  自社から出した申請の状況です。承認するのは本部なので、この画面から
-                  承認・却下はできません。却下された場合は理由がここに出ます。
-                </p>
-              )}
-              <p className="mt-1">
-                本部承認前の asset は顧客へ公開できません。重複する有効期間は publish 前に
-                拒否します。差し替えは care_asset_id だけを切り替え、video_code と
-                pose_code は変更しません。
-              </p>
-            </InfoHint>
-          </CardTitle>
-        </CardHeader>
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>video_code</TableHead>
-                <TableHead>適用範囲</TableHead>
-                {/*
-                  🔴 申請者・権利・操作は審査のための列。審査できるのは本部だけなので
-                     (§4.2)、企業・店舗には出さない。自分が出した申請の状況と、
-                     却下されたときの理由だけを見せる。
-                */}
-                {canApprove ? <TableHead>申請者</TableHead> : null}
-                <TableHead>状態</TableHead>
-                <TableHead>期間</TableHead>
-                {canApprove ? <TableHead>権利</TableHead> : null}
-                {canApprove ? (
+        <TabsContent value="slots" className="space-y-4">
+        <Card className="overflow-hidden py-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>区分</TableHead>
+                  <TableHead>video_code</TableHead>
+                  <TableHead>対象</TableHead>
+                  <TableHead>権限</TableHead>
+                  <TableHead>公開中の asset</TableHead>
                   <TableHead className="text-right">操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {CARE_VIDEO_SLOTS.map((slot) => {
+                  const assignment = activeAssignmentByCode.get(slot.videoCode)
+                  const asset = assignment ? assetById.get(assignment.careAssetId) : undefined
+                  return (
+                    <TableRow key={slot.videoCode}>
+                      <TableCell>
+                        <Badge variant="secondary" className="text-[10px]">
+                          {CARE_CATEGORY_LABEL[slot.category]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">{slot.videoCode}</TableCell>
+                      <TableCell className="text-sm">{slot.targetLabel}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {slot.requiredPlans.map((p) => PLAN_LABEL[p]).join(" / ")}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {asset ? (
+                          <>
+                            <span className="flex flex-wrap items-center gap-1.5">
+                              {asset.title}
+                              {providerOf(assignment) === "store" ? (
+                                <Badge variant="secondary" className="px-1 py-0 text-[10px]">
+                                  {asset.provider}提供
+                                </Badge>
+                              ) : null}
+                            </span>
+                            <div className="text-xs text-muted-foreground">
+                              {providerOf(assignment) === "store"
+                                ? "標準動画を差し替え中"
+                                : "本部標準"}
+                              {" / "}
+                              {asset.durationSeconds}秒
+                            </div>
+                          </>
+                        ) : (
+                          <span className="text-destructive">未解決</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {replacement.kind === "direct" ? (
+                          <CareReplaceDialog
+                            slot={slot}
+                            currentAssetId={assignment?.careAssetId}
+                          >
+                            {/*
+                              候補が無くてもダイアログ内から動画を上げられるので、
+                              ここでは止めない。候補の有無はダイアログ側で案内する。
+                            */}
+                            <Button variant="outline" size="sm">
+                              差し替え
+                            </Button>
+                          </CareReplaceDialog>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={replacement.kind === "denied"}
+                            onClick={() =>
+                              toast.info("差し替え申請", {
+                                description: `${slot.videoCode} の care_asset_id のみを切り替えます。video_code / pose_code は変更しません。`,
+                              })
+                            }
+                          >
+                            差し替え申請
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </Card>
+        </TabsContent>
+
+        <TabsContent value="requests" className="space-y-4">
+        <Card className="py-0">
+          <CardHeader className="pt-6">
+            <CardTitle className="flex items-center gap-1.5 text-base">
+              {canApprove ? "差し替え申請" : "自社の差し替え申請"}
+              <InfoHint label="差し替え申請について">
+                {canApprove ? (
+                  <p>
+                    申請を出すのは契約企業・店舗で、本部が内容・権利・範囲を確認して承認
+                    します。行を開くと動画の中身を見てから承認・却下できます。
+                  </p>
                 ) : (
-                  <TableHead>却下理由</TableHead>
+                  <p>
+                    自社から出した申請の状況です。承認するのは本部なので、この画面から
+                    承認・却下はできません。却下された場合は理由がここに出ます。
+                  </p>
                 )}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {requests.map((r) => {
-                const asset = assetById.get(r.careAssetId)
-                return (
-                  <TableRow
-                    key={r.id}
-                    className="cursor-pointer"
-                    onClick={() => setReviewing(r.id)}
-                  >
-                    <TableCell className="font-mono text-xs">{r.videoCode}</TableCell>
-                    <TableCell className="text-sm">
-                      {careScopeLabel(r.scope, scopeNames)}
-                    </TableCell>
-                    {canApprove ? (
-                      <TableCell className="text-sm">{r.requestedBy}</TableCell>
-                    ) : null}
-                    <TableCell className="text-sm">
-                      {CARE_ASSIGNMENT_STATUS_LABEL[r.status]}
-                    </TableCell>
-                    <TableCell className="text-xs tabular-nums text-muted-foreground">
-                      {r.startAt ? formatDate(r.startAt) : "—"}
-                      {r.endAt ? ` 〜 ${formatDate(r.endAt)}` : ""}
-                    </TableCell>
-                    {canApprove ? (
+                <p className="mt-1">
+                  本部承認前の asset は顧客へ公開できません。重複する有効期間は publish 前に
+                  拒否します。差し替えは care_asset_id だけを切り替え、video_code と
+                  pose_code は変更しません。
+                </p>
+              </InfoHint>
+            </CardTitle>
+          </CardHeader>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>video_code</TableHead>
+                  <TableHead>適用範囲</TableHead>
+                  {/*
+                    🔴 申請者・権利・操作は審査のための列。審査できるのは本部だけなので
+                       (§4.2)、企業・店舗には出さない。自分が出した申請の状況と、
+                       却下されたときの理由だけを見せる。
+                  */}
+                  {canApprove ? <TableHead>申請者</TableHead> : null}
+                  <TableHead>状態</TableHead>
+                  <TableHead>期間</TableHead>
+                  {canApprove ? <TableHead>権利</TableHead> : null}
+                  {canApprove ? (
+                    <TableHead className="text-right">操作</TableHead>
+                  ) : (
+                    <TableHead>却下理由</TableHead>
+                  )}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {requests.map((r) => {
+                  const asset = assetById.get(r.careAssetId)
+                  return (
+                    <TableRow
+                      key={r.id}
+                      className="cursor-pointer"
+                      onClick={() => setReviewing(r.id)}
+                    >
+                      <TableCell className="font-mono text-xs">{r.videoCode}</TableCell>
+                      <TableCell className="text-sm">
+                        {careScopeLabel(r.scope, scopeNames)}
+                      </TableCell>
+                      {canApprove ? (
+                        <TableCell className="text-sm">{r.requestedBy}</TableCell>
+                      ) : null}
+                      <TableCell className="text-sm">
+                        {CARE_ASSIGNMENT_STATUS_LABEL[r.status]}
+                      </TableCell>
+                      <TableCell className="text-xs tabular-nums text-muted-foreground">
+                        {r.startAt ? formatDate(r.startAt) : "—"}
+                        {r.endAt ? ` 〜 ${formatDate(r.endAt)}` : ""}
+                      </TableCell>
+                      {canApprove ? (
+                        <TableCell className="text-xs">
+                          {asset?.rightsCleared ? (
+                            <span className="text-muted-foreground">確認済</span>
+                          ) : (
+                            <span className="text-amber-700">未確認</span>
+                          )}
+                        </TableCell>
+                      ) : null}
+                      {canApprove ? (
+                        <TableCell className="text-right">
+                          {/*
+                            🔴 承認・却下は確認ダイアログの中だけ。§7.1 は「内容を確認して
+                               approve」なので、一覧から中身を見ずに承認できるようにしない。
+                          */}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setReviewing(r.id)}
+                          >
+                            内容を確認
+                            {r.status === "pending_approval" ? "・承認" : ""}
+                          </Button>
+                        </TableCell>
+                      ) : (
+                        /* 却下されたことだけ分かって理由が分からないと、同じ申請を出し直す */
+                        <TableCell className="max-w-56 text-xs text-muted-foreground">
+                          {r.decisionReason ? (
+                            <span className="block truncate" title={r.decisionReason}>
+                              {r.decisionReason}
+                            </span>
+                          ) : (
+                            "—"
+                          )}
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </Card>
+
+        {/*
+          §7.1 の履歴保持。元 asset・差し替え asset・申請者・承認者・理由・開始終了・
+          取消・catalog version を残す。rollback(公開の取り消し)の根拠になるので、
+          却下・終了したものも消さずに並べる。本部が申請を経ずに直接差し替えたものも
+          同じ履歴に入れる(経路が違うだけで、起きたことは同じ差し替え)。
+        */}
+        <Card className="py-0">
+          <CardHeader className="flex-row items-center justify-between gap-2 pt-6">
+            <CardTitle className="flex items-center gap-1.5 text-base">
+              差し替え履歴
+              <InfoHint label="差し替え履歴について">
+                <p>
+                  元の動画・差し替え後の動画・申請者・承認者・理由・開始終了・catalog
+                  version を残します。公開中のものは行を開いて取り消せます(本部のみ)。
+                </p>
+                <p className="mt-1">
+                  取り消すと、その範囲は一段広い範囲の動画(会社 → 本部デフォルト)に
+                  戻ります。枠そのものは変わりません。
+                </p>
+              </InfoHint>
+            </CardTitle>
+          </CardHeader>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>日時</TableHead>
+                  <TableHead>video_code</TableHead>
+                  <TableHead>適用範囲</TableHead>
+                  <TableHead>動画</TableHead>
+                  <TableHead>状態</TableHead>
+                  <TableHead>期間</TableHead>
+                  <TableHead>申請者 / 承認者</TableHead>
+                  <TableHead>理由</TableHead>
+                  <TableHead>catalog</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {history.map((a) => {
+                  const asset = assetById.get(a.careAssetId)
+                  const previous = a.previousCareAssetId
+                    ? assetById.get(a.previousCareAssetId)
+                    : undefined
+                  return (
+                    <TableRow
+                      key={a.id}
+                      className="cursor-pointer align-top"
+                      onClick={() => setReviewing(a.id)}
+                    >
+                      <TableCell className="text-xs tabular-nums text-muted-foreground">
+                        {formatDateTime(a.decidedAt ?? a.startAt ?? a.createdAt)}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">{a.videoCode}</TableCell>
                       <TableCell className="text-xs">
-                        {asset?.rightsCleared ? (
+                        {careScopeLabel(a.scope, scopeNames)}
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {previous ? (
+                          <span className="block text-muted-foreground line-through">
+                            {previous.title}
+                          </span>
+                        ) : null}
+                        <span className="block">{asset?.title ?? a.careAssetId}</span>
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {CARE_ASSIGNMENT_STATUS_LABEL[a.status]}
+                      </TableCell>
+                      <TableCell className="text-xs tabular-nums text-muted-foreground">
+                        {a.startAt ? formatDate(a.startAt) : "—"}
+                        {a.endAt ? ` 〜 ${formatDate(a.endAt)}` : ""}
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        <span className="block">{a.requestedBy}</span>
+                        <span className="block text-muted-foreground">
+                          {a.approvedBy ?? "未承認"}
+                        </span>
+                      </TableCell>
+                      <TableCell className="max-w-56 text-xs">
+                        <span className="block truncate" title={a.reason}>
+                          {a.reason}
+                        </span>
+                        {a.decisionReason ? (
+                          <span
+                            className="block truncate text-muted-foreground"
+                            title={a.decisionReason}
+                          >
+                            {a.decisionReason}
+                          </span>
+                        ) : null}
+                      </TableCell>
+                      <TableCell className="font-mono text-[11px] text-muted-foreground">
+                        {a.catalogVersion}
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+            {history.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                差し替えの履歴はまだありません
+              </p>
+            ) : null}
+          </div>
+        </Card>
+        </TabsContent>
+
+        {/* 本部以外にはタブ自体を出さないので、中身も描かない */}
+        {canApprove ? (
+        <TabsContent value="assets" className="space-y-4">
+        {/*
+          登録済みの動画はここでしか一覧できない。枠の表と差し替えダイアログは
+          「その枠の今」しか出さないため、権利未確認の動画を探せる場所が無かった。
+          §7.1 の「本部が提供者・内容・権利・承認状態・公開期間・対象 scope を
+          確認する」はこの一覧が受け持つ。
+          🔴 権利の棚卸しは本部の仕事なので**本部にだけ出す**。契約企業・店舗に
+             在庫一覧は要らないうえ、`CareVideoAsset` に持ち主の情報が無いため
+             他社が登録した動画の題名・提供者まで見えてしまう
+             (持ち主の持ち方は docs/QUESTIONS_FOR_YOSHIDA.md #20 で確認中)。
+        */}
+        {canApprove ? (
+        <Card className="py-0">
+          <CardHeader className="flex-row items-center justify-between gap-2 pt-6">
+            <CardTitle className="flex items-center gap-1.5 text-base">
+              登録済み動画
+              <InfoHint label="登録済み動画について">
+                固定 13 枠に登録されている動画です。1 つの枠に複数の動画を登録でき、
+                そのうち 1 本だけが公開されます。権利確認が済んでいない動画は
+                公開できません。枠そのものは V1 では増やせません。
+              </InfoHint>
+            </CardTitle>
+            <Select
+              value={assetFilter}
+              onValueChange={(v) => setAssetFilter(v as typeof assetFilter)}
+            >
+              <SelectTrigger className="h-9 w-48">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">すべて ({assetCounts.all})</SelectItem>
+                <SelectItem value="published">
+                  公開中 ({assetCounts.published})
+                </SelectItem>
+                <SelectItem value="unused">未使用 ({assetCounts.unused})</SelectItem>
+                <SelectItem value="rights_pending">
+                  権利未確認 ({assetCounts.rightsPending})
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </CardHeader>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>タイトル</TableHead>
+                  <TableHead>提供者</TableHead>
+                  <TableHead>枠</TableHead>
+                  <TableHead className="text-right">尺</TableHead>
+                  <TableHead>状態</TableHead>
+                  <TableHead>権利</TableHead>
+                  <TableHead>ファイル</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {listedAssets.map((a) => {
+                  const usage = careAssetUsage(careAssignments, a.id)
+                  const slot = getCareSlot(a.videoCode)
+                  return (
+                    <TableRow key={a.id}>
+                      <TableCell className="text-sm font-medium">{a.title}</TableCell>
+                      <TableCell className="text-sm">{a.provider}</TableCell>
+                      <TableCell className="text-xs">
+                        <span className="font-mono">{a.videoCode}</span>
+                        {slot ? (
+                          <span className="block text-muted-foreground">
+                            {CARE_CATEGORY_LABEL[slot.category]} / {slot.targetLabel}
+                          </span>
+                        ) : null}
+                      </TableCell>
+                      <TableCell className="text-right text-sm tabular-nums">
+                        {a.durationSeconds}秒
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {CARE_ASSET_USAGE_LABEL[usage.kind]}
+                        {usage.kind === "published" ? (
+                          <span className="block text-muted-foreground">
+                            {careScopeLabel(usage, scopeNames)}
+                          </span>
+                        ) : null}
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {a.rightsCleared ? (
                           <span className="text-muted-foreground">確認済</span>
                         ) : (
                           <span className="text-amber-700">未確認</span>
                         )}
                       </TableCell>
-                    ) : null}
-                    {canApprove ? (
-                      <TableCell className="text-right">
-                        {/*
-                          🔴 承認・却下は確認ダイアログの中だけ。§7.1 は「内容を確認して
-                             approve」なので、一覧から中身を見ずに承認できるようにしない。
-                        */}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setReviewing(r.id)}
-                        >
-                          内容を確認
-                          {r.status === "pending_approval" ? "・承認" : ""}
-                        </Button>
+                      <TableCell className="max-w-40 truncate text-xs text-muted-foreground">
+                        {a.sourceFileName ?? "—"}
                       </TableCell>
-                    ) : (
-                      /* 却下されたことだけ分かって理由が分からないと、同じ申請を出し直す */
-                      <TableCell className="max-w-56 text-xs text-muted-foreground">
-                        {r.decisionReason ? (
-                          <span className="block truncate" title={r.decisionReason}>
-                            {r.decisionReason}
-                          </span>
-                        ) : (
-                          "—"
-                        )}
-                      </TableCell>
-                    )}
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
-        </div>
-      </Card>
-
-      {/*
-        §7.1 の履歴保持。元 asset・差し替え asset・申請者・承認者・理由・開始終了・
-        取消・catalog version を残す。rollback(公開の取り消し)の根拠になるので、
-        却下・終了したものも消さずに並べる。本部が申請を経ずに直接差し替えたものも
-        同じ履歴に入れる(経路が違うだけで、起きたことは同じ差し替え)。
-      */}
-      <Card className="py-0">
-        <CardHeader className="flex-row items-center justify-between gap-2 pt-6">
-          <CardTitle className="flex items-center gap-1.5 text-base">
-            差し替え履歴
-            <InfoHint label="差し替え履歴について">
-              <p>
-                元の動画・差し替え後の動画・申請者・承認者・理由・開始終了・catalog
-                version を残します。公開中のものは行を開いて取り消せます(本部のみ)。
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+            {listedAssets.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                条件に合う動画はありません
               </p>
-              <p className="mt-1">
-                取り消すと、その範囲は一段広い範囲の動画(会社 → 本部デフォルト)に
-                戻ります。枠そのものは変わりません。
-              </p>
-            </InfoHint>
-          </CardTitle>
-        </CardHeader>
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>日時</TableHead>
-                <TableHead>video_code</TableHead>
-                <TableHead>適用範囲</TableHead>
-                <TableHead>動画</TableHead>
-                <TableHead>状態</TableHead>
-                <TableHead>期間</TableHead>
-                <TableHead>申請者 / 承認者</TableHead>
-                <TableHead>理由</TableHead>
-                <TableHead>catalog</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {history.map((a) => {
-                const asset = assetById.get(a.careAssetId)
-                const previous = a.previousCareAssetId
-                  ? assetById.get(a.previousCareAssetId)
-                  : undefined
-                return (
-                  <TableRow
-                    key={a.id}
-                    className="cursor-pointer align-top"
-                    onClick={() => setReviewing(a.id)}
-                  >
-                    <TableCell className="text-xs tabular-nums text-muted-foreground">
-                      {formatDateTime(a.decidedAt ?? a.startAt ?? a.createdAt)}
-                    </TableCell>
-                    <TableCell className="font-mono text-xs">{a.videoCode}</TableCell>
-                    <TableCell className="text-xs">
-                      {careScopeLabel(a.scope, scopeNames)}
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      {previous ? (
-                        <span className="block text-muted-foreground line-through">
-                          {previous.title}
-                        </span>
-                      ) : null}
-                      <span className="block">{asset?.title ?? a.careAssetId}</span>
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      {CARE_ASSIGNMENT_STATUS_LABEL[a.status]}
-                    </TableCell>
-                    <TableCell className="text-xs tabular-nums text-muted-foreground">
-                      {a.startAt ? formatDate(a.startAt) : "—"}
-                      {a.endAt ? ` 〜 ${formatDate(a.endAt)}` : ""}
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      <span className="block">{a.requestedBy}</span>
-                      <span className="block text-muted-foreground">
-                        {a.approvedBy ?? "未承認"}
-                      </span>
-                    </TableCell>
-                    <TableCell className="max-w-56 text-xs">
-                      <span className="block truncate" title={a.reason}>
-                        {a.reason}
-                      </span>
-                      {a.decisionReason ? (
-                        <span
-                          className="block truncate text-muted-foreground"
-                          title={a.decisionReason}
-                        >
-                          {a.decisionReason}
-                        </span>
-                      ) : null}
-                    </TableCell>
-                    <TableCell className="font-mono text-[11px] text-muted-foreground">
-                      {a.catalogVersion}
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
-          {history.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              差し替えの履歴はまだありません
-            </p>
-          ) : null}
-        </div>
-      </Card>
-
-      {/*
-        登録済みの動画はここでしか一覧できない。枠の表と差し替えダイアログは
-        「その枠の今」しか出さないため、権利未確認の動画を探せる場所が無かった。
-        §7.1 の「本部が提供者・内容・権利・承認状態・公開期間・対象 scope を
-        確認する」はこの一覧が受け持つ。
-        🔴 権利の棚卸しは本部の仕事なので**本部にだけ出す**。契約企業・店舗に
-           在庫一覧は要らないうえ、`CareVideoAsset` に持ち主の情報が無いため
-           他社が登録した動画の題名・提供者まで見えてしまう
-           (持ち主の持ち方は docs/QUESTIONS_FOR_YOSHIDA.md #20 で確認中)。
-      */}
-      {canApprove ? (
-      <Card className="py-0">
-        <CardHeader className="flex-row items-center justify-between gap-2 pt-6">
-          <CardTitle className="flex items-center gap-1.5 text-base">
-            登録済み動画
-            <InfoHint label="登録済み動画について">
-              固定 13 枠に登録されている動画です。1 つの枠に複数の動画を登録でき、
-              そのうち 1 本だけが公開されます。権利確認が済んでいない動画は
-              公開できません。枠そのものは V1 では増やせません。
-            </InfoHint>
-          </CardTitle>
-          <Select
-            value={assetFilter}
-            onValueChange={(v) => setAssetFilter(v as typeof assetFilter)}
-          >
-            <SelectTrigger className="h-9 w-48">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">すべて ({assetCounts.all})</SelectItem>
-              <SelectItem value="published">
-                公開中 ({assetCounts.published})
-              </SelectItem>
-              <SelectItem value="unused">未使用 ({assetCounts.unused})</SelectItem>
-              <SelectItem value="rights_pending">
-                権利未確認 ({assetCounts.rightsPending})
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </CardHeader>
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>タイトル</TableHead>
-                <TableHead>提供者</TableHead>
-                <TableHead>枠</TableHead>
-                <TableHead className="text-right">尺</TableHead>
-                <TableHead>状態</TableHead>
-                <TableHead>権利</TableHead>
-                <TableHead>ファイル</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {listedAssets.map((a) => {
-                const usage = careAssetUsage(careAssignments, a.id)
-                const slot = getCareSlot(a.videoCode)
-                return (
-                  <TableRow key={a.id}>
-                    <TableCell className="text-sm font-medium">{a.title}</TableCell>
-                    <TableCell className="text-sm">{a.provider}</TableCell>
-                    <TableCell className="text-xs">
-                      <span className="font-mono">{a.videoCode}</span>
-                      {slot ? (
-                        <span className="block text-muted-foreground">
-                          {CARE_CATEGORY_LABEL[slot.category]} / {slot.targetLabel}
-                        </span>
-                      ) : null}
-                    </TableCell>
-                    <TableCell className="text-right text-sm tabular-nums">
-                      {a.durationSeconds}秒
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      {CARE_ASSET_USAGE_LABEL[usage.kind]}
-                      {usage.kind === "published" ? (
-                        <span className="block text-muted-foreground">
-                          {careScopeLabel(usage, scopeNames)}
-                        </span>
-                      ) : null}
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      {a.rightsCleared ? (
-                        <span className="text-muted-foreground">確認済</span>
-                      ) : (
-                        <span className="text-amber-700">未確認</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="max-w-40 truncate text-xs text-muted-foreground">
-                      {a.sourceFileName ?? "—"}
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
-          {listedAssets.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              条件に合う動画はありません
-            </p>
-          ) : null}
-        </div>
-      </Card>
-      ) : null}
+            ) : null}
+          </div>
+        </Card>
+        ) : null}
+        </TabsContent>
+        ) : null}
+      </Tabs>
 
       <SpecNote>
         差し替えを申請するのは契約企業・店舗で、本部はそれを承認します。本部は自分が
