@@ -223,7 +223,21 @@ function VideoFilePicker({
   )
 }
 
-/** 尺の入力。ファイルから読めていればその旨を出す。 */
+/**
+ * 尺の選択。
+ * 🔴 自由入力にしない。13 枠は 1分 / 3分 / 案内 の 3 区分しかないので、尺は
+ *    その 3 つに収まる。手で打たせると「62」「1分」のような値が入り、区分と
+ *    食い違っても気付けない。
+ * 🔴 ただし選んだファイルの実尺が 3 つのどれとも違うときは、その実尺も選択肢に
+ *    出す。実ファイルが 63 秒なのに 60 秒と登録するのは、手入力で打ち間違えるのと
+ *    同じ嘘になる。
+ */
+const STANDARD_DURATIONS = [
+  { seconds: 60, label: "60秒 (1分ケア)" },
+  { seconds: 90, label: "90秒 (案内)" },
+  { seconds: 180, label: "180秒 (3分ケア)" },
+]
+
 function DurationField({
   value,
   onChange,
@@ -235,22 +249,37 @@ function DurationField({
   fromFile: boolean
   hasFile: boolean
 }) {
+  const current = Number(value)
+  const options = STANDARD_DURATIONS.some((d) => d.seconds === current)
+    ? STANDARD_DURATIONS
+    : Number.isFinite(current) && current > 0
+      ? [
+          ...STANDARD_DURATIONS,
+          { seconds: current, label: `${current}秒 (選んだファイルの尺)` },
+        ].sort((a, b) => a.seconds - b.seconds)
+      : STANDARD_DURATIONS
+
   return (
     <div className="space-y-1">
-      <Input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        inputMode="numeric"
-        placeholder="尺(秒)"
-        className="h-9"
-      />
+      <Select value={value || undefined} onValueChange={onChange}>
+        <SelectTrigger className="h-9 w-full">
+          <SelectValue placeholder="尺を選ぶ" />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((d) => (
+            <SelectItem key={d.seconds} value={String(d.seconds)}>
+              {d.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
       {fromFile ? (
         <p className="text-xs text-muted-foreground">
-          選んだファイルから読み取りました。直接書き換えることもできます。
+          選んだファイルから読み取りました。違っていれば選び直せます。
         </p>
       ) : hasFile ? (
         <p className="text-xs text-muted-foreground">
-          このファイルからは尺を読み取れませんでした。秒数を入力してください。
+          このファイルからは尺を読み取れませんでした。尺を選んでください。
         </p>
       ) : null}
     </div>
