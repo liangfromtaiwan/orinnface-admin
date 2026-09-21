@@ -50,10 +50,26 @@ import {
   type VersionedSetStatus,
 } from "@/lib/domain/types"
 
-function StatusBadge({ status }: { status: VersionedSetStatus }) {
+/**
+ * 状態のバッジ。
+ * 🔴 予約が入っている版は「有効化待ち」ではなく**いつ有効になるか**を出す。
+ *    待っていることより、いつ切り替わるかのほうが読み手の知りたいこと。
+ */
+function StatusBadge({
+  set,
+}: {
+  set: { status: VersionedSetStatus; scheduledActivateAt?: string }
+}) {
+  const scheduled =
+    set.status === "approved" && set.scheduledActivateAt
+      ? set.scheduledActivateAt
+      : undefined
+
   return (
-    <Badge variant={status === "active" ? "default" : "outline"}>
-      {VERSIONED_SET_STATUS_LABEL[status]}
+    <Badge variant={set.status === "active" ? "default" : "outline"}>
+      {scheduled
+        ? `${formatDateTime(scheduled)} 有効化予定`
+        : VERSIONED_SET_STATUS_LABEL[set.status]}
     </Badge>
   )
 }
@@ -68,7 +84,6 @@ function SetMeta({
     editedAt?: string
     approvedBy?: string
     activatedAt?: string
-    scheduledActivateAt?: string
   }
 }) {
   return (
@@ -78,9 +93,7 @@ function SetMeta({
       {/* 🔴 「承認」とは書かない。承認という操作は画面に無い(§8 からの逸脱) */}
       {set.approvedBy ? ` ・決定 ${set.approvedBy}` : ""}
       {set.activatedAt ? ` ・有効化 ${formatDate(set.activatedAt)}` : ""}
-      {set.scheduledActivateAt
-        ? ` ・有効化予約 ${formatDateTime(set.scheduledActivateAt)}`
-        : ""}
+      {/* 予約日時はバッジに出しているので、ここでは繰り返さない */}
     </CardDescription>
   )
 }
@@ -119,7 +132,7 @@ function BaselineCard({
       <CardHeader>
         <CardTitle className="flex flex-wrap items-center gap-2 text-base">
           <span className="font-mono text-sm">{set.version}</span>
-          <StatusBadge status={set.status} />
+          <StatusBadge set={set} />
         </CardTitle>
         <SetMeta set={set} />
       </CardHeader>
@@ -190,7 +203,7 @@ function PolicyCard({
       <CardHeader>
         <CardTitle className="flex flex-wrap items-center gap-2 text-base">
           <span className="font-mono text-sm">{set.version}</span>
-          <StatusBadge status={set.status} />
+          <StatusBadge set={set} />
         </CardTitle>
         <SetMeta set={set} />
       </CardHeader>
