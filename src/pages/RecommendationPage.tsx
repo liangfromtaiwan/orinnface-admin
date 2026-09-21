@@ -25,6 +25,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs"
 import { useSession } from "@/contexts/session-context"
 import { formatDate, formatDateTime } from "@/lib/domain/kpi"
 import {
@@ -36,6 +42,7 @@ import {
   sortSets,
   type RecommendationPose,
 } from "@/lib/domain/recommendation"
+import { cn } from "@/lib/utils"
 import {
   VERSIONED_SET_STATUS_LABEL,
   type RecommendationBaselineSet,
@@ -77,6 +84,13 @@ function SetMeta({
   )
 }
 
+/**
+ * 今どれが有効かを一目で分かるようにする。
+ * 🔴 状態の色分けなので、意味のある色を使ってよい箇所 (badge と同じ扱い)。
+ *    下書き・退役と同じ白地だと、版が増えたときに有効な版を探すことになる。
+ */
+const ACTIVE_CARD = "border-emerald-300 bg-emerald-50"
+
 function BaselineCard({
   set,
   sets,
@@ -94,7 +108,7 @@ function BaselineCard({
       runBaselineAction(set.version, action, reason, scheduledAt)
 
   return (
-    <Card>
+    <Card className={cn(set.status === "active" && ACTIVE_CARD)}>
       <CardHeader>
         <CardTitle className="flex flex-wrap items-center gap-2 text-base">
           <span className="font-mono text-sm">{set.version}</span>
@@ -165,7 +179,7 @@ function PolicyCard({
       runPolicyAction(set.version, action, reason, scheduledAt)
 
   return (
-    <Card>
+    <Card className={cn(set.status === "active" && ACTIVE_CARD)}>
       <CardHeader>
         <CardTitle className="flex flex-wrap items-center gap-2 text-base">
           <span className="font-mono text-sm">{set.version}</span>
@@ -230,40 +244,60 @@ export default function RecommendationPage() {
         description="基準値セットと方針セットは別の版として管理します。値を変えるときは下書きを作り、承認してから有効化します。"
       />
 
-      <section className="space-y-2">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-sm font-medium">
-            基準値セット (recommendation_baseline_version)
-          </h2>
-          <BaselineDraftDialog sets={baselineSets} />
+      {/*
+        2 つは別の版軸なので、並べて縦に積むと「今どちらを見ているか」が曖昧になる。
+        版が増えるほど下の方針セットが遠くなるため、タブで切り替える。
+      */}
+      <Tabs defaultValue="baseline" className="gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <TabsList>
+            <TabsTrigger value="baseline">
+              基準値セット ({baselineSets.length})
+            </TabsTrigger>
+            <TabsTrigger value="policy">
+              方針セット ({policySets.length})
+            </TabsTrigger>
+          </TabsList>
+          {/* 作成ボタンは見ているタブのものだけ出す(取り違えて作らないように) */}
+          <TabsContent value="baseline" className="m-0">
+            <BaselineDraftDialog sets={baselineSets} />
+          </TabsContent>
+          <TabsContent value="policy" className="m-0">
+            <PolicyDraftDialog sets={policySets} />
+          </TabsContent>
         </div>
-        {sortSets(baselineSets).map((set) => (
-          <BaselineCard
-            key={set.version}
-            set={set}
-            sets={baselineSets}
-            activeSet={activeBaseline}
-          />
-        ))}
-      </section>
 
-      <section className="space-y-2">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-sm font-medium">
-            方針セット (recommendation_policy_version)
-          </h2>
-          <PolicyDraftDialog sets={policySets} />
-        </div>
-        {sortSets(policySets).map((set) => (
-          <PolicyCard
-            key={set.version}
-            set={set}
-            sets={policySets}
-            activeSet={activePolicy}
-            activeBaseline={activeBaseline}
-          />
-        ))}
-      </section>
+        <TabsContent value="baseline" className="space-y-2">
+          <p className="text-xs text-muted-foreground">
+            5 動作の標準値 (recommendation_baseline_version)。
+            実測との差が大きい 2 動作を推奨します。
+          </p>
+          {sortSets(baselineSets).map((set) => (
+            <BaselineCard
+              key={set.version}
+              set={set}
+              sets={baselineSets}
+              activeSet={activeBaseline}
+            />
+          ))}
+        </TabsContent>
+
+        <TabsContent value="policy" className="space-y-2">
+          <p className="text-xs text-muted-foreground">
+            順位の付け方 (recommendation_policy_version)。
+            同値・欠損・候補不足のときの扱いを決めます。
+          </p>
+          {sortSets(policySets).map((set) => (
+            <PolicyCard
+              key={set.version}
+              set={set}
+              sets={policySets}
+              activeSet={activePolicy}
+              activeBaseline={activeBaseline}
+            />
+          ))}
+        </TabsContent>
+      </Tabs>
 
       <SpecNote>
         同年代平均の版(average_version)、AI の閾値の版(threshold_version)、推奨基準の版は
