@@ -85,13 +85,17 @@ function SetMeta({
 }
 
 /**
- * 今どれが有効かを一目で分かるようにする。
- * 🔴 状態の色分けなので、意味のある色を使ってよい箇所 (badge と同じ扱い)。
- *    下書き・退役と同じ見た目だと、版が増えたときに有効な版を探すことになる。
- * 🔴 地色は白のまま、枠線だけ濃い緑にする。背景に色を敷くと、中の表の罫線や
- *    淡いグレーの文字とのコントラストが落ちて読みにくくなる。
+ * 状態ごとの見た目。版が増えるので、一覧の中で「今どれが効いているか」と
+ * 「もう終わったもの」が目で分かるようにする。
+ * 🔴 有効は枠線だけ濃い緑にする。背景に色を敷くと、中の表の罫線や淡いグレーの
+ *    文字とのコントラストが落ちて読みにくくなる。
+ * 🔴 退役は少し落とす。消さずに残す(過去の推奨の根拠)が、今読むものではない。
  */
-const ACTIVE_CARD = "border-2 border-emerald-600"
+function cardTone(status: VersionedSetStatus): string | undefined {
+  if (status === "active") return "border-2 border-emerald-600"
+  if (status === "retired") return "opacity-80"
+  return undefined
+}
 
 function BaselineCard({
   set,
@@ -110,7 +114,7 @@ function BaselineCard({
       runBaselineAction(set.version, action, reason, scheduledAt)
 
   return (
-    <Card className={cn(set.status === "active" && ACTIVE_CARD)}>
+    <Card className={cn(cardTone(set.status))}>
       <CardHeader>
         <CardTitle className="flex flex-wrap items-center gap-2 text-base">
           <span className="font-mono text-sm">{set.version}</span>
@@ -181,7 +185,7 @@ function PolicyCard({
       runPolicyAction(set.version, action, reason, scheduledAt)
 
   return (
-    <Card className={cn(set.status === "active" && ACTIVE_CARD)}>
+    <Card className={cn(cardTone(set.status))}>
       <CardHeader>
         <CardTitle className="flex flex-wrap items-center gap-2 text-base">
           <span className="font-mono text-sm">{set.version}</span>
