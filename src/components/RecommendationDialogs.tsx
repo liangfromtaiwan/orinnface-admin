@@ -191,7 +191,7 @@ export function BaselineDraftDialog({
       toast.success(`${target.version} を編集しました`, {
         description:
           target.status === "approved"
-            ? "承認済だったので下書きに戻しました。有効化の予約も外れています。"
+            ? "有効化待ちだったので下書きに戻しました。予約も外れています。"
             : undefined,
       })
     } else {
@@ -229,7 +229,7 @@ export function BaselineDraftDialog({
           <DialogDescription>
             {editing ? (
               target!.status === "approved" ? (
-                "承認済です。直すと下書きに戻り、有効化の予約も外れます。"
+                "有効化を待っている版です。直すと下書きに戻り、予約も外れます。"
               ) : (
                 "まだ有効化していないので、この版をそのまま直せます。"
               )
@@ -376,7 +376,7 @@ export function PolicyDraftDialog({
       toast.success(`${target.version} を編集しました`, {
         description:
           target.status === "approved"
-            ? "承認済だったので下書きに戻しました。有効化の予約も外れています。"
+            ? "有効化待ちだったので下書きに戻しました。予約も外れています。"
             : undefined,
       })
     } else {
@@ -432,7 +432,7 @@ export function PolicyDraftDialog({
           <DialogDescription>
             {editing ? (
               target!.status === "approved" ? (
-                "承認済です。直すと下書きに戻り、有効化の予約も外れます。"
+                "有効化を待っている版です。直すと下書きに戻り、予約も外れます。"
               ) : (
                 "まだ有効化していないので、この版をそのまま直せます。"
               )
@@ -875,10 +875,10 @@ const ACTION_DESCRIPTION: Record<
 > = {
   activate: (kind, fromDraft) =>
     `次回以降の推奨がこの版で計算されます。今まで有効だった${kind}セットは退役します。過去の推奨は再計算しません。` +
-    (fromDraft ? "この操作で承認も同時に記録します。" : ""),
+    (fromDraft ? "決めた人としてあなたの名前が残ります。" : ""),
   schedule: (_kind, fromDraft) =>
     "指定した日時に有効化されます。実行までは今の版が有効なままです。" +
-    (fromDraft ? "予約すると承認済になります。" : ""),
+    (fromDraft ? "予約すると「有効化待ち」になり、決めた人としてあなたの名前が残ります。" : ""),
   rollback: () =>
     "この版の値を持つ下書きを新しく作ります。退役した版を直接戻すことはしません。作った下書きは承認と有効化が必要です。",
 }

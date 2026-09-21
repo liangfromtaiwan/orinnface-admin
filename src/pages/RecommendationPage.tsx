@@ -58,7 +58,7 @@ function StatusBadge({ status }: { status: VersionedSetStatus }) {
   )
 }
 
-/** 作成・承認・有効化の履歴。どの版も同じ並びで出す。 */
+/** 作成・決定・有効化の履歴。どの版も同じ並びで出す。 */
 function SetMeta({
   set,
 }: {
@@ -75,7 +75,8 @@ function SetMeta({
     <CardDescription className="text-xs">
       作成 {set.createdBy} / {formatDate(set.createdAt)}
       {set.editedAt ? ` ・編集 ${formatDate(set.editedAt)}` : ""}
-      {set.approvedBy ? ` ・承認 ${set.approvedBy}` : ""}
+      {/* 🔴 「承認」とは書かない。承認という操作は画面に無い(§8 からの逸脱) */}
+      {set.approvedBy ? ` ・決定 ${set.approvedBy}` : ""}
       {set.activatedAt ? ` ・有効化 ${formatDate(set.activatedAt)}` : ""}
       {set.scheduledActivateAt
         ? ` ・有効化予約 ${formatDateTime(set.scheduledActivateAt)}`
@@ -247,7 +248,7 @@ export default function RecommendationPage() {
     <div className="space-y-4">
       <PageHeader
         title="推奨設定"
-        description="基準値セットと方針セットは別の版として管理します。値を変えるときは下書きを作り、承認してから有効化します。"
+        description="基準値セットと方針セットは別の版として管理します。値を変えるときは下書きを作り、有効化するか、日時を決めて予約します。"
       />
 
       {/*

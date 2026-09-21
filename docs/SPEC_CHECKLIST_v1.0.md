@@ -173,7 +173,7 @@
 | ☐ | draft 作成 | `createBaselineDraft()` / `createPolicyDraft()`、`BaselineDraftDialog` / `PolicyDraftDialog` | ✅ | 既存版をコピーして直す形。コピー元と同じ値では作れない |
 | ☐ | 差分 | `diffBaselineSets()` / `diffPolicySets()`、`RecommendationDiff` | ✅ | 各カードに「何と比べた差分か」付きで常時表示。比較対象は `comparisonBaseFor()`（draft→active / active→直前の退役版） |
 | ☐ | 影響 preview | `previewBaselineImpact()` / `previewPolicyImpact()` | ✅ | 基準値=draft で推奨を引き直し、現行 run と突き合わせた**試算**（保存しない・過去 run を書き換えない。smoke 有守）。方針は文章なので結果を計算せず「その規則が効く分析の件数」を出す |
-| ☐ | approve / activate | `applyBaselineAction()` / `applyPolicyAction()` | ⚠️ | activate は実装。**approve は操作として置いていない**（使用者確定 2026-09-18。本部が 1 名なら同じ人がもう一度押すだけのため）→ §8 の操作表からの意図的な逸脱。承認済という状態は残り、**「有効化を予約」したときに入る**。誰が決めたかは `approvedBy` に記録する。理由入力必須・監査に残る。有効化で前の active は自動で retired（active は常に 1 件）|
+| ☐ | approve / activate | `applyBaselineAction()` / `applyPolicyAction()` | ⚠️ | activate は実装。**approve は操作として置いていない**（使用者確定 2026-09-18。本部が 1 名なら同じ人がもう一度押すだけのため）→ §8 の操作表からの意図的な逸脱。承認済という状態は残り、**「有効化を予約」したときに入る**（画面の表示名は「**有効化待ち**」。承認の操作が無いのに「承認済」と出すと、誰がどこで承認したのかを探させることになる）。誰が決めたかは `approvedBy` に記録する。理由入力必須・監査に残る。有効化で前の active は自動で retired（active は常に 1 件）|
 | ☐ | scheduled activate | `SetActionButton` の `schedule` | ✅ | approved のみ。日時を入れて予約、有効化で予約は消える |
 | ☐ | rollback は新 version として実行 | `applySetAction()` の `rollback` | ✅ | retired を戻さず**同じ値の新 draft** を起こす。元の retired はそのまま残り、承認からやり直す |
 | ☐ | active 値の直接更新は禁止。過去 run を再計算・上書きしない | `decideSetEdit()` / `applyBaselineEdit()` | ✅ | **禁止されているのは active の更新だけ**と読み、下書き・承認済は中身を直せるようにした（使用者確定 2026-09-18。まだどの推奨にも使われていないため作り直させる理由がない）。有効・退役は画面にも関数にも編集の口を出さない。承認済を直すと**下書きに戻り予約も外れる**（承認したのはその内容なので）|

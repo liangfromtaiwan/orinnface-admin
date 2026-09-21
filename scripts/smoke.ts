@@ -861,9 +861,9 @@ console.log("── §8 推奨基準値・方針の版管理 ──")
     const scheduled = applyBaselineAction(baselineSets, draft.version, "schedule",
       { actorName: "吉田", now, scheduledAt: "2026-10-01T00:00:00+09:00" })
     const sc = scheduled.find(s => s.version === draft.version)!
-    check("下書きから予約すると承認済へ進む", sc.status === "approved",
+    check("下書きから予約すると有効化待ちへ進む", sc.status === "approved",
       "(下書きのまま予約すると、まだ決めていない版が有効化される)")
-    check("予約でも承認者は記録される", sc.approvedBy === "吉田")
+    check("予約でも決めた人は記録される", sc.approvedBy === "吉田")
   }
 
   {
@@ -961,7 +961,7 @@ console.log("── §8 推奨基準値・方針の版管理 ──")
   check("下書きでは有効化と予約が出る",
     availableActions("draft").join() === "activate,schedule",
     "(承認は置かない)")
-  check("承認済でできるのは有効化と予約",
+  check("有効化待ちでできるのは有効化と予約",
     availableActions("approved").join() === "activate,schedule")
   check("active には次に進める操作が無い",
     availableActions("active").length === 0, "(直接編集も再承認もしない)")
@@ -971,7 +971,7 @@ console.log("── §8 推奨基準値・方針の版管理 ──")
   // 有効化していない版は中身を直せる(使用者確定 2026-09-18)
   {
     check("下書きは編集できる", decideSetEdit(opScope, draft).kind === "allowed")
-    check("承認済も編集できる",
+    check("有効化待ちも編集できる",
       decideSetEdit(opScope, { status: "approved" }).kind === "allowed")
     check("有効な版は編集できない",
       decideSetEdit(opScope, active).kind === "denied",
@@ -997,9 +997,9 @@ console.log("── §8 推奨基準値・方針の版管理 ──")
     const back = applyBaselineEdit(approvedSet, draft.version,
       { values: RECOMMENDATION_POSES.map(p => ({ poseCode: p, baseline: 13 })) }, { now })
     const b = back.find(s => s.version === draft.version)!
-    check("承認済を編集すると下書きに戻る", b.status === "draft" && b.approvedBy === undefined,
-      "(承認したのはその内容なので、中身が変われば承認は無効)")
-    check("承認済を編集すると予約も外れる", b.scheduledActivateAt === undefined,
+    check("有効化待ちを編集すると下書きに戻る", b.status === "draft" && b.approvedBy === undefined,
+      "(決めたのはその内容なので、中身が変われば決定は無効)")
+    check("有効化待ちを編集すると予約も外れる", b.scheduledActivateAt === undefined,
       "(そのままだと編集後の内容が予約時刻に有効化される)")
 
     const activeEdit = applyBaselineEdit(baselineSets, active.version,

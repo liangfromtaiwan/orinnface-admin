@@ -314,7 +314,13 @@ export type VersionedSetStatus =
 export const VERSIONED_SET_STATUS_LABEL: Record<VersionedSetStatus, string> = {
   // 分析・care の状態ラベルと同じ語を使う(同じ状態を画面ごとに呼び分けない)
   draft: "下書き",
-  approved: "承認済",
+  /*
+    🔴 「承認済」とは出さない。承認という操作を画面に置いていないので、
+       その名前だと「誰がどこで承認したのか」を探させることになる
+       (実際に使用者から 2 度聞かれた)。この状態の中身は「決まっていて、
+       予約した日時を待っている」なので、そう書く。値 (approved) は変えない。
+  */
+  approved: "有効化待ち",
   active: "有効",
   retired: "退役",
 }
