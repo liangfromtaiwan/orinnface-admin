@@ -7,6 +7,7 @@
  */
 
 import { useMemo, useState } from "react"
+import { SearchIcon } from "lucide-react"
 import { toast } from "sonner"
 
 import { PageHeader, SpecNote } from "@/components/PageHeader"
@@ -29,6 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { Input } from "@/components/ui/input"
 import { useSession } from "@/contexts/session-context"
 import { formatDate } from "@/lib/domain/kpi"
 import { can } from "@/lib/domain/scope"
@@ -43,10 +45,15 @@ import { analysisSessions, handoffTokens, NOW, rawImageAssets } from "@/lib/mock
 /** 満了 30 日前に通知する (§10)。 */
 const NOTICE_DAYS_BEFORE_EXPIRY = 30
 
+/** 一度に描く上限。超える分は検索で絞ってもらう。 */
+const DISPLAY_LIMIT = 150
+
 export default function RetentionPage() {
   const { scope, customers } = useSession()
   const canOperate = can(scope, "retention.operate")
   const [state, setState] = useState<RetentionState | "all">("all")
+  /** asset ID と顧客番号での絞り込み。件数が多く、目的の 1 件に辿り着けない。 */
+  const [query, setQuery] = useState("")
 
   /** 画像を撮影した店舗。undefined = 本人が自宅で撮影した分。 */
   const captureStoreById = useMemo(() => {
@@ -60,13 +67,33 @@ export default function RetentionPage() {
     [customers]
   )
 
+  /*
+    検索は asset ID と顧客番号の両方に当てる。画面には両方が出ていて、
+    どちらで探すかは場面による(監査の request から asset を辿る / 顧客の
+    問い合わせから辿る)。表示名は出していないので対象にしない。
+  */
+  const matched = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return rawImageAssets.filter((a) => {
+      if (state !== "all" && a.state !== state) return false
+      if (!q) return true
+      /* 表の「対象」欄に出している文字列で探せるようにする。
+         未連携分析は顧客番号を持たないので anonymous_id で拾う。 */
+      const subject = a.dataSubjectId
+        ? (codeById.get(a.dataSubjectId) ?? a.dataSubjectId)
+        : (a.anonymousId ?? "")
+      return (
+        a.id.toLowerCase().includes(q) || subject.toLowerCase().includes(q)
+      )
+    })
+  }, [state, query, codeById])
+
   const rows = useMemo(
     () =>
-      rawImageAssets
-        .filter((a) => (state === "all" ? true : a.state === state))
+      [...matched]
         .sort((a, b) => a.expiresAt.localeCompare(b.expiresAt))
-        .slice(0, 150),
-    [state]
+        .slice(0, DISPLAY_LIMIT),
+    [matched]
   )
 
   const counts = useMemo(() => {
@@ -81,8 +108,28 @@ export default function RetentionPage() {
     <div className="space-y-4">
       <PageHeader
         title="画像・保持"
-        description={`生画像 asset ${rawImageAssets.length} 件。満了 ${NOTICE_DAYS_BEFORE_EXPIRY} 日前に登録ユーザーへ通知します。`}
+        description={
+          <>
+            {/* 🔴 絞った結果が全件なのか打ち切りなのかを隠さない */}
+            表示 {rows.length} 件
+            {matched.length > rows.length
+              ? `（該当 ${matched.length} 件のうち先頭 ${DISPLAY_LIMIT} 件）`
+              : ""}{" "}
+            / 生画像 asset 全 {rawImageAssets.length} 件。満了{" "}
+            {NOTICE_DAYS_BEFORE_EXPIRY} 日前に登録ユーザーへ通知します。
+          </>
+        }
         actions={
+          <>
+            <div className="relative">
+              <SearchIcon className="absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="asset ID・顧客番号・anonymous ID"
+                className="h-9 w-56 pl-8"
+              />
+            </div>
           <Select
             value={state}
             onValueChange={(v) => setState(v as RetentionState | "all")}
@@ -99,6 +146,7 @@ export default function RetentionPage() {
               ))}
             </SelectContent>
           </Select>
+          </>
         }
       />
 
