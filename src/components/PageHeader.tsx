@@ -16,20 +16,27 @@ export function PageHeader({
   description?: ReactNode
   actions?: ReactNode
 }) {
+  /*
+    🔴 操作ボタンは画面幅によらず右上に置く。説明文と同じ行に並べると、幅が狭い
+       ときにボタンが下へ回り込み、探さないと見つからない位置へ動く。
+       見出しと同じ行に固定し、説明文はその下で全幅を使う。
+  */
   return (
-    <div className="flex flex-wrap items-start justify-between gap-3">
-      <div className="space-y-1">
-        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+    <div className="space-y-1">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
           <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
           {titleAside ? (
             <span className="text-sm text-muted-foreground">{titleAside}</span>
           ) : null}
         </div>
-        {description ? (
-          <div className="text-sm text-muted-foreground">{description}</div>
+        {actions ? (
+          <div className="flex shrink-0 items-center gap-2">{actions}</div>
         ) : null}
       </div>
-      {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
+      {description ? (
+        <div className="text-sm text-muted-foreground">{description}</div>
+      ) : null}
     </div>
   )
 }

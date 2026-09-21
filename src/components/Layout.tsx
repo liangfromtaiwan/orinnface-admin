@@ -25,7 +25,8 @@ export function Layout() {
           </div>
           <NotificationBell />
         </header>
-        <div className="flex flex-1 flex-col gap-4 p-4">
+        {/* min-w-0: 中の表が広くても、この列は画面幅を超えない */}
+        <div className="flex min-w-0 flex-1 flex-col gap-4 p-4">
           <Outlet />
         </div>
       </SidebarInset>
