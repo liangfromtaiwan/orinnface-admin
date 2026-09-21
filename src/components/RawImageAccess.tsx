@@ -12,6 +12,8 @@ import { useState } from "react"
 import { EyeIcon, LockIcon } from "lucide-react"
 import { toast } from "sonner"
 
+import { ReasonField } from "@/components/ReasonField"
+import { REASON_MIN_LENGTH, isReasonEnough } from "@/components/reason-rules"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -22,7 +24,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
 import { useNotifications, VIEW_TOKEN_TTL_SECONDS } from "@/contexts/notifications"
 import { useSession } from "@/contexts/session-context"
 import { decideRawImageView, RAW_IMAGE_DENIED_LABEL } from "@/lib/domain/scope"
@@ -113,23 +114,24 @@ export function RawImageViewButton({
             image_access_logs に記録されます。
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-2">
-          <label className="text-sm font-medium" htmlFor="raw-image-reason">
-            閲覧理由（必須）
-          </label>
-          <Input
-            id="raw-image-reason"
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            placeholder="例: 顧客からの問い合わせ対応（品質確認）"
-          />
-        </div>
+        <ReasonField
+          value={reason}
+          onChange={setReason}
+          label="閲覧理由"
+          placeholder="例: 顧客からの問い合わせ対応（品質確認）"
+          hint="image_access_logs に残ります。後から見て目的が分かるように書いてください。"
+        />
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>
             キャンセル
           </Button>
           <Button
-            disabled={reason.trim().length < 4}
+            disabled={!isReasonEnough(reason)}
+            title={
+              !isReasonEnough(reason)
+                ? `閲覧理由を ${REASON_MIN_LENGTH} 文字以上で入力してください`
+                : undefined
+            }
             onClick={() => {
               issueDirect({ rawImageAssetId, purpose: reason.trim() })
               setOpen(false)

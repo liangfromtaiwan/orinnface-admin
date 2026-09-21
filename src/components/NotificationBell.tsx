@@ -12,6 +12,8 @@ import { toast } from "sonner"
 
 import { RawImageViewer } from "@/components/RawImageViewer"
 import { Badge } from "@/components/ui/badge"
+import { ReasonField } from "@/components/ReasonField"
+import { REASON_MIN_LENGTH, isReasonEnough } from "@/components/reason-rules"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -21,7 +23,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
 import {
   Popover,
   PopoverContent,
@@ -207,14 +208,13 @@ export function NotificationBell() {
           ) : null}
 
           {rejecting ? (
-            <div className="space-y-2">
-              <label className="text-sm font-medium" htmlFor="reject-reason">
-                却下の理由（申請者に表示されます）
-              </label>
-              <Input id="reject-reason" value={rejectReason} autoFocus
-                     onChange={(e) => setRejectReason(e.target.value)}
-                     placeholder="例: 業務上の必要性が確認できません" />
-            </div>
+            <ReasonField
+              value={rejectReason}
+              onChange={setRejectReason}
+              label="却下の理由"
+              placeholder="例: 業務上の必要性が確認できません"
+              hint="申請者にそのまま表示されます。"
+            />
           ) : null}
 
           <DialogFooter>
@@ -223,7 +223,13 @@ export function NotificationBell() {
                 <Button variant="outline" onClick={() => setRejecting(false)}>
                   戻る
                 </Button>
-                <Button variant="destructive" disabled={rejectReason.trim().length < 4}
+                <Button variant="destructive"
+                        disabled={!isReasonEnough(rejectReason)}
+                        title={
+                          !isReasonEnough(rejectReason)
+                            ? `却下の理由を ${REASON_MIN_LENGTH} 文字以上で入力してください`
+                            : undefined
+                        }
                         onClick={() => {
                           if (!reviewing) return
                           reject(reviewing.id, rejectReason.trim())

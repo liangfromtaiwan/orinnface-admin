@@ -7,6 +7,7 @@
  * 理由は §11 の変更監査にそのまま残るので、文面は操作の説明になっている必要がある。
  */
 
+import { REASON_MIN_LENGTH, isReasonEnough } from "@/components/reason-rules"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 
@@ -25,6 +26,7 @@ export function ReasonField({
   hint?: string
 }) {
   const empty = !value.trim()
+  const tooShort = !empty && !isReasonEnough(value)
 
   return (
     <div className="space-y-1">
@@ -39,9 +41,17 @@ export function ReasonField({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         aria-required
-        className={cn("h-9", empty && "border-destructive/50")}
+        aria-invalid={tooShort}
+        className={cn("h-9", (empty || tooShort) && "border-destructive/50")}
       />
-      {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
+      {tooShort ? (
+        <p className="text-xs text-destructive">
+          あと {REASON_MIN_LENGTH - value.trim().length} 文字。後から見て目的が
+          分かるように書いてください。
+        </p>
+      ) : hint ? (
+        <p className="text-xs text-muted-foreground">{hint}</p>
+      ) : null}
     </div>
   )
 }
