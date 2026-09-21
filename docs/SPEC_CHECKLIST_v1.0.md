@@ -31,7 +31,7 @@
 | ☐ | 単店舗契約でも内部的に company と store を作成する | `seed.ts` | ✅ | 单店铺公司也建了 store，可在「会社・店舗」页确认 |
 | ☐ | 一部の複数店舗だけを管理する担当者は store_admin membership を複数付与。エリア管理者 role を追加しない | `scope.ts` | ✅ | |
 | ☐ | Frontend の表示非表示だけを権限制御にしない | `RequireScreen.tsx` 冒頭コメント、`scope.ts` | ⚠️ | 前端已注明「这不是权限依据」，但**实际的 API 再验证是后端工作**，此处只能到注释为止 |
-| ☐ | operator でも生画像は通常一覧へ表示しない。理由入力と監査付き 5分 token を別操作で発行 | `RawImageAccess.tsx` / `RawImageViewer.tsx`、`decideRawImageView()` | ✅ | 300 秒倒计时 + 理由输入已实作。⚠️ 吉田 2026-09-07：**店舗の自店画像閲覧は理由入力なし**（direct）、本部の横断閲覧のみ理由必須 |
+| ☐ | operator でも生画像は通常一覧へ表示しない。理由入力と監査付き 5分 token を別操作で発行 | `RawImageAccess.tsx` / `RawImageViewer.tsx`、`decideRawImageView()` | ✅ | 300 秒倒计时 + 理由输入已实作。⚠️ 吉田 2026-09-07：**店舗の自店画像閲覧は理由入力なし**（direct）、本部の横断閲覧のみ理由必須。**人による承認ステップは無い**（使用者確定 2026-09-21。以前あった「申請→本部が審査」は §11 に無く、2026-09-07 の決定で通常経路からも外れて申請の導線が無いまま残っていたので削除した）|
 | ☐ | 2FA: operator / company_admin / store_admin 必須、store_staff 任意・初期 OFF | `ROLE_REQUIRES_2FA`、`AccountPage.tsx`、`nav-user.tsx` | ⚠️ | 只做到「必須なのに未設定」的警告显示。**実認証・2FA 本体は未実装（意図的）** |
 
 ---

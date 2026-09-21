@@ -22,7 +22,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { formatDateTime } from "@/lib/domain/kpi"
-import type { ViewRequest } from "@/contexts/notifications"
+import type { ViewGrant } from "@/contexts/notifications"
 import { cn } from "@/lib/utils"
 
 /**
@@ -64,8 +64,8 @@ export function RawImageViewer({
   open,
   onOpenChange,
 }: {
-  /** 承認済みの申請。expiresAt を持つ。 */
-  grant: ViewRequest | null
+  /** 発行済みの一時閲覧。 */
+  grant: ViewGrant | null
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
@@ -79,7 +79,7 @@ export function RawImageViewer({
     return () => clearInterval(id)
   }, [open, grant])
 
-  if (!grant || !grant.expiresAt) return null
+  if (!grant) return null
   const left = secondsLeft(grant.expiresAt)
   const expired = left <= 0
   const urgent = left > 0 && left <= 60
@@ -155,29 +155,23 @@ export function RawImageViewer({
           </div>
           <div className="flex justify-between gap-2 border-b py-1">
             <dt className="text-muted-foreground">閲覧者</dt>
-            <dd>{grant.requesterName}</dd>
+            <dd>{grant.issuerName}</dd>
           </div>
           <div className="flex justify-between gap-2 border-b py-1">
             <dt className="text-muted-foreground">request ID</dt>
             <dd className="font-mono">{grant.requestId}</dd>
           </div>
           <div className="flex justify-between gap-2 border-b py-1">
-            {/* 🔴 本部が自分で発行したものには承認者がいない */}
-            <dt className="text-muted-foreground">
-              {grant.issuedDirectly ? "発行者" : "承認者"}
-            </dt>
-            <dd>
-              {grant.issuedDirectly
-                ? grant.requesterName
-                : (grant.reviewerName ?? "—")}
-            </dd>
+            {/* 🔴 承認者はいない。発行した本人がそのまま閲覧者 */}
+            <dt className="text-muted-foreground">権限</dt>
+            <dd>{grant.issuerRole}</dd>
           </div>
           <div className="flex justify-between gap-2 border-b py-1">
             <dt className="text-muted-foreground">失効</dt>
             <dd className="tabular-nums">{formatDateTime(grant.expiresAt)}</dd>
           </div>
           <div className="border-b py-1 sm:col-span-2">
-            <dt className="text-muted-foreground">申請理由（監査に記録）</dt>
+            <dt className="text-muted-foreground">閲覧理由（監査に記録）</dt>
             <dd className="mt-0.5 break-words">{grant.purpose}</dd>
           </div>
         </dl>

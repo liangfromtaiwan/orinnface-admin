@@ -92,7 +92,7 @@
 - [x] `PageHeader` / `SpecNote` / `PeriodBanner` ✅ 2026-08-30 - 頁面標題列・仕様注記・集計期間
 - [x] `AggregateStat` ✅ 2026-08-30 - KPI 卡。母数・欠測・version を必ず出す(§6)
 - [x] `InfoHint` ✅ 2026-08-30 - タイトル横の i アイコン。集計条件を popover で開く
-- [x] `RawImagePlaceholder` / `RawImageViewButton` ✅ 2026-08-30 - 生画像は非表示 + 理由入力付き一時閲覧
+- [x] `RawImagePlaceholder` / `RawImageViewButton` ✅ 2026-08-30（2026-09-21: 承認フローを削除。見られる人がその場で発行する） - 生画像は非表示 + 理由入力付き一時閲覧
 - [x] `ViewerSwitcher` ✅ 2026-08-30 - ログインアカウント切替(membership から role を解決)
 - [x] `RequireScreen` ✅ 2026-08-30 - スコープ外画面へのアクセスを弾く(表示制御)
 - [x] `PremiumSignalCard` ✅ 2026-08-30 - 営収シグナル(Premium 新規/離脱/会員数)。本部のみ

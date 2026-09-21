@@ -1,93 +1,55 @@
 /**
- * 生画像 一時閲覧の申請・審査 (ヘッダーのベル)
+ * 生画像 一時閲覧の発行 (ヘッダーのベル)
  *
- * 🔴 流れ (使用者確定 2026-09-07):
- *    1. 店舗スタッフ・店舗管理者・契約企業管理者が閲覧を申請する(理由必須)
- *    2. 申請は本部(operator)にだけ通知される
- *    3. 本部が内容を見て「承認」か「却下」を決める
- *    4. 却下する場合は理由を入力し、それが申請者に見える
- *    5. 承認されると申請者に通知が届き、署名 URL 300 秒で閲覧できる
+ * 🔴 人による承認ステップは**無い**(使用者確定 2026-09-21)。
+ *    見られる人がその場で発行し、署名 URL が 300 秒だけ有効になる。
+ *      - 本部: 全社横断で見られるが、理由の入力が必要 (§2)
+ *      - 店舗・企業: **自店で撮影した画像だけ**。理由の入力は不要
+ *        (吉田さん 2026-09-07「通常の店舗閲覧では理由入力を求めない」)
+ *      - 自宅撮影分・他店撮影分は、申請すれば見られるのではなく**見られない**
+ *    可否は `decideRawImageView()` が決める。
  *
- * ⚠️ 仕様書 v1.0 §11 は「権限・所有・active link・目的・理由を検証し署名URL300秒」
- *    としか書いておらず、人による承認ステップは規定されていない。
- *    この承認フロー自体が §11 への追加なので、確定したら仕様書側にも反映が必要。
+ * ⚠️ 以前あった「申請 → 本部が審査 → 承認/却下」は削除した。
+ *    §11 は「権限・所有・active link・目的・理由を検証し署名 URL 300 秒」
+ *    としか書いておらず、人による承認は仕様に無い。上の 2026-09-07 の決定で
+ *    通常の経路からも外れ、申請を出す導線がどこにも無いまま残っていた。
+ *    例外的な横断閲覧(他店の画像を見たい等)の要望が出たら、そのとき設計し直す。
  *
- * 本部自身は承認者なので、申請を経ずに直接発行する(§2 の「理由入力と監査付き
- * token を別操作で発行する」に沿う)。
+ * ベルに出るのは**自分が発行したもの**だけ。誰がいつ何を見たかを横断で追うのは
+ * 監査画面 (§11 の image_access_logs) の役目で、ベルの役目ではない。
  */
 
 import { createContext, useContext } from "react"
 
-export type ViewRequestStatus = "pending" | "approved" | "rejected"
-
-export const VIEW_REQUEST_STATUS_LABEL: Record<ViewRequestStatus, string> = {
-  pending: "審査待ち",
-  approved: "承認済み",
-  rejected: "却下",
-}
-
-export type ViewRequest = {
+/** 発行済みの一時閲覧 1 件。 */
+export type ViewGrant = {
   id: string
   rawImageAssetId: string
-  /** 申請理由。監査に記録される。 */
+  /** 閲覧の目的。監査に記録される。店舗の通常閲覧では定型文が入る。 */
   purpose: string
-  requesterAccountId: string
-  requesterName: string
-  requesterRole: string
-  requestedAt: string
-  status: ViewRequestStatus
+  issuerAccountId: string
+  issuerName: string
+  issuerRole: string
+  issuedAt: string
+  /** 署名 URL の失効時刻。 */
+  expiresAt: string
   /** 監査ログの request ID */
   requestId: string
-
-  /**
-   * 本部が申請を経ずに自分で発行したもの。
-   * 🔴 状態は approved になるが、**誰も承認していない**。この区別が無いと
-   *    「承認されました／審査 吉田」と出て、自分で自分を承認したように見える
-   *    (実際に使用者から指摘された)。
-   */
-  issuedDirectly?: boolean
-
-  reviewerName?: string
-  reviewedAt?: string
-  /** 却下の理由。申請者に見せる。 */
-  rejectReason?: string
-  /** 承認時のみ。署名 URL の失効時刻。 */
-  expiresAt?: string
-
-  /** 申請者が結果を読んだか(未読バッジ用)。 */
-  readByRequester: boolean
-}
-
-/**
- * ベルに出す 1 件。既読になっても一覧からは消さず、点だけ落とす。
- *
- * kind:
- *   review … 本部が審査する側として見る。status が pending の間は
- *             対応が必要なので、開いただけでは既読にしない
- *   result … 自分が出した申請の結果として見る。開いたら既読
- */
-export type NotificationItem = {
-  request: ViewRequest
-  kind: "review" | "result"
-  unread: boolean
+  /** ベルの未読バッジ用。開いたら既読。 */
+  read: boolean
 }
 
 export type NotificationsValue = {
-  /** すべての申請。 */
-  requests: ViewRequest[]
-  /** ベルに出す一覧(既読を含む・新しい順)。 */
-  items: NotificationItem[]
+  /** 自分が発行した一時閲覧(新しい順)。既読でも一覧からは消さない。 */
+  grants: ViewGrant[]
   unreadCount: number
-
-  submitRequest: (input: {
-    rawImageAssetId: string
-    purpose: string
-  }) => void
-  approve: (requestId: string) => void
-  reject: (requestId: string, reason: string) => void
-  markResultRead: (requestId: string) => void
-  /** 本部が申請を経ずに自分で発行する。 */
-  issueDirect: (input: { rawImageAssetId: string; purpose: string }) => void
+  /**
+   * 一時閲覧を発行する。
+   * 🔴 呼ぶ前に `decideRawImageView()` で可否を判定すること。
+   *    本部の横断閲覧では理由を入れる。店舗の自店閲覧では定型文を渡す。
+   */
+  issue: (input: { rawImageAssetId: string; purpose: string }) => void
+  markRead: (grantId: string) => void
 }
 
 export const NotificationsContext = createContext<NotificationsValue | null>(null)

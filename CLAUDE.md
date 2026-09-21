@@ -355,7 +355,12 @@ scripts/              仕様不変条件の smoke test
 - `AggregateStat` を通さない KPI 表示は書かない → 母数・欠測・version・期間が必ず出る
 - `scope.ts` の `canViewCustomer()` は active な `store_data_link` + membership の両方を要求
 - `care-catalog.ts` は 13 枠固定。`assertCareSlotInvariant()` が `npm run smoke` で検証
-- 生画像は `RawImagePlaceholder` / `RawImageViewButton` 経由のみ(理由入力 + 300秒 token)
+- 生画像は `RawImagePlaceholder` / `RawImageViewButton` 経由のみ(理由入力 + 300秒 token)。
+  🔴 **人による承認は無い**(使用者確定 2026-09-21)。見られる人がその場で発行する。
+  本部=全社横断・理由必須 / 店舗=自店で撮影した画像のみ・理由不要(吉田さん 2026-09-07) /
+  自宅撮影分・他店撮影分は**申請すれば見られるのではなく見られない**。
+  可否は `decideRawImageView()` の 1 箇所。ベルに出るのは自分が発行したものだけで、
+  横断で追うのは監査画面の役目
 - `scope.ts` の `viewScopeFor()` は role を持ち越す → 視点を絞っても権限が落ちない
 - `branding.ts` の `resolveBranding()` は `surface` 必須。B2C は企業設定を受けず、
   未反映の `draft` は店舗側に出ない(どちらも `npm run smoke` で検証)

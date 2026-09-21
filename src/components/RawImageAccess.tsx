@@ -59,7 +59,7 @@ export function RawImageViewButton({
   disabledReason?: string
 }) {
   const { scope } = useSession()
-  const { issueDirect } = useNotifications()
+  const { issue } = useNotifications()
   const [open, setOpen] = useState(false)
   const [reason, setReason] = useState("")
 
@@ -83,7 +83,7 @@ export function RawImageViewButton({
         disabled={disabled}
         title={disabledReason}
         onClick={() => {
-          issueDirect({
+          issue({
             rawImageAssetId,
             purpose: "自店で撮影した画像の通常閲覧（理由入力なし）",
           })
@@ -133,7 +133,7 @@ export function RawImageViewButton({
                 : undefined
             }
             onClick={() => {
-              issueDirect({ rawImageAssetId, purpose: reason.trim() })
+              issue({ rawImageAssetId, purpose: reason.trim() })
               setOpen(false)
               setReason("")
               toast.success("一時閲覧を発行しました", {
