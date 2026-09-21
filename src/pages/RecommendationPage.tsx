@@ -87,9 +87,11 @@ function SetMeta({
 /**
  * 今どれが有効かを一目で分かるようにする。
  * 🔴 状態の色分けなので、意味のある色を使ってよい箇所 (badge と同じ扱い)。
- *    下書き・退役と同じ白地だと、版が増えたときに有効な版を探すことになる。
+ *    下書き・退役と同じ見た目だと、版が増えたときに有効な版を探すことになる。
+ * 🔴 地色は白のまま、枠線だけ濃い緑にする。背景に色を敷くと、中の表の罫線や
+ *    淡いグレーの文字とのコントラストが落ちて読みにくくなる。
  */
-const ACTIVE_CARD = "border-emerald-300 bg-emerald-50"
+const ACTIVE_CARD = "border-2 border-emerald-600"
 
 function BaselineCard({
   set,
