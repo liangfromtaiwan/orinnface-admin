@@ -14,7 +14,11 @@ import {
   baselineValuesOf,
   rankRecommendedPoses,
 } from "../domain/recommendation"
-import { METRIC_CATALOG, type AgeBandAverages } from "../domain/metrics"
+import {
+  METRIC_CATALOG,
+  type AgeBandAverages,
+  type MetricDef,
+} from "../domain/metrics"
 import type { CompanyBranding } from "@/lib/domain/branding"
 import type {
   AdminAccount,
@@ -304,6 +308,21 @@ function personTrend(personSeed: number): number {
   return -1 // 悪化 (約30%)
 }
 
+/*
+  生成値をユーザー向け結果画面の目盛りに合わせる。
+  画面は 可動域 34〜52pt / 左右差 4〜21pt を出しているので、そこに寄せる。
+  🔴 比を変えないよう最後に掛けるだけにする(順位が変わると推奨も変わってしまう)。
+  姿勢は mm / deg のままなので等倍。
+*/
+const PT_SCALE: Record<MetricDef["group"], number> = {
+  neutral: 2.5,
+  range: 4,
+  asymmetry: 2.5,
+  compensation: 1,
+  posture_front: 1,
+  posture_side: 1,
+}
+
 function metricValues(
   which: typeof FACE_METRICS,
   sessionIndex: number,
@@ -327,7 +346,10 @@ function metricValues(
         value = Math.max(0.1, base / 2 - drift * 0.5 + rand() * 0.5)
         break
     }
-    return { metricCode: def.code, value: Number(value.toFixed(2)) }
+    return {
+      metricCode: def.code,
+      value: Number((value * PT_SCALE[def.group]).toFixed(2)),
+    }
   })
 }
 
@@ -659,7 +681,7 @@ export const ageBandAverages: AgeBandAverages = {
       Object.fromEntries(
         NEUTRAL_METRICS.map((m, mi) => [
           m.code,
-          Number((4.6 + ((mi + bi) % 5) * 0.4 + bi * 0.18).toFixed(2)),
+          Number(((4.6 + ((mi + bi) % 5) * 0.4 + bi * 0.18) * 2.5).toFixed(2)),
         ])
       ),
     ])
@@ -677,7 +699,7 @@ export const baselineSets: RecommendationBaselineSet[] = [
   {
     version: ACTIVE_BASELINE_VERSION,
     status: "active",
-    values: POSES.map((pose) => ({ poseCode: pose, baseline: 12 })),
+    values: POSES.map((pose) => ({ poseCode: pose, baseline: 48 })),
     createdBy: "吉田",
     approvedBy: "吉田",
     createdAt: daysAgo(40),
@@ -692,7 +714,7 @@ export const baselineSets: RecommendationBaselineSet[] = [
       🔴 全動作を同じ幅で動かすと順位は動かず影響 preview が常に 0 件になる。
          推奨は「動作間の乖離度の比較」で決まるため、差がつく値にしてある。
     */
-    values: [12.4, 12.0, 11.6, 12.2, 11.9].map((baseline, i) => ({
+    values: [49.6, 48.0, 46.4, 48.8, 47.6].map((baseline, i) => ({
       poseCode: POSES[i],
       baseline,
     })),
@@ -703,7 +725,7 @@ export const baselineSets: RecommendationBaselineSet[] = [
   {
     version: "rb-2026.07.1",
     status: "retired",
-    values: POSES.map((pose) => ({ poseCode: pose, baseline: 11.5 })),
+    values: POSES.map((pose) => ({ poseCode: pose, baseline: 46 })),
     createdBy: "吉田",
     approvedBy: "吉田",
     createdAt: daysAgo(80),

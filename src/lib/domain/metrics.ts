@@ -60,12 +60,12 @@ export type MetricDef = {
  * 🔴 neutral の値を 5動作の可動域と混ぜて表示しない。
  */
 const NEUTRAL_METRICS: MetricDef[] = [
-  { code: "neutral_brow_height", label: "眉の高さ", unit: "mm" },
-  { code: "neutral_eye_open", label: "開瞼幅", unit: "mm" },
-  { code: "neutral_mouth_corner", label: "口角位置", unit: "mm" },
-  { code: "neutral_cheek_volume", label: "頬のボリューム", unit: "mm" },
-  { code: "neutral_jaw_line", label: "フェイスライン", unit: "mm" },
-  { code: "neutral_face_symmetry", label: "左右対称性", unit: "mm" },
+  { code: "neutral_brow_height", label: "眉の高さ", unit: "pt" },
+  { code: "neutral_eye_open", label: "開瞼幅", unit: "pt" },
+  { code: "neutral_mouth_corner", label: "口角位置", unit: "pt" },
+  { code: "neutral_cheek_volume", label: "頬のボリューム", unit: "pt" },
+  { code: "neutral_jaw_line", label: "フェイスライン", unit: "pt" },
+  { code: "neutral_face_symmetry", label: "左右対称性", unit: "pt" },
 ].map((m) => ({
   ...m,
   group: "neutral" as const,
@@ -75,6 +75,13 @@ const NEUTRAL_METRICS: MetricDef[] = [
   provisional: true,
 }))
 
+/*
+  🔴 顔の指標の単位は **pt**(使用者確定 2026-09-21)。ユーザー向け結果画面が
+     「可動域 34pt」「左右差 +9pt」と出しているので、管理画面も同じ単位・同じ値に
+     揃える (§5 同一指標原則)。姿勢は画面で確認できていないので mm / deg のまま。
+  ⚠️ mm 換算は V1 スコープに入っている(V1/V2 スコープ確定)。pt と mm の関係は
+     AI分析 v1.6 側の正本を要確認。
+*/
 const POSES: { pose: Exclude<PoseCode, "neutral">; label: string }[] = [
   { pose: "smile", label: "いー(smile)" },
   { pose: "pucker", label: "うー(pucker)" },
@@ -91,7 +98,7 @@ const POSE_METRICS: MetricDef[] = POSES.flatMap(({ pose, label }) => [
     group: "range" as const,
     analysisType: "face" as const,
     poseCode: pose,
-    unit: "mm",
+    unit: "pt",
     direction: "higher" as const,
     provisional: true,
   },
@@ -101,7 +108,7 @@ const POSE_METRICS: MetricDef[] = POSES.flatMap(({ pose, label }) => [
     group: "asymmetry" as const,
     analysisType: "face" as const,
     poseCode: pose,
-    unit: "mm",
+    unit: "pt",
     direction: "toZero" as const,
     provisional: true,
   },

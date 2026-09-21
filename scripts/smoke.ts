@@ -1005,7 +1005,7 @@ console.log("── §8 推奨基準値・方針の版管理 ──")
     const activeEdit = applyBaselineEdit(baselineSets, active.version,
       { values: RECOMMENDATION_POSES.map(p => ({ poseCode: p, baseline: 99 })) }, { now })
     check("有効な版は編集関数を通しても変わらない",
-      activeEdit.find(s => s.version === active.version)?.values.every(v => v.baseline === 12),
+      activeEdit.find(s => s.version === active.version)?.values.every(v => v.baseline === 48),
       "(画面に出さないだけでなく、関数側でも弾く)")
 
     const p = applyPolicyEdit(policySets, policySets[1].version,

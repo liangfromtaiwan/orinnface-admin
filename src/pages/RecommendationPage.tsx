@@ -31,6 +31,12 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs"
+import { METRIC_GROUP_LABEL } from "@/lib/domain/metrics"
+import {
+  ACTIVE_THRESHOLD_SET,
+  JUDGE_LABEL,
+  THRESHOLD_KIND_LABEL,
+} from "@/lib/domain/thresholds"
 import { useSession } from "@/contexts/session-context"
 import { formatDate, formatDateTime } from "@/lib/domain/kpi"
 import {
@@ -277,6 +283,7 @@ export default function RecommendationPage() {
             <TabsTrigger value="policy">
               方針セット ({policySets.length})
             </TabsTrigger>
+            <TabsTrigger value="threshold">判定閾値</TabsTrigger>
           </TabsList>
           {/* 作成ボタンは見ているタブのものだけ出す(取り違えて作らないように) */}
           <TabsContent value="baseline" className="m-0">
@@ -289,8 +296,15 @@ export default function RecommendationPage() {
 
         <TabsContent value="baseline" className="space-y-2">
           <p className="text-xs text-muted-foreground">
-            5 動作の標準値 (recommendation_baseline_version)。
-            実測との差が大きい 2 動作を推奨します。
+            5 動作の標準値 (recommendation_baseline_version)。実測との差が大きい
+            2 動作を推奨します。
+            <span className="font-medium text-foreground">
+              {" "}
+              推奨に使うのは可動域だけです。
+            </span>
+            左右差・代償は結果画面に出しますが、推奨の順位には使いません
+            (AI推奨 v1.2)。正常 / 要注意 / 要ケア の判定もこの値ではなく
+            判定閾値タブの線で決まります。
           </p>
           {sortSets(baselineSets).map((set) => (
             <BaselineCard
@@ -302,6 +316,7 @@ export default function RecommendationPage() {
           ))}
         </TabsContent>
 
+        {/* 判定閾値には作成ボタンが無い(ここでは変えられない) */}
         <TabsContent value="policy" className="space-y-2">
           <p className="text-xs text-muted-foreground">
             順位の付け方 (recommendation_policy_version)。
@@ -316,6 +331,127 @@ export default function RecommendationPage() {
               activeBaseline={activeBaseline}
             />
           ))}
+        </TabsContent>
+
+        <TabsContent value="threshold" className="space-y-2">
+          <p className="text-xs text-muted-foreground">
+            ユーザーの結果画面で 正常 / 要注意 / 要ケア のどれを出すかを決める線
+            (threshold_version)。
+            <span className="font-medium text-foreground">
+              {" "}
+              推奨する 2 動作を決める基準値セットとは別物です。
+            </span>
+          </p>
+
+          <Card className="border-2 border-amber-300">
+            <CardHeader>
+              <CardTitle className="flex flex-wrap items-center gap-2 text-base">
+                <span className="font-mono text-sm">
+                  {ACTIVE_THRESHOLD_SET.version}
+                </span>
+                <Badge variant="outline">表示のみ</Badge>
+                {ACTIVE_THRESHOLD_SET.provisional ? (
+                  <Badge
+                    variant="outline"
+                    className="border-amber-300 text-amber-700"
+                  >
+                    暫定
+                  </Badge>
+                ) : null}
+              </CardTitle>
+              <CardDescription className="text-xs">
+                対象モデル {ACTIVE_THRESHOLD_SET.modelVersion}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[34rem] text-sm">
+                  <thead>
+                    <tr className="text-xs text-muted-foreground">
+                      <th className="py-1 pr-3 text-left font-normal">指標</th>
+                      <th className="py-1 pr-3 text-left font-normal">見方</th>
+                      <th className="py-1 pr-3 text-right font-normal">
+                        {JUDGE_LABEL.normal.label}
+                      </th>
+                      <th className="py-1 pr-3 text-right font-normal">
+                        {JUDGE_LABEL.caution.label}
+                      </th>
+                      <th className="py-1 text-right font-normal">
+                        {JUDGE_LABEL.danger.label}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ACTIVE_THRESHOLD_SET.rules.map((rule) => (
+                      <tr key={rule.group} className="border-t align-top">
+                        <td className="py-1.5 pr-3">
+                          {METRIC_GROUP_LABEL[rule.group]}
+                          {rule.note ? (
+                            <span className="block text-xs text-muted-foreground">
+                              {rule.note}
+                            </span>
+                          ) : null}
+                        </td>
+                        <td className="py-1.5 pr-3 text-xs text-muted-foreground">
+                          {THRESHOLD_KIND_LABEL[rule.kind]}
+                        </td>
+                        {rule.kind === "binary" ? (
+                          <>
+                            <td className={`py-1.5 pr-3 text-right ${JUDGE_LABEL.normal.className}`}>
+                              なし
+                            </td>
+                            <td className="py-1.5 pr-3 text-right text-muted-foreground">
+                              —
+                            </td>
+                            <td className={`py-1.5 text-right ${JUDGE_LABEL.danger.className}`}>
+                              あり
+                            </td>
+                          </>
+                        ) : rule.kind === "higher_better" ? (
+                          <>
+                            <td className={`py-1.5 pr-3 text-right tabular-nums ${JUDGE_LABEL.normal.className}`}>
+                              {rule.caution}
+                              {rule.unit} 以上
+                            </td>
+                            <td className={`py-1.5 pr-3 text-right tabular-nums ${JUDGE_LABEL.caution.className}`}>
+                              {rule.danger}〜{rule.caution}
+                              {rule.unit}
+                            </td>
+                            <td className={`py-1.5 text-right tabular-nums ${JUDGE_LABEL.danger.className}`}>
+                              {rule.danger}
+                              {rule.unit} 未満
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            <td className={`py-1.5 pr-3 text-right tabular-nums ${JUDGE_LABEL.normal.className}`}>
+                              ±{rule.caution}
+                              {rule.unit} 以内
+                            </td>
+                            <td className={`py-1.5 pr-3 text-right tabular-nums ${JUDGE_LABEL.caution.className}`}>
+                              ±{rule.caution}〜{rule.danger}
+                              {rule.unit}
+                            </td>
+                            <td className={`py-1.5 text-right tabular-nums ${JUDGE_LABEL.danger.className}`}>
+                              ±{rule.danger}
+                              {rule.unit} 超
+                            </td>
+                          </>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <p className="rounded-md border border-amber-300 bg-amber-50/60 px-3 py-2 text-xs leading-relaxed text-amber-800">
+                🔴 ここに出している数値は<strong>暫定</strong>です。ユーザー向け結果画面の
+                表示から逆算した推定で、AI分析 v1.6 の正本ではありません。閾値の正本は
+                AI分析 v1.6 側にあり、この画面からは変更できません。運用で調整したい場合は
+                AI 側の版を上げる必要があります。
+              </p>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 
