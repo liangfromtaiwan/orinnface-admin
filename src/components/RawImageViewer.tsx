@@ -162,8 +162,15 @@ export function RawImageViewer({
             <dd className="font-mono">{grant.requestId}</dd>
           </div>
           <div className="flex justify-between gap-2 border-b py-1">
-            <dt className="text-muted-foreground">承認者</dt>
-            <dd>{grant.reviewerName ?? "—"}</dd>
+            {/* 🔴 本部が自分で発行したものには承認者がいない */}
+            <dt className="text-muted-foreground">
+              {grant.issuedDirectly ? "発行者" : "承認者"}
+            </dt>
+            <dd>
+              {grant.issuedDirectly
+                ? grant.requesterName
+                : (grant.reviewerName ?? "—")}
+            </dd>
           </div>
           <div className="flex justify-between gap-2 border-b py-1">
             <dt className="text-muted-foreground">失効</dt>

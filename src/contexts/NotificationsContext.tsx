@@ -61,7 +61,8 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
           requesterRole: ROLE_LABEL[scope.role],
           requestedAt: now.toISOString(),
           status: "approved",
-          reviewerName: account.displayName,
+          // 🔴 承認者は置かない。誰も承認していないため
+          issuedDirectly: true,
           reviewedAt: now.toISOString(),
           expiresAt: new Date(
             now.getTime() + VIEW_TOKEN_TTL_SECONDS * 1000

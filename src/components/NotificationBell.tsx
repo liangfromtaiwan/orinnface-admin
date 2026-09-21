@@ -47,13 +47,19 @@ function NotificationRow({
 }) {
   const r = item.request
   const needsAction = item.kind === "review" && r.status === "pending"
+  /*
+    🔴 本部が自分で発行したものは「承認されました」と書かない。
+       誰も承認していないので、自分で自分を承認したように読めてしまう。
+  */
   const title = needsAction
     ? "生画像の一時閲覧の申請"
-    : r.status === "approved"
-      ? "承認されました"
-      : r.status === "rejected"
-        ? "却下されました"
-        : "審査待ちです"
+    : r.issuedDirectly
+      ? "一時閲覧を発行しました"
+      : r.status === "approved"
+        ? "承認されました"
+        : r.status === "rejected"
+          ? "却下されました"
+          : "審査待ちです"
 
   return (
     <button
@@ -85,13 +91,15 @@ function NotificationRow({
               }
               className="px-1 py-0 text-[10px]"
             >
-              {VIEW_REQUEST_STATUS_LABEL[r.status]}
+              {r.issuedDirectly ? "発行済み" : VIEW_REQUEST_STATUS_LABEL[r.status]}
             </Badge>
           </span>
           <span className="mt-0.5 block text-xs break-words text-muted-foreground">
             {needsAction
               ? `${r.requesterName}（${r.requesterRole}）／対象 ${r.rawImageAssetId}`
-              : `対象 ${r.rawImageAssetId}${r.reviewerName ? `／審査 ${r.reviewerName}` : ""}`}
+              : r.issuedDirectly
+                ? `対象 ${r.rawImageAssetId}／発行 ${r.requesterName}`
+                : `対象 ${r.rawImageAssetId}${r.reviewerName ? `／審査 ${r.reviewerName}` : ""}`}
           </span>
           {r.status === "rejected" && r.rejectReason ? (
             <span className="mt-0.5 block text-xs break-words text-destructive">

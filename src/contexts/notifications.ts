@@ -39,6 +39,14 @@ export type ViewRequest = {
   /** 監査ログの request ID */
   requestId: string
 
+  /**
+   * 本部が申請を経ずに自分で発行したもの。
+   * 🔴 状態は approved になるが、**誰も承認していない**。この区別が無いと
+   *    「承認されました／審査 吉田」と出て、自分で自分を承認したように見える
+   *    (実際に使用者から指摘された)。
+   */
+  issuedDirectly?: boolean
+
   reviewerName?: string
   reviewedAt?: string
   /** 却下の理由。申請者に見せる。 */
