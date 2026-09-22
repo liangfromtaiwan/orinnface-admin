@@ -289,11 +289,15 @@ export default function RecommendationPage() {
             <TabsTrigger value="muscles">筋肉タグ</TabsTrigger>
             <TabsTrigger value="metrics">指標一覧</TabsTrigger>
           </TabsList>
-          {/* 作成ボタンは見ているタブのものだけ出す(取り違えて作らないように) */}
-          <TabsContent value="baseline" className="m-0">
+          {/*
+            作成ボタンは見ているタブのものだけ出す(取り違えて作らないように)。
+            🔴 TabsContent は既定で flex-1。そのままだとタブの直後から右端まで
+               引き伸ばされ、ボタンがタブにくっついて見える。中身を右端へ寄せる。
+          */}
+          <TabsContent value="baseline" className="m-0 flex justify-end">
             <BaselineDraftDialog sets={baselineSets} />
           </TabsContent>
-          <TabsContent value="policy" className="m-0">
+          <TabsContent value="policy" className="m-0 flex justify-end">
             <PolicyDraftDialog sets={policySets} />
           </TabsContent>
         </div>
