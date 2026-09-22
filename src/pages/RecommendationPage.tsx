@@ -31,6 +31,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs"
+import { MetricCatalogTable } from "@/components/MetricCatalogTable"
 import { MuscleTagEditor } from "@/components/MuscleTagEditor"
 import { METRIC_GROUP_LABEL } from "@/lib/domain/metrics"
 import {
@@ -286,6 +287,7 @@ export default function RecommendationPage() {
             </TabsTrigger>
             <TabsTrigger value="threshold">判定閾値</TabsTrigger>
             <TabsTrigger value="muscles">筋肉タグ</TabsTrigger>
+            <TabsTrigger value="metrics">指標一覧</TabsTrigger>
           </TabsList>
           {/* 作成ボタンは見ているタブのものだけ出す(取り違えて作らないように) */}
           <TabsContent value="baseline" className="m-0">
@@ -478,6 +480,38 @@ export default function RecommendationPage() {
             いません。初期値はユーザー向け結果画面(2026-09-21)に出ていた並びです。
             正本の所在は確認中です。
           </SpecNote>
+        </TabsContent>
+
+        <TabsContent value="metrics" className="space-y-2">
+          <p className="text-xs text-muted-foreground">
+            システムが認識している指標の一覧。ユーザー向け結果画面と同じ順に並べて
+            あります。
+            <span className="font-medium text-foreground">
+              {" "}
+              追加・削除はこの画面からはできません。
+            </span>
+          </p>
+
+          <Card className="border-2 border-amber-300">
+            <CardHeader>
+              <CardTitle className="flex flex-wrap items-center gap-2 text-base">
+                指標カタログ
+                <Badge variant="outline">表示のみ</Badge>
+              </CardTitle>
+              <CardDescription className="text-xs">
+                正本は AI分析 v1.6。metric_code は AI が返すものがそのまま入ります。
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <MetricCatalogTable />
+              <p className="rounded-md border border-amber-300 bg-amber-50/60 px-3 py-2 text-xs leading-relaxed text-amber-800">
+                ここで指標を増やしても、AI が計算しないものは「欠測」の行が増えるだけ
+                です。§5 は管理画面とユーザー画面で同じ metric_code・同じ値を使うことを
+                求めているため、指標の増減は AI 側の版で行います。「暫定」は
+                metric_direction が指標責任者の承認前であることを示します(§16 P1)。
+              </p>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 
