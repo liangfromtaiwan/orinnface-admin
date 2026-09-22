@@ -579,7 +579,7 @@ export type ScreenKey =
 
 export const SCREEN_LABEL: Record<ScreenKey, string> = {
   dashboard: "ダッシュボード",
-  organizations: "会社・店舗",
+  organizations: "企業・店舗",
   customers: "顧客",
   analysis: "分析",
   care: "care動画",

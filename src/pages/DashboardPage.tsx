@@ -303,7 +303,7 @@ export default function DashboardPage() {
           <>
             {ROLE_LABEL[scope.role]} のスコープで集計しています
             {scope.crossCompany && !viewCompanyId
-              ? "(全会社・全店舗を横断)"
+              ? "(全企業・全店舗を横断)"
               : `(${viewingCompany ? `${viewingCompany.name} / ` : ""}${stores.length} 店舗 / 顧客 ${customers.length} 名)`}
             {viewingCompany ? (
               <span className="mt-0.5 block">

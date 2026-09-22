@@ -28,11 +28,11 @@ export default function AccountPage() {
         <CardContent className="space-y-2 text-sm">
           <div>
             ロール: {ROLE_LABEL[scope.role]}
-            {scope.crossCompany ? "(全会社・全店舗を横断)" : ""}
+            {scope.crossCompany ? "(全企業・全店舗を横断)" : ""}
           </div>
           {scope.companyId ? (
             <div>
-              会社:{" "}
+              企業:{" "}
               {companies.find((c) => c.id === scope.companyId)?.name ?? scope.companyId}
             </div>
           ) : null}
@@ -60,7 +60,7 @@ export default function AccountPage() {
           ))}
           {account.organizationMemberships.length === 0 &&
           account.storeMemberships.length === 0 ? (
-            <span className="text-muted-foreground">担当している会社・店舗がありません</span>
+            <span className="text-muted-foreground">担当している企業・店舗がありません</span>
           ) : null}
         </CardContent>
       </Card>

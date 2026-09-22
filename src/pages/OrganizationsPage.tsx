@@ -146,7 +146,7 @@ export default function OrganizationsPage() {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="会社・店舗"
+        title="企業・店舗"
         description={`${rows.length} 社 / ${visibleStoreCount} 店舗。契約作成は V1 では手動運用です。`}
         actions={
           <>
@@ -155,7 +155,7 @@ export default function OrganizationsPage() {
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="会社名・店舗名"
+                placeholder="企業名・店舗名"
                 className="h-9 w-64 pl-8"
               />
             </div>
@@ -184,7 +184,7 @@ export default function OrganizationsPage() {
       {rows.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            {q ? `「${query}」に一致する会社・店舗はありません` : "該当する会社はありません"}
+            {q ? `「${query}」に一致する企業・店舗はありません` : "該当する企業はありません"}
             {contract !== "all" ? `(契約状態: ${CONTRACT_STATUS_LABEL[contract]})` : ""}
           </CardContent>
         </Card>
@@ -384,7 +384,7 @@ export default function OrganizationsPage() {
       })}
 
       <SpecNote>
-        単店舗契約でも内部的に会社と店舗を作成します。複数店舗を横断管理へ変更する場合は
+        単店舗契約でも内部的に企業と店舗を作成します。複数店舗を横断管理へ変更する場合は
         同じアカウントに契約企業管理者を付与し、アカウント・顧客・分析履歴・同意・保存期限を
         作り直しません。一部の店舗だけを管理する担当者には、対象店舗ごとに店舗管理者の
         担当を複数割り当てます(固定のエリア管理者ロールは追加しません)。
