@@ -7,6 +7,7 @@ import { createContext, useContext } from "react"
 
 import type { Branding } from "@/lib/domain/branding"
 import type { CareRequestAction } from "@/lib/domain/care-catalog"
+import type { MusclePose, MuscleTagMap } from "@/lib/domain/muscles"
 import type {
   RecommendationPose,
   SetAction,
@@ -109,6 +110,18 @@ export type SessionValue = {
     action: CareRequestAction,
     reason: string
   ) => void
+
+  /* ---- 動作ごとの関連筋肉タグ (結果画面の表示) ---- */
+
+  muscleTags: MuscleTagMap
+  /**
+   * 🔴 呼ぶ前に `decideAddMuscleTag()` で可否を判定すること。
+   * 🔴 表示だけの情報だが、ユーザーに見えるものなので変更は監査に残す。
+   */
+  addMuscleTag: (pose: MusclePose, name: string) => void
+  removeMuscleTag: (pose: MusclePose, name: string) => void
+  /** 🔴 同じ筋肉が複数の動作に付くので、改名は全動作をまとめて行う。 */
+  renameMuscleTag: (from: string, to: string) => void
 
   /* ---- 推奨基準値・方針 (§8) ---- */
 

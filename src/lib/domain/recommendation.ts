@@ -37,12 +37,13 @@ export type RecommendationPose = (typeof RECOMMENDATION_POSES)[number]
 /** 推奨する動作の件数 (AI推奨 v1.2)。 */
 export const RECOMMENDATION_ITEM_COUNT = 2
 
+/** 動作名はユーザー向け結果画面と同じにする (2026-09-21 確認)。 */
 export const POSE_LABEL: Record<RecommendationPose, string> = {
-  smile: "スマイル",
+  smile: "口角挙上",
   pucker: "口すぼめ",
   jaw_open: "開口",
   eye_open: "開眼",
-  brow_furrow: "眉寄せ",
+  brow_furrow: "眉間収縮",
 }
 
 /* ------------------------------------------------------------------ *

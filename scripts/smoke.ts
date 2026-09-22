@@ -21,6 +21,8 @@ import { monthlyActiveUsers, totalAnalyses, continuingUsers, churnRiskUsers, imp
 import { buildPeriod } from "@/lib/domain/periods"
 import { careAssets, careAssignments } from "@/lib/mock/seed"
 import { BADGE_HINT } from "@/components/badge-hints"
+import { DEFAULT_MUSCLE_TAGS, MAX_TAGS_PER_POSE, addMuscleTag, allMuscleNames, decideAddMuscleTag, removeMuscleTag, renameMuscleTag } from "@/lib/domain/muscles"
+import { POSE_DISPLAY } from "@/lib/domain/metrics"
 import { baselineSets, policySets } from "@/lib/mock/seed"
 import { applyBaselineDelete, applyPolicyDelete, decideSetDelete, applyBaselineEdit, applyPolicyEdit, decideSetEdit, availableActions, applyBaselineAction, applyPolicyAction, comparisonBaseFor, createBaselineDraft, decideDraftCreate, decideSetAction, diffBaselineSets, nextVersion, previewBaselineImpact, previewPolicyImpact, rankRecommendedPoses, baselineValuesOf, RECOMMENDATION_POSES } from "@/lib/domain/recommendation"
 
@@ -1047,6 +1049,76 @@ console.log("── §8 推奨基準値・方針の版管理 ──")
     comparisonBaseFor(baselineSets, draft)?.version === active.version)
   check("active の比較対象は直前の退役版",
     comparisonBaseFor(baselineSets, active)?.version === retired.version)
+}
+
+
+console.log("── 結果画面との整合 (2026-09-21 確認) ──")
+{
+  const byPose = new Map(POSE_DISPLAY.map(p => [p.pose, p]))
+  check("動作名が結果画面と同じ",
+    byPose.get("smile")?.label === "口角挙上" &&
+    byPose.get("brow_furrow")?.label === "眉間収縮",
+    "(スマイル / 眉寄せ ではない)")
+  check("左右差は動作ごとに名前が違う",
+    new Set(POSE_DISPLAY.map(p => p.asymmetryLabel)).size === POSE_DISPLAY.length,
+    `(${POSE_DISPLAY.map(p => p.asymmetryLabel).join(" / ")})`)
+  check("代償があるのは開眼と眉間収縮だけ",
+    POSE_DISPLAY.filter(p => p.compensationLabel).map(p => p.pose).join() === "eye_open,brow_furrow",
+    "(結果画面に他の 3 動作の代償は無い)")
+  {
+    const comp = metricsByGroup("compensation")
+    check("代償の指標も 2 つだけ", comp.length === 2, `(${comp.length})`)
+  }
+  {
+    const neutral = metricsByGroup("neutral")
+    check("無表情は 6 指標のまま", neutral.length === 6)
+    check("画面で確認できた無表情は 3 指標",
+      neutral.filter(m => m.screenConfirmed).length === 3,
+      "(残り 3 は裏付けが無い → QUESTIONS #23)")
+  }
+  {
+    const face = metricsByGroup("range").concat(metricsByGroup("asymmetry"))
+    check("顔の指標の単位は pt", face.every(m => m.unit === "pt"))
+    check("姿勢は pt にしない",
+      metricsByGroup("posture_front").every(m => m.unit !== "pt"),
+      "(画面で確認できていないため mm のまま)")
+  }
+}
+
+console.log("── 筋肉タグ ──")
+{
+  check("初期値は結果画面と同じ",
+    DEFAULT_MUSCLE_TAGS.smile.join() === "頬骨筋,口輪筋" &&
+    DEFAULT_MUSCLE_TAGS.brow_furrow.join() === "前頭筋,皺眉筋")
+  check("本部以外は編集できない",
+    decideAddMuscleTag(false, [], "咬筋").kind === "denied")
+  check("空文字は足せない",
+    decideAddMuscleTag(true, [], "  ").kind === "denied")
+  check("同じ筋肉は 2 度足せない",
+    decideAddMuscleTag(true, ["口輪筋"], "口輪筋").kind === "denied")
+  check("上限を超えては足せない",
+    decideAddMuscleTag(true, ["a","b","c","d"], "e").kind === "denied",
+    `(上限 ${MAX_TAGS_PER_POSE})`)
+  {
+    const added = addMuscleTag(DEFAULT_MUSCLE_TAGS, "eye_open", " 上眼瞼挙筋 ")
+    check("前後の空白は落として足す", added.eye_open.join() === "眼輪筋,上眼瞼挙筋")
+    check("他の動作は変わらない", added.smile === DEFAULT_MUSCLE_TAGS.smile)
+    const removed = removeMuscleTag(added, "eye_open", "眼輪筋")
+    check("外せる", removed.eye_open.join() === "上眼瞼挙筋")
+  }
+  {
+    // 同じ筋肉が複数の動作に付いている
+    const shared = allMuscleNames(DEFAULT_MUSCLE_TAGS)
+      .filter(n => POSE_DISPLAY.filter(p => DEFAULT_MUSCLE_TAGS[p.pose].includes(n)).length > 1)
+    check("複数の動作に付く筋肉がある", shared.length > 0, `(${shared.join(" / ")})`)
+    const renamed = renameMuscleTag(DEFAULT_MUSCLE_TAGS, "口輪筋", "口輪筋(orbicularis oris)")
+    check("改名は全動作にまとめて効く",
+      renamed.smile.includes("口輪筋(orbicularis oris)") &&
+      renamed.pucker.includes("口輪筋(orbicularis oris)"),
+      "(1 か所だけ直すと同じ筋肉が 2 つの名前になる)")
+    check("改名で重複は作らない",
+      renameMuscleTag(DEFAULT_MUSCLE_TAGS, "頬骨筋", "口輪筋").smile.join() === "口輪筋")
+  }
 }
 
 console.log(failed === 0 ? "\n✅ 全部 pass" : `\n❌ ${failed} 件 fail`)

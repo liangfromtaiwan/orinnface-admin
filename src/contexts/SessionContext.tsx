@@ -38,6 +38,14 @@ import {
   type SetAction,
 } from "@/lib/domain/recommendation"
 import {
+  DEFAULT_MUSCLE_TAGS,
+  addMuscleTag as applyAddMuscleTag,
+  removeMuscleTag as applyRemoveMuscleTag,
+  renameMuscleTag as applyRenameMuscleTag,
+  type MusclePose,
+  type MuscleTagMap,
+} from "@/lib/domain/muscles"
+import {
   applyInvite,
   applyMembershipChange,
   membershipAuditLabel,
@@ -134,6 +142,8 @@ export function SessionProvider({
     useState<RecommendationBaselineSet[]>(seededBaselineSets)
   const [policySets, setPolicySets] =
     useState<RecommendationPolicySet[]>(seededPolicySets)
+  /** 動作ごとの関連筋肉タグ。結果画面に出る表示用の情報。 */
+  const [muscleTags, setMuscleTags] = useState<MuscleTagMap>(DEFAULT_MUSCLE_TAGS)
 
   /** アカウントを変えたら視点は全社横断に戻す(他社の視点を持ち越さない)。 */
   function switchAccount(id: string) {
@@ -276,6 +286,42 @@ export function SessionProvider({
       )
     },
     [accountId, careAssignments, pushAudit]
+  )
+
+  /* ---- 筋肉タグ ---- */
+
+  /*
+    🔴 可否は呼び出し側の decideAddMuscleTag()。ここは state と監査だけ。
+    ⚠️ 監査カテゴリに「表示設定の変更」が無いため policy_change を借りている。
+       §11 のカテゴリ一覧に足すべきか QUESTIONS_FOR_YOSHIDA.md #23 で確認中。
+       借りているあいだは targetLabel に「筋肉タグ」と明記して見分けられるようにする。
+  */
+  const addMuscleTag = useCallback(
+    (pose: MusclePose, name: string) => {
+      setMuscleTags((prev) => applyAddMuscleTag(prev, pose, name))
+      pushAudit("policy_change", `筋肉タグ ${pose} に「${name.trim()}」を追加`, "")
+    },
+    [pushAudit]
+  )
+
+  const removeMuscleTag = useCallback(
+    (pose: MusclePose, name: string) => {
+      setMuscleTags((prev) => applyRemoveMuscleTag(prev, pose, name))
+      pushAudit("policy_change", `筋肉タグ ${pose} から「${name}」を削除`, "")
+    },
+    [pushAudit]
+  )
+
+  const renameMuscleTag = useCallback(
+    (from: string, to: string) => {
+      setMuscleTags((prev) => applyRenameMuscleTag(prev, from, to))
+      pushAudit(
+        "policy_change",
+        `筋肉タグ「${from}」を「${to.trim()}」へ改名(全動作)`,
+        ""
+      )
+    },
+    [pushAudit]
   )
 
   /* ---- 推奨基準値・方針 (§8) ---- */
@@ -518,6 +564,10 @@ export function SessionProvider({
       replaceCareAsset,
       addCareVideoAsset,
       reviewCareRequest,
+      muscleTags,
+      addMuscleTag,
+      removeMuscleTag,
+      renameMuscleTag,
       baselineSets,
       policySets,
       createBaselineDraft,
@@ -557,6 +607,10 @@ export function SessionProvider({
     replaceCareAsset,
     addCareVideoAsset,
     reviewCareRequest,
+    muscleTags,
+    addMuscleTag,
+    removeMuscleTag,
+    renameMuscleTag,
     baselineSets,
     policySets,
     createBaselineDraft,

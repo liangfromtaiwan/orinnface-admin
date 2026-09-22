@@ -53,21 +53,31 @@ export type MetricDef = {
   direction: MetricDirection
   /** §16 P1 未決: metric_direction が指標責任者承認前のもの。 */
   provisional: boolean
+  /**
+   * ユーザー向け結果画面に実際に出ていることを確認できた指標か。
+   * false のものは、画面で裏付けが取れていない。対外的な説明に使わない。
+   */
+  screenConfirmed?: boolean
 }
 
 /**
  * 無表情 6 指標 (§5)。
  * 🔴 neutral の値を 5動作の可動域と混ぜて表示しない。
+ * 🔴 先頭 3 つはユーザー向け結果画面で実際に出ていた指標(2026-09-21 確認)。
+ *    残り 3 つは画面に出ておらず、名前も §5 の「6 指標」という個数以外の
+ *    裏付けが無い(`screenConfirmed: false`)。個数を合わせるために残してある。
+ *    → 6 指標の正しい内訳は QUESTIONS_FOR_YOSHIDA.md #23 で確認中。
  */
 const NEUTRAL_METRICS: MetricDef[] = [
-  { code: "neutral_brow_height", label: "眉の高さ", unit: "pt" },
-  { code: "neutral_eye_open", label: "開瞼幅", unit: "pt" },
-  { code: "neutral_mouth_corner", label: "口角位置", unit: "pt" },
-  { code: "neutral_cheek_volume", label: "頬のボリューム", unit: "pt" },
-  { code: "neutral_jaw_line", label: "フェイスライン", unit: "pt" },
-  { code: "neutral_face_symmetry", label: "左右対称性", unit: "pt" },
+  { code: "neutral_eye_height_diff", label: "左右差：目の高さ", screenConfirmed: true },
+  { code: "neutral_mouth_corner_diff", label: "左右差：口角", screenConfirmed: true },
+  { code: "neutral_mouth_corner_droop", label: "口角の下がり", screenConfirmed: true },
+  { code: "neutral_cheek_volume", label: "頬のボリューム", screenConfirmed: false },
+  { code: "neutral_jaw_line", label: "フェイスライン", screenConfirmed: false },
+  { code: "neutral_face_symmetry", label: "左右対称性", screenConfirmed: false },
 ].map((m) => ({
   ...m,
+  unit: "pt",
   group: "neutral" as const,
   analysisType: "face" as const,
   // 無表情は「基準の姿」であり単純な高低で良し悪しを決めない項目が多い。
@@ -82,16 +92,48 @@ const NEUTRAL_METRICS: MetricDef[] = [
   ⚠️ mm 換算は V1 スコープに入っている(V1/V2 スコープ確定)。pt と mm の関係は
      AI分析 v1.6 側の正本を要確認。
 */
-const POSES: { pose: Exclude<PoseCode, "neutral">; label: string }[] = [
-  { pose: "smile", label: "いー(smile)" },
-  { pose: "pucker", label: "うー(pucker)" },
-  { pose: "jaw_open", label: "あー(jaw_open)" },
-  { pose: "eye_open", label: "目(eye_open)" },
-  { pose: "brow_furrow", label: "眉間(brow_furrow)" },
+/*
+  🔴 名前はユーザー向け結果画面に合わせる (2026-09-21 確認)。
+     画面の見出しは撮影時の指示語(い ー / う ー / あ ー / 目)で、その下に動作名が付く。
+  🔴 左右差は動作ごとに測っている部位が違う。「左右差」とだけ書くと何の左右差か
+     分からないので、画面と同じ名前を持たせる。
+  🔴 代償は画面に出ていた 2 動作(開眼・眉間収縮)だけ。他の 3 動作には無い。
+*/
+const POSES: {
+  pose: Exclude<PoseCode, "neutral">
+  /** 動作名。 */
+  label: string
+  /** 撮影時の指示語。画面では見出しに出る。 */
+  cue: string
+  /** その動作で測る左右差の名前。 */
+  asymmetryLabel: string
+  /** 代償・過緊張の名前。無い動作は undefined。 */
+  compensationLabel?: string
+}[] = [
+  { pose: "smile", label: "口角挙上", cue: "い ー", asymmetryLabel: "いー笑顔" },
+  { pose: "pucker", label: "口すぼめ", cue: "う ー", asymmetryLabel: "口中心" },
+  { pose: "jaw_open", label: "開口", cue: "あ ー", asymmetryLabel: "顎" },
+  {
+    pose: "eye_open",
+    label: "開眼",
+    cue: "目",
+    asymmetryLabel: "目",
+    compensationLabel: "目の代償",
+  },
+  {
+    pose: "brow_furrow",
+    label: "眉間収縮",
+    cue: "眉間",
+    asymmetryLabel: "眉の高さ",
+    compensationLabel: "眉の過緊張",
+  },
 ]
 
-/** 5動作 × (可動域 / 左右差 / 代償・過緊張) */
-const POSE_METRICS: MetricDef[] = POSES.flatMap(({ pose, label }) => [
+export const POSE_DISPLAY = POSES
+
+/** 5動作 × (可動域 / 左右差 / 代償・過緊張。代償は 2 動作のみ) */
+const POSE_METRICS: MetricDef[] = POSES.flatMap(
+  ({ pose, label, asymmetryLabel, compensationLabel }) => [
   {
     code: `${pose}_range`,
     label: `${label} 可動域`,
@@ -104,7 +146,7 @@ const POSE_METRICS: MetricDef[] = POSES.flatMap(({ pose, label }) => [
   },
   {
     code: `${pose}_asymmetry`,
-    label: `${label} 左右差`,
+    label: `${label} 左右差：${asymmetryLabel}`,
     group: "asymmetry" as const,
     analysisType: "face" as const,
     poseCode: pose,
@@ -112,17 +154,23 @@ const POSE_METRICS: MetricDef[] = POSES.flatMap(({ pose, label }) => [
     direction: "toZero" as const,
     provisional: true,
   },
-  {
-    code: `${pose}_compensation`,
-    label: `${label} 代償・過緊張`,
-    group: "compensation" as const,
-    analysisType: "face" as const,
-    poseCode: pose,
-    unit: "index",
-    direction: "lower" as const,
-    provisional: true,
-  },
-])
+  /* 代償は画面に出ていた 2 動作だけ。無い動作に空欄を作らない */
+  ...(compensationLabel
+    ? [
+        {
+          code: `${pose}_compensation`,
+          label: compensationLabel,
+          group: "compensation" as const,
+          analysisType: "face" as const,
+          poseCode: pose,
+          unit: "index",
+          direction: "lower" as const,
+          provisional: true,
+        },
+      ]
+    : []),
+  ]
+)
 
 /**
  * 姿勢は B2B のみ。正面 4 / 側面 4 (§5)。
