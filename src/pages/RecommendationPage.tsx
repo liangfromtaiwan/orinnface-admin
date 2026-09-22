@@ -286,8 +286,8 @@ export default function RecommendationPage() {
               方針セット ({policySets.length})
             </TabsTrigger>
             <TabsTrigger value="threshold">判定閾値</TabsTrigger>
-            <TabsTrigger value="muscles">筋肉タグ</TabsTrigger>
             <TabsTrigger value="metrics">指標一覧</TabsTrigger>
+            <TabsTrigger value="muscles">筋肉タグ</TabsTrigger>
           </TabsList>
           {/*
             作成ボタンは見ているタブのものだけ出す(取り違えて作らないように)。
@@ -462,30 +462,6 @@ export default function RecommendationPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="muscles" className="space-y-2">
-          <p className="text-xs text-muted-foreground">
-            結果画面で各動作のカードの下に出るタグ。どの筋肉に効く動作なのかを本人に
-            伝えるためのもので、
-            <span className="font-medium text-foreground">
-              {" "}
-              推奨の順位や判定には使いません
-            </span>
-            （表示だけ）。
-          </p>
-
-          <Card>
-            <CardContent className="pt-6">
-              <MuscleTagEditor />
-            </CardContent>
-          </Card>
-
-          <SpecNote>
-            仕様書 v1.0 にも AI推奨 v1.2 にも、このタグについての記述は見つかって
-            いません。初期値はユーザー向け結果画面(2026-09-21)に出ていた並びです。
-            正本の所在は確認中です。
-          </SpecNote>
-        </TabsContent>
-
         <TabsContent value="metrics" className="space-y-2">
           <p className="text-xs text-muted-foreground">
             システムが認識している指標の一覧。ユーザー向け結果画面と同じ順に並べて
@@ -517,6 +493,30 @@ export default function RecommendationPage() {
             </CardContent>
           </Card>
         </TabsContent>
+        <TabsContent value="muscles" className="space-y-2">
+          <p className="text-xs text-muted-foreground">
+            結果画面で各動作のカードの下に出るタグ。どの筋肉に効く動作なのかを本人に
+            伝えるためのもので、
+            <span className="font-medium text-foreground">
+              {" "}
+              推奨の順位や判定には使いません
+            </span>
+            （表示だけ）。
+          </p>
+
+          <Card>
+            <CardContent className="pt-6">
+              <MuscleTagEditor />
+            </CardContent>
+          </Card>
+
+          <SpecNote>
+            仕様書 v1.0 にも AI推奨 v1.2 にも、このタグについての記述は見つかって
+            いません。初期値はユーザー向け結果画面(2026-09-21)に出ていた並びです。
+            正本の所在は確認中です。
+          </SpecNote>
+        </TabsContent>
+
       </Tabs>
 
       <SpecNote>
