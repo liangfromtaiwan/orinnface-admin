@@ -295,6 +295,63 @@ export function applyDirectReplacement(
 
 
 /* ------------------------------------------------------------------ *
+ * 権利確認 (§7.1, §16 P0)
+ *
+ * 🔴 権利を確認できるのは本部だけ。企業・店舗が上げた動画は「未確認」で登録され、
+ *    本部が中身と権利を確かめて初めて公開できるようになる。
+ * 🔴 未確認の動画は公開できない (`decideCareRequestAction` が承認を拒否する)。
+ * ⚠️ 何をもって「確認済」とするか(契約書の保管先など)は仕様書に無い。
+ *    §16 P0 の「既存動画の権利確認」も未了。→ QUESTIONS_FOR_YOSHIDA.md #24
+ * ------------------------------------------------------------------ */
+
+export type RightsDenial = "not_operator" | "already_cleared"
+
+export const RIGHTS_DENIAL_LABEL: Record<RightsDenial, string> = {
+  not_operator: "権利を確認できるのは本部だけです。",
+  already_cleared: "すでに確認済みです。",
+}
+
+export type RightsDecision =
+  | { kind: "allowed" }
+  | { kind: "denied"; reason: RightsDenial }
+
+export function decideRightsClear(
+  scope: Scope,
+  asset: CareVideoAsset | undefined
+): RightsDecision {
+  if (!can(scope, "care.approve")) {
+    return { kind: "denied", reason: "not_operator" }
+  }
+  if (!asset) return { kind: "denied", reason: "already_cleared" }
+  if (asset.rightsCleared) {
+    return { kind: "denied", reason: "already_cleared" }
+  }
+  return { kind: "allowed" }
+}
+
+/**
+ * 権利確認を記録する。
+ * 🔴 可否は decideRightsClear()。ここは状態を進めるだけ。
+ * 🔴 確認した人と日時を残す。チェックだけでは後から追えない。
+ */
+export function applyRightsCleared(
+  assets: CareVideoAsset[],
+  assetId: string,
+  ctx: { actorName: string; now: string }
+): CareVideoAsset[] {
+  return assets.map((a) =>
+    a.id === assetId && !a.rightsCleared
+      ? {
+          ...a,
+          rightsCleared: true,
+          rightsClearedBy: ctx.actorName,
+          rightsClearedAt: ctx.now,
+        }
+      : a
+  )
+}
+
+/* ------------------------------------------------------------------ *
  * 差し替え申請の審査 (§7.1)
  *
  * 🔴 承認・却下・取消ができるのは本部だけ (§4.2: 契約企業・店舗は申請はできるが

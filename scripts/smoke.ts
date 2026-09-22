@@ -9,7 +9,7 @@
 import { adminAccounts, analysisSessions, carePlaybacks, customers, storeDataLinks, stores, rawImageAssets, handoffTokens, recommendationRuns, NOW } from "@/lib/mock/seed"
 import { resolveScope, canViewCustomer, visibleCustomerIds, can, visibleScreens, canAccessScreen, viewScopeFor, companyAdminsOf, canManageMembership, applyMembershipChange, hasMembership, membershipAuditLabel, decideInvite, applyInvite, isEmailLike } from "@/lib/domain/scope"
 import { CARE_VIDEO_SLOTS, careEntitlement, assertCareSlotInvariant, canPlaySlot, careSlotFor, decideCareReplacement, applyDirectReplacement, addCareAsset, assertKnownVideoCode, careAssetUsage } from "@/lib/domain/care-catalog"
-import { applyCareRequestAction, decideCareRequestAction, resolveAssignment, visibleCareRequests } from "@/lib/domain/care-catalog"
+import { applyCareRequestAction, applyRightsCleared, decideCareRequestAction, decideRightsClear, resolveAssignment, visibleCareRequests } from "@/lib/domain/care-catalog"
 import { matchesCustomerFilter, CUSTOMER_FILTER_ORDER } from "@/lib/domain/plans"
 import { decideRawImageView, usesB2bDisplay } from "@/lib/domain/scope"
 import { compareWithAgeBand, metricsByGroup } from "@/lib/domain/metrics"
@@ -772,6 +772,43 @@ console.log("── §7.1 差し替え申請の審査 ──")
     check("取り消すと一段広い範囲へ戻る",
       resolveAssignment(after, "care_1m_pucker", { companyId: "co_lumiere" }, now)?.careAssetId
         === "ca_default_care_1m_pucker")
+  }
+}
+
+console.log("── 権利確認 (§7.1) ──")
+{
+  const opScope = resolveScope(adminAccounts[0], stores)
+  const caScope = resolveScope(adminAccounts[1], stores)
+  const pending = careAssets.find(a => !a.rightsCleared)!
+  const cleared = careAssets.find(a => a.rightsCleared)!
+
+  check("権利未確認の動画が seed にある", pending !== undefined, `(${pending.title})`)
+  check("本部は権利を確認できる",
+    decideRightsClear(opScope, pending).kind === "allowed")
+  check("契約企業管理者は権利を確認できない",
+    decideRightsClear(caScope, pending).kind === "denied",
+    "(§7.1 権利確認は本部の仕事)")
+  check("確認済みのものは二度確認しない",
+    decideRightsClear(opScope, cleared).kind === "denied")
+
+  {
+    const after = applyRightsCleared(careAssets, pending.id,
+      { actorName: "吉田", now: NOW.toISOString() })
+    const a = after.find(x => x.id === pending.id)!
+    check("確認すると公開できる状態になる", a.rightsCleared)
+    check("誰がいつ確認したかが残る",
+      a.rightsClearedBy === "吉田" && a.rightsClearedAt === NOW.toISOString(),
+      "(チェックだけでは後から追えない)")
+    check("他の動画は変わらない", after.length === careAssets.length)
+  }
+
+  {
+    // 未確認のままでは差し替えを承認できない
+    const req = careAssignments.find(a => a.status === "pending_approval")!
+    const d = decideCareRequestAction(opScope,
+      { ...req, careAssetId: pending.id }, pending, "approve")
+    check("権利未確認の動画は承認できない",
+      d.kind === "denied" && d.reason === "rights_pending")
   }
 }
 

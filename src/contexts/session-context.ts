@@ -111,6 +111,13 @@ export type SessionValue = {
     reason: string
   ) => void
 
+  /**
+   * 権利確認を記録する (§7.1)。
+   * 🔴 呼ぶ前に `decideRightsClear()` で可否を判定すること。
+   * 🔴 確認した人と日時を asset に残し、根拠は理由として §11 の監査にも残す。
+   */
+  clearCareAssetRights: (careAssetId: string, reason: string) => void
+
   /* ---- 動作ごとの関連筋肉タグ (結果画面の表示) ---- */
 
   muscleTags: MuscleTagMap

@@ -379,6 +379,13 @@ export type CareVideoAsset = {
   durationSeconds: number
   /** 権利確認の状態。未確認の asset は公開できない。 */
   rightsCleared: boolean
+  /**
+   * 権利を確認した人と日時 (§7.1 の「本部が提供者・内容・権利を確認する」)。
+   * 🔴 チェックが付いているだけでは、誰がいつ何をもって確認したのか後から
+   *    分からない。確認の根拠は理由として §11 の監査にも残す。
+   */
+  rightsClearedBy?: string
+  rightsClearedAt?: string
   createdAt: string
   /**
    * アップロードされた動画ファイル名。

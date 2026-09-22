@@ -12,6 +12,7 @@ import { toast } from "sonner"
 
 import { CareAssetAddDialog, CareReplaceDialog } from "@/components/CareAssetDialog"
 import { CareRequestReviewDialog } from "@/components/CareRequestReviewDialog"
+import { CareRightsDialog } from "@/components/CareRightsDialog"
 import { InfoHint } from "@/components/InfoHint"
 import { PageHeader, SpecNote } from "@/components/PageHeader"
 import { Badge } from "@/components/ui/badge"
@@ -616,9 +617,23 @@ export default function CareVideosPage() {
                       </TableCell>
                       <TableCell className="text-xs">
                         {a.rightsCleared ? (
-                          <span className="text-muted-foreground">確認済</span>
+                          <>
+                            <span className="text-muted-foreground">確認済</span>
+                            {/* 誰がいつ確認したのかを出す。チェックだけでは追えない */}
+                            {a.rightsClearedBy ? (
+                              <span className="block text-muted-foreground">
+                                {a.rightsClearedBy}
+                                {a.rightsClearedAt
+                                  ? ` / ${formatDate(a.rightsClearedAt)}`
+                                  : ""}
+                              </span>
+                            ) : null}
+                          </>
                         ) : (
-                          <span className="text-amber-700">未確認</span>
+                          <span className="flex flex-wrap items-center gap-1.5">
+                            <span className="text-amber-700">未確認</span>
+                            <CareRightsDialog asset={a} />
+                          </span>
                         )}
                       </TableCell>
                       <TableCell className="max-w-40 truncate text-xs text-muted-foreground">

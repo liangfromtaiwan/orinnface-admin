@@ -20,6 +20,7 @@ import {
 import {
   addCareAsset,
   applyCareRequestAction,
+  applyRightsCleared,
   applyDirectReplacement,
   careAssetIdFor,
   CARE_REQUEST_ACTION_LABEL,
@@ -286,6 +287,26 @@ export function SessionProvider({
       )
     },
     [accountId, careAssignments, pushAudit]
+  )
+
+  /** 🔴 可否は呼び出し側の decideRightsClear()。ここは state と監査だけ。 */
+  const clearCareAssetRights = useCallback(
+    (careAssetId: string, reason: string) => {
+      const actor =
+        seededAccounts.find((a) => a.id === accountId) ?? seededAccounts[0]
+      const now = new Date().toISOString()
+      const target = careAssets.find((a) => a.id === careAssetId)
+      setCareAssets((prev) =>
+        applyRightsCleared(prev, careAssetId, { actorName: actor.displayName, now })
+      )
+      if (!target) return
+      pushAudit(
+        "care_replacement",
+        `動画「${target.title}」(${target.provider})の権利を確認済にした`,
+        reason
+      )
+    },
+    [accountId, careAssets, pushAudit]
   )
 
   /* ---- 筋肉タグ ---- */
@@ -564,6 +585,7 @@ export function SessionProvider({
       replaceCareAsset,
       addCareVideoAsset,
       reviewCareRequest,
+      clearCareAssetRights,
       muscleTags,
       addMuscleTag,
       removeMuscleTag,
@@ -607,6 +629,7 @@ export function SessionProvider({
     replaceCareAsset,
     addCareVideoAsset,
     reviewCareRequest,
+    clearCareAssetRights,
     muscleTags,
     addMuscleTag,
     removeMuscleTag,
