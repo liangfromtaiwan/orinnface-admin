@@ -53,28 +53,24 @@ export type MetricDef = {
   direction: MetricDirection
   /** §16 P1 未決: metric_direction が指標責任者承認前のもの。 */
   provisional: boolean
-  /**
-   * ユーザー向け結果画面に実際に出ていることを確認できた指標か。
-   * false のものは、画面で裏付けが取れていない。対外的な説明に使わない。
-   */
-  screenConfirmed?: boolean
 }
 
 /**
- * 無表情 6 指標 (§5)。
+ * 無表情の指標。
  * 🔴 neutral の値を 5動作の可動域と混ぜて表示しない。
- * 🔴 先頭 3 つはユーザー向け結果画面で実際に出ていた指標(2026-09-21 確認)。
- *    残り 3 つは画面に出ておらず、名前も §5 の「6 指標」という個数以外の
- *    裏付けが無い(`screenConfirmed: false`)。個数を合わせるために残してある。
- *    → 6 指標の正しい内訳は QUESTIONS_FOR_YOSHIDA.md #23 で確認中。
+ * 🔴 ユーザー向け結果画面に出ている 3 つに合わせた(使用者確定 2026-09-22)。
+ *
+ * ⚠️ §5 は「neutral 無表情 **6** 指標」と書いている。画面は 3 つしか出していない
+ *    ので、画面を正とした。外した 3 つは、こちらで仮に置いていた名前で、画面にも
+ *    仕様書の指標名一覧にも裏付けが無かったもの:
+ *      頬のボリューム / フェイスライン / 左右対称性
+ *    6 指標の正しい内訳は QUESTIONS_FOR_YOSHIDA.md #23 で確認中。戻すときは
+ *    この履歴(git)から拾える。
  */
 const NEUTRAL_METRICS: MetricDef[] = [
-  { code: "neutral_eye_height_diff", label: "左右差：目の高さ", screenConfirmed: true },
-  { code: "neutral_mouth_corner_diff", label: "左右差：口角", screenConfirmed: true },
-  { code: "neutral_mouth_corner_droop", label: "口角の下がり", screenConfirmed: true },
-  { code: "neutral_cheek_volume", label: "頬のボリューム", screenConfirmed: false },
-  { code: "neutral_jaw_line", label: "フェイスライン", screenConfirmed: false },
-  { code: "neutral_face_symmetry", label: "左右対称性", screenConfirmed: false },
+  { code: "neutral_eye_height_diff", label: "左右差：目の高さ" },
+  { code: "neutral_mouth_corner_diff", label: "左右差：口角" },
+  { code: "neutral_mouth_corner_droop", label: "口角の下がり" },
 ].map((m) => ({
   ...m,
   unit: "pt",

@@ -427,12 +427,12 @@ console.log("── 生画像の閲覧可否 (吉田さん確定 2026-09-07) ─
 console.log("── 同年代比較 (§5.2 neutral) ──")
 {
   const neutral = metricsByGroup("neutral")
-  check("無表情は 6 指標", neutral.length === 6, `(${neutral.length})`)
+  check("無表情は 3 指標", neutral.length === 3, `(${neutral.length})`)
   const withBand = customers.find(c => c.ageBand && !c.unregistered)!
   const sess = analysisSessions.find(s =>
     s.dataSubjectId === withBand.dataSubjectId && s.analysisType === "face" && s.metrics.length > 0)!
   const rows = compareWithAgeBand(sess.metrics, withBand.ageBand, ageBandAverages)
-  check("neutral 6 指標すべてに行が出る", rows.length === 6)
+  check("neutral の全指標に行が出る", rows.length === 3)
   check("同年代平均が引ける", rows.every(r => r.average !== undefined),
     `(${withBand.ageBand})`)
   check("差が計算される", rows.every(r => r.diff !== undefined))
@@ -1071,10 +1071,10 @@ console.log("── 結果画面との整合 (2026-09-21 確認) ──")
   }
   {
     const neutral = metricsByGroup("neutral")
-    check("無表情は 6 指標のまま", neutral.length === 6)
-    check("画面で確認できた無表情は 3 指標",
-      neutral.filter(m => m.screenConfirmed).length === 3,
-      "(残り 3 は裏付けが無い → QUESTIONS #23)")
+    check("無表情は結果画面と同じ 3 指標",
+      neutral.map(m => m.label).join(" / ") ===
+        "左右差：目の高さ / 左右差：口角 / 口角の下がり",
+      "(⚠️ §5 は 6 指標。画面を正とした → QUESTIONS #23)")
   }
   {
     const face = metricsByGroup("range").concat(metricsByGroup("asymmetry"))
