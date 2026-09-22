@@ -31,7 +31,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
-import { useSession } from "@/contexts/session-context"
+import { useSession, useStoreName } from "@/contexts/session-context"
 import { formatDate } from "@/lib/domain/kpi"
 import { can } from "@/lib/domain/scope"
 import {
@@ -50,6 +50,7 @@ const DISPLAY_LIMIT = 150
 
 export default function RetentionPage() {
   const { scope, customers } = useSession()
+  const storeName = useStoreName()
   const canOperate = can(scope, "retention.operate")
   const [state, setState] = useState<RetentionState | "all">("all")
   /** asset ID と顧客番号での絞り込み。件数が多く、目的の 1 件に辿り着けない。 */
@@ -82,11 +83,15 @@ export default function RetentionPage() {
       const subject = a.dataSubjectId
         ? (codeById.get(a.dataSubjectId) ?? a.dataSubjectId)
         : (a.anonymousId ?? "")
+      const captureStore = captureStoreById.get(a.analysisSessionId)
+      const place = captureStore ? storeName(captureStore) : "ご本人撮影"
       return (
-        a.id.toLowerCase().includes(q) || subject.toLowerCase().includes(q)
+        a.id.toLowerCase().includes(q) ||
+        subject.toLowerCase().includes(q) ||
+        place.toLowerCase().includes(q)
       )
     })
-  }, [state, query, codeById])
+  }, [state, query, codeById, captureStoreById, storeName])
 
   const rows = useMemo(
     () =>
@@ -126,7 +131,7 @@ export default function RetentionPage() {
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="asset ID・顧客番号・anonymous ID"
+                placeholder="asset ID・顧客番号・撮影場所"
                 className="h-9 w-56 pl-8"
               />
             </div>
@@ -185,8 +190,19 @@ export default function RetentionPage() {
                     <TableCell className="text-sm">
                       {RETENTION_POLICY_LABEL[a.policy]}
                     </TableCell>
+                    {/*
+                      🔴 どこで撮ったかは「誰が見られるか」を決める。店舗は自店で
+                         撮影した画像しか見られず、自宅撮影分は本部しか見られない
+                         (decideRawImageView)。画面に出ていないと、閲覧できない
+                         理由が読み取れない。
+                    */}
                     <TableCell className="text-sm tabular-nums">
                       {formatDate(a.capturedAt)}
+                      <div className="text-[11px] text-muted-foreground">
+                        {captureStoreById.get(a.analysisSessionId)
+                          ? storeName(captureStoreById.get(a.analysisSessionId))
+                          : "ご本人撮影"}
+                      </div>
                     </TableCell>
                     <TableCell className="text-sm tabular-nums">
                       <span className={expired ? "text-amber-700" : undefined}>
