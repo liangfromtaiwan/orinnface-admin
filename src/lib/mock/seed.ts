@@ -657,6 +657,16 @@ export const rawImageAssets: RawImageAsset[] = rawImageStubs.map((stub) => {
   }
 })
 
+/*
+  期限到達・不存在確認中は、期限からの日数だけでは再現できない(署名 URL を止めた
+  直後・削除した直後という「処理の途中」なので)。状態の一覧と絞り込みを画面で
+  確認できるよう、1 件ずつ混ぜる。
+*/
+if (rawImageAssets.length > 20) {
+  rawImageAssets[18] = { ...rawImageAssets[18], state: "expired" }
+  rawImageAssets[19] = { ...rawImageAssets[19], state: "verifying" }
+}
+
 // 削除失敗を 1 件混ぜ、再試行 UI を確認できるようにする。
 if (rawImageAssets.length > 12) {
   rawImageAssets[11] = {

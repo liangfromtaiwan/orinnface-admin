@@ -53,7 +53,7 @@ function NotificationRow({
         />
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-center gap-1.5 text-sm font-medium">
-            一時閲覧を発行しました
+            生画像の閲覧を発行しました
             {/* 🔴 失効済みかどうかは、開く前に分かるようにする */}
             <Badge variant={expired ? "secondary" : "default"} className="px-1 py-0 text-[10px]">
               {expired ? "失効済み" : "閲覧できます"}

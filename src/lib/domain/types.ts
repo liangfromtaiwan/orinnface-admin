@@ -501,13 +501,21 @@ export type RetentionState =
   | "deleted"
   | "failed"
 
+/*
+  🔴 §10 の流れ: 期限到達 → 署名 URL 停止 → queue → 全 generation 削除 →
+     不存在確認 → 監査完了。
+  🔴 画面には「キュー」「済」のような内部語・略語を出さない(使用者確定 2026-09-22)。
+     state の値(deletion_queued など)は DB・API と同じまま変えない。
+*/
 export const RETENTION_STATE_LABEL: Record<RetentionState, string> = {
   active: "保持中",
   notice_scheduled: "通知予定",
+  /** 期限が過ぎて署名 URL が止まった状態。削除はまだ始まっていない。 */
   expired: "期限到達",
-  deletion_queued: "削除キュー",
+  /** 削除の待ち行列に入り、処理が進んでいる状態。 */
+  deletion_queued: "削除処理中",
   verifying: "不存在確認中",
-  deleted: "削除済",
+  deleted: "削除完了",
   failed: "失敗",
 }
 

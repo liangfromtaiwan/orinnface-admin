@@ -102,14 +102,15 @@ export function RawImageViewButton({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" disabled={disabled} title={disabledReason}>
-          <EyeIcon /> 一時閲覧
+          <EyeIcon /> 閲覧
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>生画像の一時閲覧（本部）</DialogTitle>
+          <DialogTitle>生画像の閲覧（本部）</DialogTitle>
           <DialogDescription>
             対象 {rawImageAssetId} の署名 URL を {VIEW_TOKEN_TTL_SECONDS} 秒だけ発行します。
+            承認を待つ必要はありません。
             本部の横断閲覧には理由の入力が必要です。閲覧者・対象・理由・日時・request ID が
             image_access_logs に記録されます。
           </DialogDescription>
@@ -136,7 +137,7 @@ export function RawImageViewButton({
               issue({ rawImageAssetId, purpose: reason.trim() })
               setOpen(false)
               setReason("")
-              toast.success("一時閲覧を発行しました", {
+              toast.success("閲覧できます", {
                 description: `通知から開けます（有効 ${VIEW_TOKEN_TTL_SECONDS / 60} 分）`,
               })
             }}

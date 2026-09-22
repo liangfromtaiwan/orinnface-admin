@@ -355,6 +355,10 @@ scripts/              仕様不変条件の smoke test
 - `AggregateStat` を通さない KPI 表示は書かない → 母数・欠測・version・期間が必ず出る
 - `scope.ts` の `canViewCustomer()` は active な `store_data_link` + membership の両方を要求
 - `care-catalog.ts` は 13 枠固定。`assertCareSlotInvariant()` が `npm run smoke` で検証
+- 保持の状態は画面に**内部語を出さない**(使用者確定 2026-09-22)。
+  削除キュー → 「削除処理中」/ 削除済 → 「削除完了」。state の値(deletion_queued 等)は
+  DB・API と同じまま変えない。§10 の流れは 期限到達(署名 URL 停止) → 削除処理中 →
+  不存在確認中 → 削除完了
 - 生画像は `RawImagePlaceholder` / `RawImageViewButton` 経由のみ(理由入力 + 300秒 token)。
   🔴 **人による承認は無い**(使用者確定 2026-09-21)。見られる人がその場で発行する。
   本部=全社横断・理由必須 / 店舗=自店で撮影した画像のみ・理由不要(吉田さん 2026-09-07) /
