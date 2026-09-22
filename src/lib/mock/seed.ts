@@ -317,8 +317,10 @@ function personTrend(personSeed: number): number {
 const PT_SCALE: Record<MetricDef["group"], number> = {
   neutral: 2.5,
   range: 4,
-  asymmetry: 2.5,
-  compensation: 1,
+  // 結果画面の左右差は ±4〜10pt。2.5 倍では全件が「要注意」になっていた
+  asymmetry: 1.5,
+  // 代償は「なし」が多数で、たまに「あり」が出る分布にする
+  compensation: 0.38,
   posture_front: 1,
   posture_side: 1,
 }

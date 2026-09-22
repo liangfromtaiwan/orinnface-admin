@@ -14,6 +14,7 @@ import { useState } from "react"
 import { AlertTriangleIcon } from "lucide-react"
 
 import { InfoHint } from "@/components/InfoHint"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -29,7 +30,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { METRIC_GROUP_LABEL, metricsByGroup } from "@/lib/domain/metrics"
+import {
+  METRIC_GROUP_LABEL,
+  POSE_DISPLAY,
+  getMetric,
+  metricsByGroup,
+} from "@/lib/domain/metrics"
+import { useSession } from "@/contexts/session-context"
+import {
+  ACTIVE_THRESHOLD_SET,
+  BINARY_LABEL,
+  JUDGE_LABEL,
+  judge,
+} from "@/lib/domain/thresholds"
 import type { AnalysisSession } from "@/lib/domain/types"
 import { recommendationRuns } from "@/lib/mock/seed"
 
@@ -71,12 +84,19 @@ export function SessionDetail({ session }: { session: AnalysisSession }) {
           <MetricGroupCard
             session={session}
             group="neutral"
-            note="無表情の6指標です。5動作の可動域とは別の指標なので混ぜて表示しません。同年代との比較は「比較」タブにあります。"
+            note="無表情の6指標です。5動作の可動域とは別の指標なので混ぜて表示しません。同年代との比較は「比較」タブにあります。各動作のカードに出る 正常 / 要注意 / 要ケア は判定閾値(推奨設定の「判定閾値」タブ)から引いていますが、その閾値は暫定です。"
           />
-          <div className="grid gap-4 lg:grid-cols-3">
-            <MetricGroupCard session={session} group="range" />
-            <MetricGroupCard session={session} group="asymmetry" />
-            <MetricGroupCard session={session} group="compensation" />
+          {/*
+            🔴 動作ごとに 1 枚にする。ユーザーの結果画面が「い ー」「う ー」…の
+               セクション単位で並んでいるので、本部が同じ並びで見られないと
+               「私の口すぼめが要ケアなのはなぜ」と聞かれたときに突き合わせられない。
+               指標の種類(可動域/左右差/代償)ごとに 3 枚へ分けると、1 つの動作の
+               話をするのに 3 枚を見比べることになる。
+          */}
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {POSE_DISPLAY.map((pose) => (
+              <PoseCard key={pose.pose} session={session} pose={pose} />
+            ))}
           </div>
         </>
       ) : (
@@ -177,6 +197,95 @@ export function SessionDetail({ session }: { session: AnalysisSession }) {
   )
 }
 
+/**
+ * 1 動作分の結果。ユーザーの結果画面のカード 1 枚に対応する。
+ * 🔴 判定(正常/要注意/要ケア)は判定閾値から引く。閾値は暫定なので、その旨を出す。
+ * 🔴 筋肉タグは表示だけの情報で、推奨の順位や判定には使わない。
+ */
+function PoseCard({
+  session,
+  pose,
+}: {
+  session: AnalysisSession
+  pose: (typeof POSE_DISPLAY)[number]
+}) {
+  const { muscleTags } = useSession()
+
+  const rows = [
+    getMetric(`${pose.pose}_range`),
+    getMetric(`${pose.pose}_asymmetry`),
+    getMetric(`${pose.pose}_compensation`),
+  ].filter((d): d is NonNullable<typeof d> => d !== undefined)
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex flex-wrap items-baseline gap-2 text-base">
+          {pose.cue}
+          <span className="text-sm font-normal text-muted-foreground">
+            {pose.label}
+          </span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <div>
+          {rows.map((def) => {
+            const m = session.metrics.find((x) => x.metricCode === def.code)
+            const rule = ACTIVE_THRESHOLD_SET.rules.find(
+              (r) => r.group === def.group
+            )
+            const verdict = m && rule ? judge(rule, m.value) : undefined
+            /* 可動域の「◯◯ 可動域」は見出しと重複するので落とす */
+            const label = def.label.replace(`${pose.label} `, "")
+            return (
+              <div
+                key={def.code}
+                className="flex items-baseline justify-between gap-2 border-b py-1 text-sm last:border-0"
+              >
+                <span className="text-muted-foreground">{label}</span>
+                <span className="flex items-baseline gap-2 tabular-nums">
+                  {m ? (
+                    rule?.kind === "binary" && verdict ? (
+                      /* 代償は数値を出さない。結果画面と同じ なし / あり */
+                      <span className={`text-xs ${JUDGE_LABEL[verdict].className}`}>
+                        {BINARY_LABEL[verdict === "danger" ? "danger" : "normal"]}
+                      </span>
+                    ) : (
+                      <>
+                        <span>
+                          {m.value.toFixed(1)}
+                          <span className="ml-0.5 text-xs text-muted-foreground">
+                            {def.unit}
+                          </span>
+                        </span>
+                        {verdict ? (
+                          <span className={`text-xs ${JUDGE_LABEL[verdict].className}`}>
+                            {JUDGE_LABEL[verdict].label}
+                          </span>
+                        ) : null}
+                      </>
+                    )
+                  ) : (
+                    <span className="text-muted-foreground">欠測</span>
+                  )}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+
+        <div className="flex flex-wrap gap-1">
+          {muscleTags[pose.pose].map((tag) => (
+            <Badge key={tag} variant="outline" className="px-1.5 py-0 text-[10px]">
+              {tag}
+            </Badge>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 function MetricGroupCard({
   session,
   group,
@@ -200,17 +309,29 @@ function MetricGroupCard({
       <CardContent className="space-y-1">
         {defs.map((def) => {
           const m = session.metrics.find((x) => x.metricCode === def.code)
+          /* 判定閾値がある指標は判定も出す。姿勢は閾値が未確認なので値だけ */
+          const rule = ACTIVE_THRESHOLD_SET.rules.find((r) => r.group === def.group)
+          const verdict = m && rule ? judge(rule, m.value) : undefined
           return (
             <div
               key={def.code}
               className="flex items-baseline justify-between gap-2 border-b py-1 text-sm last:border-0"
             >
               <span className="text-muted-foreground">{def.label}</span>
-              <span className="tabular-nums">
+              <span className="flex items-baseline gap-2 tabular-nums">
                 {m ? (
                   <>
-                    {m.value.toFixed(2)}
-                    <span className="ml-1 text-xs text-muted-foreground">{def.unit}</span>
+                    <span>
+                      {m.value.toFixed(1)}
+                      <span className="ml-0.5 text-xs text-muted-foreground">
+                        {def.unit}
+                      </span>
+                    </span>
+                    {verdict ? (
+                      <span className={`text-xs ${JUDGE_LABEL[verdict].className}`}>
+                        {JUDGE_LABEL[verdict].label}
+                      </span>
+                    ) : null}
                   </>
                 ) : (
                   <span className="text-muted-foreground">欠測</span>

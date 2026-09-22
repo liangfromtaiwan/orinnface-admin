@@ -90,9 +90,10 @@ export const ACTIVE_THRESHOLD_SET: ThresholdSet = {
       group: "compensation",
       kind: "binary",
       unit: "—",
-      caution: 1,
-      danger: 1,
-      note: "代償・過緊張。結果画面では「なし」「あり」で出す。",
+      caution: 5,
+      // この値以上で「あり」。結果画面は数値を出さず なし / あり だけを見せる
+      danger: 5,
+      note: "代償・過緊張。結果画面では数値を出さず「なし」「あり」で示す。",
     },
   ],
 }
@@ -102,7 +103,8 @@ export function judge(
   rule: ThresholdRule,
   value: number
 ): "normal" | "caution" | "danger" {
-  if (rule.kind === "binary") return value > 0 ? "danger" : "normal"
+  // binary は danger を境に なし / あり。0 超で「あり」にすると全件が「あり」になる
+  if (rule.kind === "binary") return value >= rule.danger ? "danger" : "normal"
   const v = rule.kind === "near_zero" ? Math.abs(value) : value
   if (rule.kind === "near_zero") {
     if (v <= rule.caution) return "normal"
@@ -110,6 +112,12 @@ export function judge(
   }
   if (v >= rule.caution) return "normal"
   return v >= rule.danger ? "caution" : "danger"
+}
+
+/** 代償・過緊張は数値ではなく なし / あり で見せる (結果画面に合わせる)。 */
+export const BINARY_LABEL: Record<"normal" | "danger", string> = {
+  normal: "なし",
+  danger: "あり",
 }
 
 export const JUDGE_LABEL: Record<
