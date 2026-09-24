@@ -48,6 +48,7 @@ import { companyAdminsOf, isEmailLike } from "@/lib/domain/scope"
 import {
   CONTRACT_STATUS_LABEL,
   ROLE_LABEL,
+  type AdminAccount,
   type Company,
   type Store,
   type StoreId,
@@ -65,6 +66,91 @@ type DraftStore = {
   managerName: string
 }
 
+/**
+ * 担当者の一覧。外す操作もここに置く。
+ * 🔴 外すのは元に戻すのに再招待が要るので、一段置いて理由を必須にする (§13)。
+ * 🔴 自分の担当は自分で外せない。外すと画面から締め出される。
+ */
+function MemberList({
+  members,
+  role,
+  onRevoke,
+}: {
+  members: AdminAccount[]
+  /** 店舗のように 1 人が複数の役割を持ちうる場合に役割も出す。 */
+  role?: (account: AdminAccount) => string | undefined
+  onRevoke?: (account: AdminAccount) => void
+}) {
+  const { account } = useSession()
+  const [armed, setArmed] = useState<string | null>(null)
+  const [reason, setReason] = useState("")
+
+  if (members.length === 0) {
+    return <p className="text-xs text-amber-700">未設定</p>
+  }
+
+  return (
+    <ul className="space-y-1">
+      {members.map((m) => {
+        const label = role?.(m)
+        const isSelf = m.id === account.id
+        return (
+          <li key={m.id} className="space-y-1">
+            <span className="flex flex-wrap items-center gap-x-2 text-xs">
+              <span>
+                {m.displayName}
+                {label ? `（${label}）` : ""}
+                {m.status === "invited" ? "（招待中）" : ""}
+              </span>
+              {onRevoke && !isSelf ? (
+                <button
+                  type="button"
+                  className="text-destructive hover:underline"
+                  onClick={() => {
+                    setArmed(armed === m.id ? null : m.id)
+                    setReason("")
+                  }}
+                >
+                  {armed === m.id ? "やめる" : "外す"}
+                </button>
+              ) : null}
+              {isSelf ? (
+                <span className="text-muted-foreground">自分の担当は外せません</span>
+              ) : null}
+            </span>
+            {armed === m.id && onRevoke ? (
+              <span className="flex items-center gap-2">
+                <Input
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder="外す理由（監査に残ります）"
+                  className="h-8 flex-1"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-destructive"
+                  disabled={!isReasonEnough(reason)}
+                  title={
+                    !isReasonEnough(reason) ? "理由を入力してください" : undefined
+                  }
+                  onClick={() => {
+                    onRevoke(m)
+                    setArmed(null)
+                    setReason("")
+                  }}
+                >
+                  外す
+                </Button>
+              </span>
+            ) : null}
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
 /** 担当者の一覧と、メールでの招待。追加・編集の両方で同じ形にする。 */
 function MemberField({
   label,
@@ -74,15 +160,18 @@ function MemberField({
   name,
   onEmail,
   onName,
+  onRevoke,
 }: {
   label: string
   hint?: string
   /** すでに担当している人。未登録なら「招待中」。 */
-  members?: { displayName: string; status: string }[]
+  members?: AdminAccount[]
   email: string
   name: string
   onEmail: (v: string) => void
   onName: (v: string) => void
+  /** 担当を外す。渡さなければ外せない。 */
+  onRevoke?: (account: AdminAccount) => void
 }) {
   return (
     <div className="space-y-1">
@@ -94,19 +183,7 @@ function MemberField({
           </span>
         ) : null}
       </p>
-      {members ? (
-        <p className="text-xs text-muted-foreground">
-          {members.length === 0 ? (
-            <span className="text-amber-700">未設定</span>
-          ) : (
-            members
-              .map((m) =>
-                m.status === "invited" ? `${m.displayName}(招待中)` : m.displayName
-              )
-              .join(" / ")
-          )}
-        </p>
-      ) : null}
+      {members ? <MemberList members={members} onRevoke={onRevoke} /> : null}
       <Input
         value={email}
         onChange={(e) => onEmail(e.target.value)}
@@ -139,14 +216,18 @@ function MemberField({
 /** 店舗 1 件分の入力。追加・編集で同じ形にする。 */
 function StoreFields({
   store,
+  storeId,
   members,
   onChange,
   onRemove,
+  onRevoke,
 }: {
   store: DraftStore
-  members?: { displayName: string; status: string }[]
+  storeId?: StoreId
+  members?: AdminAccount[]
   onChange: (patch: Partial<DraftStore>) => void
   onRemove?: () => void
+  onRevoke?: (account: AdminAccount) => void
 }) {
   return (
     <div className="space-y-1 rounded-md border p-2.5">
@@ -185,18 +266,17 @@ function StoreFields({
         ) : null}
       </div>
       {members ? (
-        <p className="text-xs text-muted-foreground">
-          担当者:{" "}
-          {members.length === 0 ? (
-            <span className="text-amber-700">未割当</span>
-          ) : (
-            members
-              .map((m) =>
-                m.status === "invited" ? `${m.displayName}(招待中)` : m.displayName
-              )
-              .join(" / ")
-          )}
-        </p>
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground">担当者</p>
+          <MemberList
+            members={members}
+            role={(a) => {
+              const m = a.storeMemberships.find((x) => x.storeId === storeId)
+              return m ? ROLE_LABEL[m.role] : undefined
+            }}
+            onRevoke={onRevoke}
+          />
+        </div>
       ) : null}
       <div className="flex items-center gap-2">
         <Input
@@ -426,6 +506,7 @@ export function EditCompanyDialog({ company }: { company: Company }) {
     createStore,
     updateStore,
     inviteMember,
+    changeMembership,
   } = useSession()
   const [open, setOpen] = useState(false)
   const [name, setName] = useState(company.name)
@@ -572,13 +653,22 @@ export function EditCompanyDialog({ company }: { company: Company }) {
           </div>
 
           <MemberField
-            label="企業管理者"
+            label="契約企業管理者"
             hint="メールで招待します"
             members={admins}
             email={adminEmail}
             name={adminName}
             onEmail={setAdminEmail}
             onName={setAdminName}
+            onRevoke={(a) => {
+              changeMembership(
+                a.id,
+                { kind: "company", companyId: company.id, role: "company_admin" },
+                "revoke",
+                `${company.name} の契約企業管理者から外す`
+              )
+              toast.success(`${a.displayName} の担当を外しました`)
+            }}
           />
 
           <div className="space-y-1">
@@ -616,6 +706,7 @@ export function EditCompanyDialog({ company }: { company: Company }) {
             {own.map((s) => (
               <StoreFields
                 key={s.id}
+                storeId={s.id}
                 store={storeDrafts[s.id] ?? {
                   name: s.name,
                   status: s.status,
@@ -623,6 +714,17 @@ export function EditCompanyDialog({ company }: { company: Company }) {
                   managerName: "",
                 }}
                 members={membersOf(s.id)}
+                onRevoke={(a) => {
+                  const m = a.storeMemberships.find((x) => x.storeId === s.id)
+                  if (!m) return
+                  changeMembership(
+                    a.id,
+                    { kind: "store", storeId: s.id, role: m.role },
+                    "revoke",
+                    `${s.name} の担当から外す`
+                  )
+                  toast.success(`${a.displayName} の担当を外しました`)
+                }}
                 onChange={(patch) =>
                   setStoreDrafts((prev) => ({
                     ...prev,
@@ -690,7 +792,8 @@ export function EditCompanyDialog({ company }: { company: Company }) {
 }
 
 export function EditStoreDialog({ store }: { store: Store }) {
-  const { scope, accounts, stores, updateStore, inviteMember } = useSession()
+  const { scope, accounts, stores, updateStore, inviteMember, changeMembership } =
+    useSession()
   const [open, setOpen] = useState(false)
   const [name, setName] = useState(store.name)
   const [status, setStatus] = useState(store.status)
@@ -794,21 +897,24 @@ export function EditStoreDialog({ store }: { store: Store }) {
           {/* 🔴 今いる人を出したうえで招待する。入力欄だけだと誰が居るか分からない */}
           <div className="space-y-1 border-t pt-3">
             <p className="text-sm font-medium">担当者</p>
-            <p className="text-xs text-muted-foreground">
-              {members.length === 0 ? (
-                <span className="text-amber-700">未割当</span>
-              ) : (
-                members
-                  .map((m) => {
-                    const r = m.storeMemberships.find((x) => x.storeId === store.id)
-                    const label = r ? `（${ROLE_LABEL[r.role]}）` : ""
-                    return m.status === "invited"
-                      ? `${m.displayName}${label}(招待中)`
-                      : `${m.displayName}${label}`
-                  })
-                  .join(" / ")
-              )}
-            </p>
+            <MemberList
+              members={members}
+              role={(a) => {
+                const r = a.storeMemberships.find((x) => x.storeId === store.id)
+                return r ? ROLE_LABEL[r.role] : undefined
+              }}
+              onRevoke={(a) => {
+                const r = a.storeMemberships.find((x) => x.storeId === store.id)
+                if (!r) return
+                changeMembership(
+                  a.id,
+                  { kind: "store", storeId: store.id, role: r.role },
+                  "revoke",
+                  `${store.name} の担当から外す`
+                )
+                toast.success(`${a.displayName} の担当を外しました`)
+              }}
+            />
             <div className="flex items-center gap-2">
               <Input
                 value={email}
@@ -847,7 +953,7 @@ export function EditStoreDialog({ store }: { store: Store }) {
             ) : (
               <p className="text-xs text-muted-foreground">
                 招待された方が登録・ログインするまで、このアカウントは使えません。
-                担当を外すのは一覧の担当者欄から行います。
+                担当を外すときは、上の一覧から「外す」を押してください。
               </p>
             )}
           </div>
