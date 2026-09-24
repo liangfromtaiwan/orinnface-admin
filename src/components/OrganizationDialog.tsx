@@ -56,7 +56,12 @@ const STORE_STATUS_LABEL: Record<Store["status"], string> = {
   closed: "閉店",
 }
 
-type DraftStore = { name: string; status: Store["status"]; managerEmail: string }
+type DraftStore = {
+  name: string
+  status: Store["status"]
+  managerEmail: string
+  managerName: string
+}
 
 /* ------------------------------------------------------------------ *
  * 新規追加
@@ -67,9 +72,10 @@ export function CreateOrganizationDialog() {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState("")
   const [adminEmail, setAdminEmail] = useState("")
+  const [adminName, setAdminName] = useState("")
   const [status, setStatus] = useState<Company["contractStatus"]>("active")
   const [draftStores, setDraftStores] = useState<DraftStore[]>([
-    { name: "", status: "active", managerEmail: "" },
+    { name: "", status: "active", managerEmail: "", managerName: "" },
   ])
 
   if (!canEditOrganizations(scope)) return null
@@ -84,12 +90,15 @@ export function CreateOrganizationDialog() {
   function reset() {
     setName("")
     setAdminEmail("")
+    setAdminName("")
     setStatus("active")
-    setDraftStores([{ name: "", status: "active", managerEmail: "" }])
+    setDraftStores([
+      { name: "", status: "active", managerEmail: "", managerName: "" },
+    ])
   }
 
   function submit() {
-    const companyId = createCompany({
+    const { companyId, storeIds } = createCompany({
       name,
       contractStatus: status,
       stores: filledStores.map((s) => ({ name: s.name, status: s.status })),
@@ -98,11 +107,20 @@ export function CreateOrganizationDialog() {
     if (adminEmail.trim()) {
       inviteMember(
         adminEmail.trim(),
-        "",
+        adminName.trim(),
         { kind: "company", companyId, role: "company_admin" },
         `企業「${name.trim()}」の追加に伴う企業管理者の招待`
       )
     }
+    filledStores.forEach((st, i) => {
+      if (!st.managerEmail.trim()) return
+      inviteMember(
+        st.managerEmail.trim(),
+        st.managerName.trim(),
+        { kind: "store", storeId: storeIds[i], role: "store_admin" },
+        `店舗「${st.name.trim()}」の追加に伴う店舗管理者の招待`
+      )
+    })
     toast.success(`企業「${name.trim()}」を追加しました`, {
       description:
         filledStores.length > 0 ? `店舗 ${filledStores.length} 件も追加しました` : undefined,
@@ -161,6 +179,14 @@ export function CreateOrganizationDialog() {
               onChange={(e) => setAdminEmail(e.target.value)}
               type="email"
               placeholder="admin@example.jp"
+              className="h-9"
+            />
+            {/* 🔴 名前が無いとメールアドレスがそのまま表示名になる。本人が
+                   登録するまでの仮の名前として、分かっていれば入れておく */}
+            <Input
+              value={adminName}
+              onChange={(e) => setAdminName(e.target.value)}
+              placeholder="お名前（任意・分かっていれば）"
               className="h-9"
             />
             {adminEmail.trim() && !isEmailLike(adminEmail) ? (
@@ -250,19 +276,33 @@ export function CreateOrganizationDialog() {
                     </Button>
                   ) : null}
                 </div>
-                <Input
-                  value={st.managerEmail}
-                  onChange={(e) =>
-                    setDraftStores((prev) =>
-                      prev.map((x, k) =>
-                        k === i ? { ...x, managerEmail: e.target.value } : x
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={st.managerEmail}
+                    onChange={(e) =>
+                      setDraftStores((prev) =>
+                        prev.map((x, k) =>
+                          k === i ? { ...x, managerEmail: e.target.value } : x
+                        )
                       )
-                    )
-                  }
-                  type="email"
-                  placeholder="担当者のメール（任意・店舗管理者として招待）"
-                  className="h-8"
-                />
+                    }
+                    type="email"
+                    placeholder="担当者のメール（任意・店舗管理者として招待）"
+                    className="h-8 flex-1"
+                  />
+                  <Input
+                    value={st.managerName}
+                    onChange={(e) =>
+                      setDraftStores((prev) =>
+                        prev.map((x, k) =>
+                          k === i ? { ...x, managerName: e.target.value } : x
+                        )
+                      )
+                    }
+                    placeholder="お名前（任意）"
+                    className="h-8 w-40"
+                  />
+                </div>
               </div>
             ))}
             <Button
@@ -272,7 +312,7 @@ export function CreateOrganizationDialog() {
               onClick={() =>
                 setDraftStores((prev) => [
                   ...prev,
-                  { name: "", status: "active", managerEmail: "" },
+                  { name: "", status: "active", managerEmail: "", managerName: "" },
                 ])
               }
             >

@@ -260,7 +260,9 @@ console.log("── 招待 (吉田さん確定 2026-09-14) ──")
   check("招待したアカウントは invited", created.status === "invited")
   check("2FA は本人が設定するので未設定から始まる", created.twoFactorEnabled === false)
   check("招待と同時に担当が割り当たる", hasMembership(created, target))
-  check("表示名が無ければメールのローカル部を使う", created.displayName === "new.staff")
+  check("表示名が無ければメールアドレスをそのまま出す",
+    created.displayName === "new.staff@lumiere.example.jp",
+    "(local part だけだと人の名前のように見える)")
   check("招待しても seed は書き換わらない", adminAccounts.length === 4)
 
   // 既にアカウントがある人は作り直さず担当だけ足す (§2)

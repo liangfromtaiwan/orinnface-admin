@@ -133,7 +133,7 @@ export type SessionValue = {
     name: string
     contractStatus: Company["contractStatus"]
     stores: { name: string; status: Store["status"] }[]
-  }) => CompanyId
+  }) => { companyId: CompanyId; storeIds: StoreId[] }
   updateCompany: (
     companyId: CompanyId,
     patch: { name?: string; contractStatus?: Company["contractStatus"] }

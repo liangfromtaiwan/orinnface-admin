@@ -361,26 +361,27 @@ export function SessionProvider({
     }) => {
       const now = new Date().toISOString()
       const companyId = nextCompanyId(companies)
+      /*
+        🔴 店舗の id は呼び出し側にも返す。担当者を「その店舗の店舗管理者」として
+           招待するのに要るため。更新関数の中だけで採番すると外から分からない。
+      */
+      const storeIds: StoreId[] = []
+      let nextStores = stores
+      for (const st of input.stores) {
+        const id = nextStoreId(companyId, nextStores)
+        storeIds.push(id)
+        nextStores = applyCreateStore(nextStores, { id, companyId, ...st }, now)
+      }
       setCompanies((prev) => applyCreateCompany(prev, { ...input, id: companyId }, now))
-      setStores((prev) => {
-        let next = prev
-        for (const st of input.stores) {
-          next = applyCreateStore(
-            next,
-            { id: nextStoreId(companyId, next), companyId, ...st },
-            now
-          )
-        }
-        return next
-      })
+      setStores(nextStores)
       pushAudit(
         "organization_change",
         `企業「${input.name.trim()}」を追加(店舗 ${input.stores.length} 件)`,
         ""
       )
-      return companyId
+      return { companyId, storeIds }
     },
-    [companies, pushAudit]
+    [companies, stores, pushAudit]
   )
 
   const updateCompany = useCallback(

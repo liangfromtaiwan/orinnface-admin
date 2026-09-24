@@ -305,7 +305,11 @@ export function applyInvite(
   const id = `acc_invited_${now36(input.now)}`
   const created: AdminAccount = {
     id,
-    displayName: input.displayName?.trim() || email.split("@")[0],
+    /*
+      🔴 名前が無いときはメールアドレスをそのまま出す。local part だけにすると
+         「admin」「ginza」が人の名前のように見える。本人が登録するまでの仮の表示。
+    */
+    displayName: input.displayName?.trim() || email,
     email,
     // 本人が設定するまで 2FA は無い。必須ロールなら画面が警告を出す (§2)
     twoFactorEnabled: false,
