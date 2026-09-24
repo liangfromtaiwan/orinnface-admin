@@ -36,7 +36,6 @@ import {
 } from "@/components/ui/sidebar"
 import { ContractBadge } from "@/components/ContractBadge"
 import { useSession } from "@/contexts/session-context"
-import { readableTextOn } from "@/lib/domain/branding"
 
 export function OrganizationSwitcher() {
   const {
@@ -55,23 +54,22 @@ export function OrganizationSwitcher() {
 
   const header = (
     <>
+      {/*
+        🔴 ロゴがあるときだけ企業のメインカラーを敷く。ロゴはその色の上で
+           見えるように作られているため (§4.1)。ロゴが無いときのタイルは黒で、
+           企業色は表示名とヘッダー側で伝える(使用者確定 2026-09-24)。
+      */}
       <div
-        className="flex aspect-square size-8 shrink-0 items-center justify-center overflow-hidden rounded-md"
-        style={{ backgroundColor: branding.mainColor }}
+        className="flex aspect-square size-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-foreground"
+        style={branding.logoUrl ? { backgroundColor: branding.mainColor } : undefined}
       >
         {branding.logoUrl ? (
           <img src={branding.logoUrl} alt="" className="size-full object-contain" />
         ) : current ? (
-          <Building2Icon
-            className="size-4"
-            style={{ color: readableTextOn(branding.mainColor) }}
-          />
+          <Building2Icon className="size-4 text-background" />
         ) : (
           /* 🔴 本部は「運営する側」なので盾。企業と同じビルにすると区別が付かない */
-          <ShieldIcon
-            className="size-4"
-            style={{ color: readableTextOn(branding.mainColor) }}
-          />
+          <ShieldIcon className="size-4 text-background" />
         )}
       </div>
       <div className="grid flex-1 text-left text-sm leading-tight">
