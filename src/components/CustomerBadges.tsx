@@ -28,7 +28,7 @@ export function CustomerBadges({
   linked: boolean
   className?: string
 }) {
-  const size = cn("px-1 py-0 text-[10px]", className)
+  const size = cn("px-1 py-0 text-xs", className)
 
   if (customer.unregistered) {
     return (

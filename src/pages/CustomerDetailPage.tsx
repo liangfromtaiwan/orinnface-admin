@@ -349,7 +349,7 @@ export default function CustomerDetailPage() {
                           if (!asset) return "—"
                           const isStore = asset.provider !== "FitWayWorld"
                           return isStore ? (
-                            <Badge variant="secondary" className="px-1 py-0 text-[10px]">
+                            <Badge variant="secondary" className="px-1 py-0 text-xs">
                               {asset.provider}提供
                             </Badge>
                           ) : (

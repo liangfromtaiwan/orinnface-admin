@@ -121,7 +121,7 @@ export default function AuditPage() {
                   <TableCell>
                     <Badge
                       variant={e.category === "image_access" ? "default" : "outline"}
-                      className="text-[10px]"
+                      className="text-xs"
                     >
                       {AUDIT_CATEGORY_LABEL[e.category]}
                     </Badge>

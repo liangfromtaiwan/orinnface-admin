@@ -182,7 +182,7 @@ export default function AnalysisPage() {
                       // failed / 進行中は completedAt を持たないため開始日を出す
                       <span className="text-muted-foreground">
                         {formatDate(s.startedAt)}
-                        <span className="ml-1 text-[10px]">開始</span>
+                        <span className="ml-1 text-xs">開始</span>
                       </span>
                     )}
                   </TableCell>
@@ -207,7 +207,7 @@ export default function AnalysisPage() {
                   </TableCell>
                   <TableCell>
                     {isEligible(s) ? (
-                      <Badge variant="outline" className="px-1 py-0 text-[10px]">
+                      <Badge variant="outline" className="px-1 py-0 text-xs">
                         適格
                       </Badge>
                     ) : (

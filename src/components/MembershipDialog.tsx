@@ -141,7 +141,7 @@ function RoleSection({ target }: { target: MembershipTarget }) {
     <section className="space-y-2">
       <div className="flex items-center gap-2">
         <h3 className="text-sm font-medium">{ROLE_LABEL[target.role]}</h3>
-        <Badge variant="outline" className="text-[10px]">
+        <Badge variant="outline" className="text-xs">
           {holders.length} 名
         </Badge>
       </div>
@@ -166,7 +166,7 @@ function RoleSection({ target }: { target: MembershipTarget }) {
                   {a.status === "invited" ? (
                     <Badge
                       variant="outline"
-                      className="shrink-0 border-amber-300 px-1 py-0 text-[10px] text-amber-700"
+                      className="shrink-0 border-amber-300 px-1 py-0 text-xs text-amber-700"
                     >
                       招待中
                     </Badge>

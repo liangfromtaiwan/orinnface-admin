@@ -276,7 +276,7 @@ function PoseCard({
 
         <div className="flex flex-wrap gap-1">
           {muscleTags[pose.pose].map((tag) => (
-            <Badge key={tag} variant="outline" className="px-1.5 py-0 text-[10px]">
+            <Badge key={tag} variant="outline" className="px-1.5 py-0 text-xs">
               {tag}
             </Badge>
           ))}

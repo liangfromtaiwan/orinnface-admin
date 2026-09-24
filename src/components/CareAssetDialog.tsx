@@ -464,7 +464,7 @@ export function CareReplaceDialog({
             <h3 className="flex items-center gap-1.5 text-xs font-medium">
               現在公開中
               {currentAssignment?.previousCareAssetId ? (
-                <Badge variant="outline" className="px-1 py-0 text-[10px]">
+                <Badge variant="outline" className="px-1 py-0 text-xs">
                   差し替え済み
                 </Badge>
               ) : null}
@@ -776,7 +776,7 @@ export function CareAssetAddDialog({ children }: { children: React.ReactNode }) 
           />
 
           <p className="text-xs text-muted-foreground">
-            <Badge variant="outline" className="mr-1.5 px-1 py-0 text-[10px]">
+            <Badge variant="outline" className="mr-1.5 px-1 py-0 text-xs">
               V1
             </Badge>
             追加できるのは動画だけです。枠(video_code)は固定 13 枠から増やせません。

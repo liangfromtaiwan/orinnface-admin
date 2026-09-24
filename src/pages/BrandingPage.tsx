@@ -246,7 +246,7 @@ function BrandingEditor({
                   {draft.logoUrl ? (
                     <img src={draft.logoUrl} alt="" className="max-h-8 max-w-20 object-contain" />
                   ) : (
-                    <span className="text-[10px] text-muted-foreground">未設定</span>
+                    <span className="text-xs text-muted-foreground">未設定</span>
                   )}
                 </div>
                 <input

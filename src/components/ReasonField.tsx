@@ -32,7 +32,7 @@ export function ReasonField({
     <div className="space-y-1">
       <div className="flex items-center gap-1.5">
         <span className="text-sm font-medium">{label}</span>
-        <span className="rounded-sm bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive">
+        <span className="rounded-sm bg-destructive/10 px-1.5 py-0.5 text-xs font-medium text-destructive">
           必須
         </span>
       </div>

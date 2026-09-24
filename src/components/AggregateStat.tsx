@@ -67,7 +67,7 @@ export function AggregateStat({
             </dl>
           </InfoHint>
           {provisional ? (
-            <span className="rounded-sm border border-amber-300 bg-amber-50 px-1 text-[10px] font-normal text-amber-700">
+            <span className="rounded-sm border border-amber-300 bg-amber-50 px-1 text-xs font-normal text-amber-700">
               暫定
             </span>
           ) : null}

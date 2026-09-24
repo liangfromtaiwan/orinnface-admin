@@ -36,7 +36,7 @@ function Rows({ defs }: { defs: MetricDef[] }) {
             {def.provisional ? (
               <Badge
                 variant="outline"
-                className="border-amber-300 px-1 py-0 text-[10px] text-amber-700"
+                className="border-amber-300 px-1 py-0 text-xs text-amber-700"
               >
                 暫定
               </Badge>

@@ -38,7 +38,7 @@ export function HintBadge({
             tabIndex はキーボードでも説明を読めるようにするため。
           */
           className={cn(
-            "relative z-10 cursor-help border-amber-300 px-1 py-0 text-[10px] text-amber-700",
+            "relative z-10 cursor-help border-amber-300 px-1 py-0 text-xs text-amber-700",
             className
           )}
           tabIndex={0}

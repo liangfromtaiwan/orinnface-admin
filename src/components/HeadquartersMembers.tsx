@@ -258,7 +258,7 @@ export function HeadquartersMembers() {
                       {m.status === "invited" ? (
                         <Badge
                           variant="outline"
-                          className="border-amber-300 px-1 py-0 text-[10px] text-amber-700"
+                          className="border-amber-300 px-1 py-0 text-xs text-amber-700"
                         >
                           招待中
                         </Badge>
@@ -267,7 +267,7 @@ export function HeadquartersMembers() {
                       {needs2fa ? (
                         <Badge
                           variant="outline"
-                          className="border-destructive/50 px-1 py-0 text-[10px] text-destructive"
+                          className="border-destructive/50 px-1 py-0 text-xs text-destructive"
                         >
                           2段階認証 未設定
                         </Badge>

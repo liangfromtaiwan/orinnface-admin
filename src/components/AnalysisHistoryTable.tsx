@@ -62,7 +62,7 @@ export function AnalysisHistoryTable({
                 ) : (
                   <span className="text-muted-foreground">
                     {formatDate(s.startedAt)}
-                    <span className="ml-1 text-[10px]">開始</span>
+                    <span className="ml-1 text-xs">開始</span>
                   </span>
                 )}
               </TableCell>

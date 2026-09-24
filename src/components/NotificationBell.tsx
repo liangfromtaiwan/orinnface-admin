@@ -55,7 +55,7 @@ function NotificationRow({
           <span className="flex flex-wrap items-center gap-1.5 text-sm font-medium">
             生画像の閲覧を発行しました
             {/* 🔴 失効済みかどうかは、開く前に分かるようにする */}
-            <Badge variant={expired ? "secondary" : "default"} className="px-1 py-0 text-[10px]">
+            <Badge variant={expired ? "secondary" : "default"} className="px-1 py-0 text-xs">
               {expired ? "失効済み" : "閲覧できます"}
             </Badge>
           </span>
@@ -94,7 +94,7 @@ export function NotificationBell() {
             {unreadCount > 0 ? (
               <span aria-hidden
                     className="absolute top-1.5 right-1.5 flex size-4 items-center justify-center
-                               rounded-full bg-destructive text-[10px] font-bold
+                               rounded-full bg-destructive text-xs font-bold
                                text-destructive-foreground tabular-nums">
                 {unreadCount > 9 ? "9+" : unreadCount}
               </span>

@@ -246,7 +246,7 @@ export default function CareVideosPage() {
                   return (
                     <TableRow key={slot.videoCode}>
                       <TableCell>
-                        <Badge variant="secondary" className="text-[10px]">
+                        <Badge variant="secondary" className="text-xs">
                           {CARE_CATEGORY_LABEL[slot.category]}
                         </Badge>
                       </TableCell>
@@ -261,7 +261,7 @@ export default function CareVideosPage() {
                             <span className="flex flex-wrap items-center gap-1.5">
                               {asset.title}
                               {providerOf(assignment) === "store" ? (
-                                <Badge variant="secondary" className="px-1 py-0 text-[10px]">
+                                <Badge variant="secondary" className="px-1 py-0 text-xs">
                                   {asset.provider}提供
                                 </Badge>
                               ) : null}

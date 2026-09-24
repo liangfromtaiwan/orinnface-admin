@@ -176,7 +176,7 @@ export function PremiumSignalCard({
                 style={{ background: config[key].color }}
               />
               {config[key].label}
-              <span className="text-[10px]">({where})</span>
+              <span className="text-xs">({where})</span>
             </li>
           ))}
         </ul>

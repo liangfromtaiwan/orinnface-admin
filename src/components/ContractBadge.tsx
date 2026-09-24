@@ -22,7 +22,7 @@ export function ContractBadge({
   return (
     <Badge
       variant="outline"
-      className={cn("px-1.5 py-0 text-[10px]", TIER_BADGE[CONTRACT_STEP[status]], className)}
+      className={cn("px-1.5 py-0 text-xs", TIER_BADGE[CONTRACT_STEP[status]], className)}
     >
       {CONTRACT_STATUS_LABEL[status]}
     </Badge>

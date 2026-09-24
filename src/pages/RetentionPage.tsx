@@ -181,7 +181,7 @@ export default function RetentionPage() {
                       ) : (
                         <span className="text-muted-foreground">
                           {a.anonymousId}
-                          <Badge variant="secondary" className="ml-1 px-1 py-0 text-[10px]">
+                          <Badge variant="secondary" className="ml-1 px-1 py-0 text-xs">
                             未連携分析
                           </Badge>
                         </span>
