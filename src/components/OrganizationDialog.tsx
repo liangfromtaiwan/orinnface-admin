@@ -47,6 +47,7 @@ import {
 import { companyAdminsOf, isEmailLike } from "@/lib/domain/scope"
 import {
   CONTRACT_STATUS_LABEL,
+  ROLE_LABEL,
   type Company,
   type Store,
   type StoreId,
@@ -689,22 +690,60 @@ export function EditCompanyDialog({ company }: { company: Company }) {
 }
 
 export function EditStoreDialog({ store }: { store: Store }) {
-  const { scope, stores, updateStore } = useSession()
+  const { scope, accounts, stores, updateStore, inviteMember } = useSession()
   const [open, setOpen] = useState(false)
   const [name, setName] = useState(store.name)
   const [status, setStatus] = useState(store.status)
   const [reason, setReason] = useState("")
+  const [email, setEmail] = useState("")
+  const [memberName, setMemberName] = useState("")
+  /* 🔴 §4.3 店舗には店舗管理者と店舗スタッフの 2 つの担当がある */
+  const [role, setRole] = useState<"store_admin" | "store_staff">("store_staff")
 
   if (!canEditOrganizations(scope)) return null
 
+  const members = accounts.filter((a) =>
+    a.storeMemberships.some((m) => m.storeId === store.id)
+  )
   const decision = decideCreateStore(scope, stores, store.companyId, name, store.id)
   const changed = name.trim() !== store.name || status !== store.status
+  const inviting = Boolean(email.trim())
+  const badEmail = inviting && !isEmailLike(email)
   const heavy = status !== store.status && status === "closed"
   const ready =
-    decision.kind === "allowed" && changed && (!heavy || isReasonEnough(reason))
+    decision.kind === "allowed" &&
+    (changed || inviting) &&
+    !badEmail &&
+    (!heavy || isReasonEnough(reason))
+
+  function submit() {
+    if (changed) updateStore(store.id, { name, status })
+    if (inviting) {
+      inviteMember(
+        email.trim(),
+        memberName.trim(),
+        { kind: "store", storeId: store.id, role },
+        `${store.name} の${ROLE_LABEL[role]}を招待`
+      )
+    }
+    toast.success(`${store.name} を更新しました`)
+    setOpen(false)
+    setReason("")
+    setEmail("")
+    setMemberName("")
+  }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next)
+        if (next) {
+          setName(store.name)
+          setStatus(store.status)
+        }
+      }}
+    >
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="h-7 text-xs">
           編集
@@ -718,7 +757,7 @@ export function EditStoreDialog({ store }: { store: Store }) {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3">
+        <div className="max-h-[60vh] space-y-3 overflow-y-auto">
           <div className="space-y-1">
             <p className="text-sm font-medium">店舗名</p>
             <Input
@@ -752,6 +791,67 @@ export function EditStoreDialog({ store }: { store: Store }) {
             </Select>
           </div>
 
+          {/* 🔴 今いる人を出したうえで招待する。入力欄だけだと誰が居るか分からない */}
+          <div className="space-y-1 border-t pt-3">
+            <p className="text-sm font-medium">担当者</p>
+            <p className="text-xs text-muted-foreground">
+              {members.length === 0 ? (
+                <span className="text-amber-700">未割当</span>
+              ) : (
+                members
+                  .map((m) => {
+                    const r = m.storeMemberships.find((x) => x.storeId === store.id)
+                    const label = r ? `（${ROLE_LABEL[r.role]}）` : ""
+                    return m.status === "invited"
+                      ? `${m.displayName}${label}(招待中)`
+                      : `${m.displayName}${label}`
+                  })
+                  .join(" / ")
+              )}
+            </p>
+            <div className="flex items-center gap-2">
+              <Input
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                type="email"
+                placeholder="追加で招待する方のメール"
+                className="h-9 flex-1"
+              />
+              <Select
+                value={role}
+                onValueChange={(v) => setRole(v as "store_admin" | "store_staff")}
+              >
+                <SelectTrigger className="h-9 w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="store_staff">
+                    {ROLE_LABEL.store_staff}
+                  </SelectItem>
+                  <SelectItem value="store_admin">
+                    {ROLE_LABEL.store_admin}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Input
+              value={memberName}
+              onChange={(e) => setMemberName(e.target.value)}
+              placeholder="お名前（任意・分かっていれば）"
+              className="h-9"
+            />
+            {badEmail ? (
+              <p className="text-xs text-destructive">
+                メールアドレスの形式が正しくありません
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                招待された方が登録・ログインするまで、このアカウントは使えません。
+                担当を外すのは一覧の担当者欄から行います。
+              </p>
+            )}
+          </div>
+
           {heavy ? (
             <ReasonField
               value={reason}
@@ -769,18 +869,13 @@ export function EditStoreDialog({ store }: { store: Store }) {
           <Button
             disabled={!ready}
             title={
-              !changed
+              !changed && !inviting
                 ? "変更がありません"
                 : heavy && !isReasonEnough(reason)
                   ? "理由を入力してください"
                   : undefined
             }
-            onClick={() => {
-              updateStore(store.id, { name, status })
-              toast.success(`${store.name} を更新しました`)
-              setOpen(false)
-              setReason("")
-            }}
+            onClick={submit}
           >
             保存する
           </Button>
