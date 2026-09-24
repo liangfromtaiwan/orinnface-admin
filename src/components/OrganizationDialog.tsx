@@ -40,11 +40,19 @@ import {
 import { useSession } from "@/contexts/session-context"
 import {
   ORG_DENIAL_LABEL,
+  ORG_READONLY_NOTE,
   canEditOrganizations,
+  companyEditRights,
   decideCreateCompany,
-  decideCreateStore,
+  decideRenameCompany,
+  decideRenameStore,
+  storeEditRights,
 } from "@/lib/domain/organizations"
-import { companyAdminsOf, isEmailLike } from "@/lib/domain/scope"
+import {
+  canManageMembership,
+  companyAdminsOf,
+  isEmailLike,
+} from "@/lib/domain/scope"
 import {
   CONTRACT_STATUS_LABEL,
   ROLE_LABEL,
@@ -75,11 +83,14 @@ function MemberList({
   members,
   role,
   onRevoke,
+  canRevoke,
 }: {
   members: AdminAccount[]
   /** 店舗のように 1 人が複数の役割を持ちうる場合に役割も出す。 */
   role?: (account: AdminAccount) => string | undefined
   onRevoke?: (account: AdminAccount) => void
+  /** 相手の役割によって外せるかが変わる場合 (`decideMembershipEdit()` が正本)。 */
+  canRevoke?: (account: AdminAccount) => boolean
 }) {
   const { account } = useSession()
   const [armed, setArmed] = useState<string | null>(null)
@@ -102,7 +113,7 @@ function MemberList({
                 {label ? `（${label}）` : ""}
                 {m.status === "invited" ? "（招待中）" : ""}
               </span>
-              {onRevoke && !isSelf ? (
+              {onRevoke && !isSelf && (canRevoke?.(m) ?? true) ? (
                 <button
                   type="button"
                   className="text-destructive hover:underline"
@@ -161,6 +172,8 @@ function MemberField({
   onEmail,
   onName,
   onRevoke,
+  canInvite = true,
+  deniedNote,
 }: {
   label: string
   hint?: string
@@ -172,18 +185,28 @@ function MemberField({
   onName: (v: string) => void
   /** 担当を外す。渡さなければ外せない。 */
   onRevoke?: (account: AdminAccount) => void
+  /** 招待できないロールでは入力欄を出さない (`decideMembershipEdit()` が正本)。 */
+  canInvite?: boolean
+  deniedNote?: string
 }) {
   return (
     <div className="space-y-1">
       <p className="text-sm font-medium">
         {label}
-        {hint ? (
+        {hint && canInvite ? (
           <span className="ml-2 text-xs font-normal text-muted-foreground">
             {hint}
           </span>
         ) : null}
       </p>
-      {members ? <MemberList members={members} onRevoke={onRevoke} /> : null}
+      {members ? (
+        <MemberList members={members} onRevoke={canInvite ? onRevoke : undefined} />
+      ) : null}
+      {/* 🔴 招待できないなら入力欄自体を出さない。入れてから弾かれるほうが分かりにくい */}
+      {!canInvite ? (
+        <p className="text-xs text-muted-foreground">{deniedNote}</p>
+      ) : (
+      <>
       <Input
         value={email}
         onChange={(e) => onEmail(e.target.value)}
@@ -209,6 +232,8 @@ function MemberField({
           パスワードはこちらでは設定しません。
         </p>
       )}
+      </>
+      )}
     </div>
   )
 }
@@ -221,6 +246,8 @@ function StoreFields({
   onChange,
   onRemove,
   onRevoke,
+  rights = { name: true, status: true },
+  canInvite = true,
 }: {
   store: DraftStore
   storeId?: StoreId
@@ -228,16 +255,24 @@ function StoreFields({
   onChange: (patch: Partial<DraftStore>) => void
   onRemove?: () => void
   onRevoke?: (account: AdminAccount) => void
+  /** 直せる項目 (`storeEditRights()` が正本)。 */
+  rights?: { name: boolean; status: boolean }
+  canInvite?: boolean
 }) {
   return (
     <div className="space-y-1 rounded-md border p-2.5">
       <div className="flex items-center gap-2">
-        <Input
-          value={store.name}
-          onChange={(e) => onChange({ name: e.target.value })}
-          placeholder="店舗名（例: 銀座店）"
-          className="h-8 flex-1"
-        />
+        {rights.name ? (
+          <Input
+            value={store.name}
+            onChange={(e) => onChange({ name: e.target.value })}
+            placeholder="店舗名（例: 銀座店）"
+            className="h-8 flex-1"
+          />
+        ) : (
+          <span className="flex-1 text-sm">{store.name}</span>
+        )}
+        {rights.status ? (
         <Select
           value={store.status}
           onValueChange={(v) => onChange({ status: v as Store["status"] })}
@@ -253,6 +288,11 @@ function StoreFields({
             ))}
           </SelectContent>
         </Select>
+        ) : (
+          <span className="w-28 text-xs text-muted-foreground">
+            {STORE_STATUS_LABEL[store.status]}
+          </span>
+        )}
         {onRemove ? (
           <Button
             variant="ghost"
@@ -278,6 +318,7 @@ function StoreFields({
           />
         </div>
       ) : null}
+      {canInvite ? (
       <div className="flex items-center gap-2">
         <Input
           value={store.managerEmail}
@@ -297,6 +338,7 @@ function StoreFields({
           className="h-8 w-40"
         />
       </div>
+      ) : null}
     </div>
   )
 }
@@ -527,10 +569,35 @@ export function EditCompanyDialog({ company }: { company: Company }) {
   /** 新しく足す店舗。 */
   const [newStores, setNewStores] = useState<DraftStore[]>([])
 
-  if (!canEditOrganizations(scope)) return null
+  const rights = companyEditRights(scope)
+  const storeRightsOf = (s: Store) => storeEditRights(scope, s)
+  const canInviteAdmin = canManageMembership(scope, {
+    kind: "company",
+    companyId: company.id,
+    role: "company_admin",
+  })
+  const canInviteStoreManager = (s: Store) =>
+    canManageMembership(scope, {
+      kind: "store",
+      storeId: s.id,
+      role: "store_admin",
+    })
+  /* 店舗を足せるのは本部だけ(吉田さん確定 2026-09-24) */
+  const canAddStore = canEditOrganizations(scope)
+  /* 🔴 1 つも触れないなら編集ボタン自体を出さない。押しても何もできない画面を作らない */
+  const canOpen =
+    rights.name ||
+    rights.status ||
+    canInviteAdmin ||
+    canAddStore ||
+    own.some(
+      (s) =>
+        storeRightsOf(s).name || storeRightsOf(s).status || canInviteStoreManager(s)
+    )
+  if (!canOpen) return null
 
   const admins = companyAdminsOf(accounts, company.id)
-  const decision = decideCreateCompany(scope, companies, name, company.id)
+  const decision = decideRenameCompany(scope, companies, company, name)
   const membersOf = (storeId: StoreId) =>
     accounts.filter((a) => a.storeMemberships.some((m) => m.storeId === storeId))
 
@@ -555,7 +622,7 @@ export function EditCompanyDialog({ company }: { company: Company }) {
     ) ||
     filledNew.some((s) => s.managerEmail.trim() && !isEmailLike(s.managerEmail))
   const ready =
-    decision.kind === "allowed" &&
+    (!rights.name || decision.kind === "allowed") &&
     changed &&
     !badEmail &&
     (!heavy || isReasonEnough(reason))
@@ -632,29 +699,41 @@ export function EditCompanyDialog({ company }: { company: Company }) {
         <DialogHeader>
           <DialogTitle>企業・店舗を編集</DialogTitle>
           <DialogDescription>
-            解約・一時停止しても、顧客・分析履歴・同意・保存期限は作り直しません。
-            企業を止めると配下の店舗もまとめて止まります。
+            {rights.status
+              ? "解約・一時停止しても、顧客・分析履歴・同意・保存期限は作り直しません。企業を止めると配下の店舗もまとめて止まります。"
+              : "店舗名と担当者を変更できます。契約に関わる項目は本部が変更します。"}
           </DialogDescription>
         </DialogHeader>
 
         <div className="max-h-[60vh] space-y-3 overflow-y-auto">
           <div className="space-y-1">
             <p className="text-sm font-medium">企業名</p>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="h-9"
-            />
-            {decision.kind === "denied" ? (
-              <p className="text-xs text-destructive">
-                {ORG_DENIAL_LABEL[decision.reason]}
-              </p>
-            ) : null}
+            {rights.name ? (
+              <>
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="h-9"
+                />
+                {decision.kind === "denied" ? (
+                  <p className="text-xs text-destructive">
+                    {ORG_DENIAL_LABEL[decision.reason]}
+                  </p>
+                ) : null}
+              </>
+            ) : (
+              <>
+                <p className="text-sm">{company.name}</p>
+                <p className="text-xs text-muted-foreground">{ORG_READONLY_NOTE}</p>
+              </>
+            )}
           </div>
 
           <MemberField
             label="契約企業管理者"
             hint="メールで招待します"
+            canInvite={canInviteAdmin}
+            deniedNote="指名できるのは本部だけです。"
             members={admins}
             email={adminEmail}
             name={adminName}
@@ -673,23 +752,32 @@ export function EditCompanyDialog({ company }: { company: Company }) {
 
           <div className="space-y-1">
             <p className="text-sm font-medium">契約状態</p>
-            <Select
-              value={status}
-              onValueChange={(v) => setStatus(v as Company["contractStatus"])}
-            >
-              <SelectTrigger className="h-9 w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {(
-                  Object.keys(CONTRACT_STATUS_LABEL) as Company["contractStatus"][]
-                ).map((k) => (
-                  <SelectItem key={k} value={k}>
-                    {CONTRACT_STATUS_LABEL[k]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {rights.status ? (
+              <Select
+                value={status}
+                onValueChange={(v) => setStatus(v as Company["contractStatus"])}
+              >
+                <SelectTrigger className="h-9 w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(
+                    Object.keys(CONTRACT_STATUS_LABEL) as Company["contractStatus"][]
+                  ).map((k) => (
+                    <SelectItem key={k} value={k}>
+                      {CONTRACT_STATUS_LABEL[k]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <>
+                <p className="text-sm">
+                  {CONTRACT_STATUS_LABEL[company.contractStatus]}
+                </p>
+                <p className="text-xs text-muted-foreground">{ORG_READONLY_NOTE}</p>
+              </>
+            )}
           </div>
 
           {heavy ? (
@@ -714,6 +802,8 @@ export function EditCompanyDialog({ company }: { company: Company }) {
                   managerName: "",
                 }}
                 members={membersOf(s.id)}
+                rights={storeRightsOf(s)}
+                canInvite={canInviteStoreManager(s)}
                 onRevoke={(a) => {
                   const m = a.storeMemberships.find((x) => x.storeId === s.id)
                   if (!m) return
@@ -747,19 +837,21 @@ export function EditCompanyDialog({ company }: { company: Company }) {
                 }
               />
             ))}
-            <Button
-              variant="link"
-              size="sm"
-              className="h-auto px-0 text-xs"
-              onClick={() =>
-                setNewStores((prev) => [
-                  ...prev,
-                  { name: "", status: "active", managerEmail: "", managerName: "" },
-                ])
-              }
-            >
-              <PlusIcon /> 店舗を追加する
-            </Button>
+            {canAddStore ? (
+              <Button
+                variant="link"
+                size="sm"
+                className="h-auto px-0 text-xs"
+                onClick={() =>
+                  setNewStores((prev) => [
+                    ...prev,
+                    { name: "", status: "active", managerEmail: "", managerName: "" },
+                  ])
+                }
+              >
+                <PlusIcon /> 店舗を追加する
+              </Button>
+            ) : null}
             {filledNew.length > 0 ? (
               <p className="text-xs text-muted-foreground">
                 新しく足す店舗の担当者は、保存して店舗ができてから招待してください。
@@ -803,18 +895,31 @@ export function EditStoreDialog({ store }: { store: Store }) {
   /* 🔴 §4.3 店舗には店舗管理者と店舗スタッフの 2 つの担当がある */
   const [role, setRole] = useState<"store_admin" | "store_staff">("store_staff")
 
-  if (!canEditOrganizations(scope)) return null
+  const rights = storeEditRights(scope, store)
+  const canInviteAdmin = canManageMembership(scope, {
+    kind: "store",
+    storeId: store.id,
+    role: "store_admin",
+  })
+  const canInviteStaff = canManageMembership(scope, {
+    kind: "store",
+    storeId: store.id,
+    role: "store_staff",
+  })
+  const canInvite = canInviteAdmin || canInviteStaff
+  /* 🔴 1 つも触れないなら編集ボタン自体を出さない */
+  if (!rights.name && !rights.status && !canInvite) return null
 
   const members = accounts.filter((a) =>
     a.storeMemberships.some((m) => m.storeId === store.id)
   )
-  const decision = decideCreateStore(scope, stores, store.companyId, name, store.id)
+  const decision = decideRenameStore(scope, stores, store, name)
   const changed = name.trim() !== store.name || status !== store.status
   const inviting = Boolean(email.trim())
   const badEmail = inviting && !isEmailLike(email)
   const heavy = status !== store.status && status === "closed"
   const ready =
-    decision.kind === "allowed" &&
+    (!rights.name || decision.kind === "allowed") &&
     (changed || inviting) &&
     !badEmail &&
     (!heavy || isReasonEnough(reason))
@@ -863,35 +968,51 @@ export function EditStoreDialog({ store }: { store: Store }) {
         <div className="max-h-[60vh] space-y-3 overflow-y-auto">
           <div className="space-y-1">
             <p className="text-sm font-medium">店舗名</p>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="h-9"
-            />
-            {decision.kind === "denied" ? (
-              <p className="text-xs text-destructive">
-                {ORG_DENIAL_LABEL[decision.reason]}
-              </p>
-            ) : null}
+            {rights.name ? (
+              <>
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="h-9"
+                />
+                {decision.kind === "denied" ? (
+                  <p className="text-xs text-destructive">
+                    {ORG_DENIAL_LABEL[decision.reason]}
+                  </p>
+                ) : null}
+              </>
+            ) : (
+              <>
+                <p className="text-sm">{store.name}</p>
+                <p className="text-xs text-muted-foreground">{ORG_READONLY_NOTE}</p>
+              </>
+            )}
           </div>
 
           <div className="space-y-1">
             <p className="text-sm font-medium">状態</p>
-            <Select
-              value={status}
-              onValueChange={(v) => setStatus(v as Store["status"])}
-            >
-              <SelectTrigger className="h-9 w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {(Object.keys(STORE_STATUS_LABEL) as Store["status"][]).map((k) => (
-                  <SelectItem key={k} value={k}>
-                    {STORE_STATUS_LABEL[k]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {rights.status ? (
+              <Select
+                value={status}
+                onValueChange={(v) => setStatus(v as Store["status"])}
+              >
+                <SelectTrigger className="h-9 w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(STORE_STATUS_LABEL) as Store["status"][]).map((k) => (
+                    <SelectItem key={k} value={k}>
+                      {STORE_STATUS_LABEL[k]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <>
+                <p className="text-sm">{STORE_STATUS_LABEL[store.status]}</p>
+                <p className="text-xs text-muted-foreground">{ORG_READONLY_NOTE}</p>
+              </>
+            )}
           </div>
 
           {/* 🔴 今いる人を出したうえで招待する。入力欄だけだと誰が居るか分からない */}
@@ -902,6 +1023,17 @@ export function EditStoreDialog({ store }: { store: Store }) {
               role={(a) => {
                 const r = a.storeMemberships.find((x) => x.storeId === store.id)
                 return r ? ROLE_LABEL[r.role] : undefined
+              }}
+              /* 🔴 店舗管理者が外せるのはスタッフだけ */
+              canRevoke={(a) => {
+                const r = a.storeMemberships.find((x) => x.storeId === store.id)
+                return r
+                  ? canManageMembership(scope, {
+                      kind: "store",
+                      storeId: store.id,
+                      role: r.role,
+                    })
+                  : false
               }}
               onRevoke={(a) => {
                 const r = a.storeMemberships.find((x) => x.storeId === store.id)
@@ -915,45 +1047,63 @@ export function EditStoreDialog({ store }: { store: Store }) {
                 toast.success(`${a.displayName} の担当を外しました`)
               }}
             />
-            <div className="flex items-center gap-2">
-              <Input
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                type="email"
-                placeholder="追加で招待する方のメール"
-                className="h-9 flex-1"
-              />
-              <Select
-                value={role}
-                onValueChange={(v) => setRole(v as "store_admin" | "store_staff")}
-              >
-                <SelectTrigger className="h-9 w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="store_staff">
-                    {ROLE_LABEL.store_staff}
-                  </SelectItem>
-                  <SelectItem value="store_admin">
-                    {ROLE_LABEL.store_admin}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <Input
-              value={memberName}
-              onChange={(e) => setMemberName(e.target.value)}
-              placeholder="お名前（任意・分かっていれば）"
-              className="h-9"
-            />
-            {badEmail ? (
-              <p className="text-xs text-destructive">
-                メールアドレスの形式が正しくありません
-              </p>
+            {/* 🔴 招待できる役割は decideMembershipEdit() が決める。
+                   店舗管理者が足せるのは店舗スタッフだけ (吉田さん 2026-09-14) */}
+            {canInvite ? (
+              <>
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    type="email"
+                    placeholder="追加で招待する方のメール"
+                    className="h-9 flex-1"
+                  />
+                  {canInviteAdmin ? (
+                    <Select
+                      value={role}
+                      onValueChange={(v) =>
+                        setRole(v as "store_admin" | "store_staff")
+                      }
+                    >
+                      <SelectTrigger className="h-9 w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="store_staff">
+                          {ROLE_LABEL.store_staff}
+                        </SelectItem>
+                        <SelectItem value="store_admin">
+                          {ROLE_LABEL.store_admin}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <span className="w-32 text-xs text-muted-foreground">
+                      {ROLE_LABEL.store_staff}として招待
+                    </span>
+                  )}
+                </div>
+                <Input
+                  value={memberName}
+                  onChange={(e) => setMemberName(e.target.value)}
+                  placeholder="お名前（任意・分かっていれば）"
+                  className="h-9"
+                />
+                {badEmail ? (
+                  <p className="text-xs text-destructive">
+                    メールアドレスの形式が正しくありません
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    招待された方が登録・ログインするまで、このアカウントは使えません。
+                    担当を外すときは、上の一覧から「外す」を押してください。
+                  </p>
+                )}
+              </>
             ) : (
               <p className="text-xs text-muted-foreground">
-                招待された方が登録・ログインするまで、このアカウントは使えません。
-                担当を外すときは、上の一覧から「外す」を押してください。
+                担当者を増やせるのは本部・企業管理者・店舗管理者です。
               </p>
             )}
           </div>

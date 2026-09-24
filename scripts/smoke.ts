@@ -22,7 +22,7 @@ import { monthlyActiveUsers, totalAnalyses, continuingUsers, churnRiskUsers, imp
 import { buildPeriod } from "@/lib/domain/periods"
 import { careAssets, careAssignments, companies } from "@/lib/mock/seed"
 import { BADGE_HINT } from "@/components/badge-hints"
-import { applyCompanyStatusToStores, applyCreateCompany, applyCreateStore, applyUpdateCompany, applyUpdateStore, canEditOrganizations, decideCreateCompany, decideCreateStore, nextCompanyId, nextStoreId } from "@/lib/domain/organizations"
+import { applyCompanyStatusToStores, applyCreateCompany, applyCreateStore, applyUpdateCompany, applyUpdateStore, canEditOrganizations, companyEditRights, decideCreateCompany, decideCreateStore, decideRenameStore, storeEditRights, nextCompanyId, nextStoreId } from "@/lib/domain/organizations"
 import { DEFAULT_MUSCLE_TAGS, MAX_TAGS_PER_POSE, MUSCLE_TAG_DESCRIPTION, addMuscleTag, allMuscleNames, decideAddMuscleTag, diffMuscleTags, removeMuscleTag, renameMuscleTag } from "@/lib/domain/muscles"
 import { POSE_DISPLAY } from "@/lib/domain/metrics"
 import { baselineSets, policySets } from "@/lib/mock/seed"
@@ -1226,6 +1226,36 @@ console.log("── 企業・店舗の追加 (吉田さん確定 2026-09-24) ─
     "(「〇〇店」は各社にありうる)")
   check("同じ企業の中では店舗名を重複させない",
     decideCreateStore(opScope, stores, "co_lumiere", "ルミエール 銀座店").kind === "denied")
+
+  /*
+    既にある企業・店舗を「直せる範囲」は追加とは別 (使用者確定 2026-09-24)。
+    🔴 契約に関わる項目(企業名・契約状態・店舗の開閉)は本部だけ。
+  */
+  {
+    const ginza = stores.find(s => s.id === "st_lumiere_ginza")!
+    const aoyama = stores.find(s => s.companyId === "co_aoyama")!
+
+    check("本部はどの項目も直せる",
+      companyEditRights(opScope).name && companyEditRights(opScope).status &&
+      storeEditRights(opScope, ginza).name && storeEditRights(opScope, ginza).status)
+    check("契約企業管理者は企業名も契約状態も直せない",
+      !companyEditRights(caScope).name && !companyEditRights(caScope).status,
+      "(契約上の名義と契約状態は本部が持つ)")
+    check("契約企業管理者は自社の店舗名を直せる",
+      storeEditRights(caScope, ginza).name,
+      "(移転・改称は運用側で起きる)")
+    check("契約企業管理者でも店舗の開閉はできない",
+      !storeEditRights(caScope, ginza).status,
+      "(閉店は課金と撮影可否に効く)")
+    check("他社の店舗は直せない", !storeEditRights(caScope, aoyama).name)
+    check("店舗管理者は店舗名も状態も直せない",
+      !storeEditRights(saScope, ginza).name && !storeEditRights(saScope, ginza).status,
+      "(担当者の追加だけ)")
+    check("改名も同じ企業の中では重複させない",
+      decideRenameStore(caScope, stores, ginza, "ルミエール 渋谷店").kind === "denied")
+    check("権限が無ければ改名も弾く",
+      decideRenameStore(saScope, stores, ginza, "新しい名前").kind === "denied")
+  }
 
   {
     const id = nextCompanyId(companies)

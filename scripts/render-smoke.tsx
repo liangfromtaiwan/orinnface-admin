@@ -42,7 +42,7 @@ const pages: [string, string, React.ComponentType][] = [
   // 分析詳細は独立ページ。顧客詳細の一覧からここへ送る
   ["分析詳細", "/customers/ds_036/analyses/__SESSION__", AnalysisDetailPage],
   ["分析", "/analysis", AnalysisPage],
-  ["会社・店舗", "/organizations", OrganizationsPage],
+  ["企業・店舗", "/organizations", OrganizationsPage],
   ["care動画", "/care", CareVideosPage],
   ["推奨設定", "/recommendation", RecommendationPage],
   ["画像・保持", "/retention", RetentionPage],
@@ -98,6 +98,8 @@ for (const [name, rawPath, Page] of pages) {
     for (const [name, path, Page] of [
       ["care動画", "/care", CareVideosPage],
       ["顧客一覧", "/customers", CustomersPage],
+      /* 企業・店舗は編集できる項目が role で変わる (organizations.ts) */
+      ["企業・店舗", "/organizations", OrganizationsPage],
     ] as [string, string, React.ComponentType][]) {
       try {
         const html = renderToString(

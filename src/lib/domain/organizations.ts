@@ -16,6 +16,8 @@ import type { Company, CompanyId, Store, StoreId } from "./types"
 export type OrgDenial =
   /** 本部以外。 */
   | "not_operator"
+  /** その項目を直せる権限が無い。 */
+  | "not_allowed"
   /** 名前が空。 */
   | "empty_name"
   /** 同じ名前がすでにある。 */
@@ -23,6 +25,7 @@ export type OrgDenial =
 
 export const ORG_DENIAL_LABEL: Record<OrgDenial, string> = {
   not_operator: "企業・店舗を追加できるのは本部だけです。",
+  not_allowed: "この項目を変更できるのは本部だけです。",
   empty_name: "名前を入力してください。",
   duplicate_name: "同じ名前がすでに登録されています。",
 }
@@ -32,6 +35,82 @@ export type OrgDecision = { kind: "allowed" } | { kind: "denied"; reason: OrgDen
 /** 本部かどうかだけを見る。名前の検査は decideCreate... 側。 */
 export function canEditOrganizations(scope: Scope): boolean {
   return can(scope, "org.manage") && scope.crossCompany
+}
+
+/* ------------------------------------------------------------------ *
+ * 既存の企業・店舗を直せる範囲
+ *
+ * 🔴 **追加できるのは本部だけ**(吉田さん確定 2026-09-24)。ただし既にある
+ *    企業・店舗の中身まで本部しか触れないとは書かれていない。契約企業管理者が
+ *    自社の店舗名すら直せないと、改称のたびに本部へ依頼することになる。
+ * 🔴 **契約に関わる項目は本部だけ**。企業名(契約上の名義)・契約状態・店舗の開閉は
+ *    課金と撮影可否に直結するので、契約企業側からは変えられない。
+ * 🔴 担当者はここでは判定しない。`decideMembershipEdit()` が正本
+ *    (契約企業管理者の指名は本部のみ / 店舗管理者はスタッフのみ)。
+ * ⚠️ この線引きは仕様書に無い。吉田さんに確認中 (QUESTIONS #25)。
+ * ------------------------------------------------------------------ */
+
+export type OrgEditRights = {
+  /** 名前を直せるか。 */
+  name: boolean
+  /** 契約状態 / 営業状態を変えられるか。 */
+  status: boolean
+}
+
+/** 本部だけが直せる項目にこの注記を添える。 */
+export const ORG_READONLY_NOTE = "契約に関わるため、本部だけが変更できます。"
+
+export function companyEditRights(scope: Scope): OrgEditRights {
+  const hq = canEditOrganizations(scope)
+  return { name: hq, status: hq }
+}
+
+export function storeEditRights(scope: Scope, store: Store): OrgEditRights {
+  if (canEditOrganizations(scope)) return { name: true, status: true }
+  /* 自社の店舗名は契約企業管理者が直せる(移転・改称は運用側で起きる) */
+  const ownCompany =
+    scope.role === "company_admin" && scope.companyId === store.companyId
+  return { name: ownCompany, status: false }
+}
+
+/** 既存企業の改称。追加とは別に判定する(本部以外にも開ける余地があるため)。 */
+export function decideRenameCompany(
+  scope: Scope,
+  companies: Company[],
+  company: Company,
+  name: string
+): OrgDecision {
+  if (!companyEditRights(scope).name) {
+    return { kind: "denied", reason: "not_allowed" }
+  }
+  return checkName(name, companies.filter((c) => c.id !== company.id).map((c) => c.name))
+}
+
+/** 既存店舗の改称。店舗名は企業をまたげば重複してよい。 */
+export function decideRenameStore(
+  scope: Scope,
+  stores: Store[],
+  store: Store,
+  name: string
+): OrgDecision {
+  if (!storeEditRights(scope, store).name) {
+    return { kind: "denied", reason: "not_allowed" }
+  }
+  return checkName(
+    name,
+    stores
+      .filter((s) => s.id !== store.id && s.companyId === store.companyId)
+      .map((s) => s.name)
+  )
+}
+
+function checkName(name: string, taken: string[]): OrgDecision {
+  const trimmed = name.trim()
+  if (!trimmed) return { kind: "denied", reason: "empty_name" }
+  if (taken.some((t) => t.trim() === trimmed)) {
+    return { kind: "denied", reason: "duplicate_name" }
+  }
+  return { kind: "allowed" }
 }
 
 export function decideCreateCompany(
