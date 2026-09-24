@@ -44,11 +44,12 @@ import {
   decideCreateCompany,
   decideCreateStore,
 } from "@/lib/domain/organizations"
-import { isEmailLike } from "@/lib/domain/scope"
+import { companyAdminsOf, isEmailLike } from "@/lib/domain/scope"
 import {
   CONTRACT_STATUS_LABEL,
   type Company,
   type Store,
+  type StoreId,
 } from "@/lib/domain/types"
 
 const STORE_STATUS_LABEL: Record<Store["status"], string> = {
@@ -61,6 +62,162 @@ type DraftStore = {
   status: Store["status"]
   managerEmail: string
   managerName: string
+}
+
+/** 担当者の一覧と、メールでの招待。追加・編集の両方で同じ形にする。 */
+function MemberField({
+  label,
+  hint,
+  members,
+  email,
+  name,
+  onEmail,
+  onName,
+}: {
+  label: string
+  hint?: string
+  /** すでに担当している人。未登録なら「招待中」。 */
+  members?: { displayName: string; status: string }[]
+  email: string
+  name: string
+  onEmail: (v: string) => void
+  onName: (v: string) => void
+}) {
+  return (
+    <div className="space-y-1">
+      <p className="text-sm font-medium">
+        {label}
+        {hint ? (
+          <span className="ml-2 text-xs font-normal text-muted-foreground">
+            {hint}
+          </span>
+        ) : null}
+      </p>
+      {members ? (
+        <p className="text-xs text-muted-foreground">
+          {members.length === 0 ? (
+            <span className="text-amber-700">未設定</span>
+          ) : (
+            members
+              .map((m) =>
+                m.status === "invited" ? `${m.displayName}(招待中)` : m.displayName
+              )
+              .join(" / ")
+          )}
+        </p>
+      ) : null}
+      <Input
+        value={email}
+        onChange={(e) => onEmail(e.target.value)}
+        type="email"
+        placeholder={members ? "追加で招待する方のメール" : "admin@example.jp"}
+        className="h-9"
+      />
+      {/* 🔴 名前が無いとメールアドレスがそのまま表示名になる。本人が
+             登録するまでの仮の名前として、分かっていれば入れておく */}
+      <Input
+        value={name}
+        onChange={(e) => onName(e.target.value)}
+        placeholder="お名前（任意・分かっていれば）"
+        className="h-9"
+      />
+      {email.trim() && !isEmailLike(email) ? (
+        <p className="text-xs text-destructive">
+          メールアドレスの形式が正しくありません
+        </p>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          招待された方が登録・ログインするまで、このアカウントは使えません。
+          パスワードはこちらでは設定しません。
+        </p>
+      )}
+    </div>
+  )
+}
+
+/** 店舗 1 件分の入力。追加・編集で同じ形にする。 */
+function StoreFields({
+  store,
+  members,
+  onChange,
+  onRemove,
+}: {
+  store: DraftStore
+  members?: { displayName: string; status: string }[]
+  onChange: (patch: Partial<DraftStore>) => void
+  onRemove?: () => void
+}) {
+  return (
+    <div className="space-y-1 rounded-md border p-2.5">
+      <div className="flex items-center gap-2">
+        <Input
+          value={store.name}
+          onChange={(e) => onChange({ name: e.target.value })}
+          placeholder="店舗名（例: 銀座店）"
+          className="h-8 flex-1"
+        />
+        <Select
+          value={store.status}
+          onValueChange={(v) => onChange({ status: v as Store["status"] })}
+        >
+          <SelectTrigger className="h-8 w-28">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {(Object.keys(STORE_STATUS_LABEL) as Store["status"][]).map((k) => (
+              <SelectItem key={k} value={k}>
+                {STORE_STATUS_LABEL[k]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {onRemove ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-8 shrink-0"
+            aria-label="この店舗を外す"
+            onClick={onRemove}
+          >
+            <XIcon className="size-4" />
+          </Button>
+        ) : null}
+      </div>
+      {members ? (
+        <p className="text-xs text-muted-foreground">
+          担当者:{" "}
+          {members.length === 0 ? (
+            <span className="text-amber-700">未割当</span>
+          ) : (
+            members
+              .map((m) =>
+                m.status === "invited" ? `${m.displayName}(招待中)` : m.displayName
+              )
+              .join(" / ")
+          )}
+        </p>
+      ) : null}
+      <div className="flex items-center gap-2">
+        <Input
+          value={store.managerEmail}
+          onChange={(e) => onChange({ managerEmail: e.target.value })}
+          type="email"
+          placeholder={
+            members
+              ? "追加で招待する担当者のメール"
+              : "担当者のメール（任意・店舗管理者として招待）"
+          }
+          className="h-8 flex-1"
+        />
+        <Input
+          value={store.managerName}
+          onChange={(e) => onChange({ managerName: e.target.value })}
+          placeholder="お名前（任意）"
+          className="h-8 w-40"
+        />
+      </div>
+    </div>
+  )
 }
 
 /* ------------------------------------------------------------------ *
@@ -167,39 +324,14 @@ export function CreateOrganizationDialog() {
             ) : null}
           </div>
 
-          <div className="space-y-1">
-            <p className="text-sm font-medium">
-              企業管理者
-              <span className="ml-2 text-xs font-normal text-muted-foreground">
-                任意・メールで招待します
-              </span>
-            </p>
-            <Input
-              value={adminEmail}
-              onChange={(e) => setAdminEmail(e.target.value)}
-              type="email"
-              placeholder="admin@example.jp"
-              className="h-9"
-            />
-            {/* 🔴 名前が無いとメールアドレスがそのまま表示名になる。本人が
-                   登録するまでの仮の名前として、分かっていれば入れておく */}
-            <Input
-              value={adminName}
-              onChange={(e) => setAdminName(e.target.value)}
-              placeholder="お名前（任意・分かっていれば）"
-              className="h-9"
-            />
-            {adminEmail.trim() && !isEmailLike(adminEmail) ? (
-              <p className="text-xs text-destructive">
-                メールアドレスの形式が正しくありません
-              </p>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                招待された方が登録・ログインするまで、このアカウントは使えません。
-                パスワードはこちらでは設定しません。
-              </p>
-            )}
-          </div>
+          <MemberField
+            label="企業管理者"
+            hint="任意・メールで招待します"
+            email={adminEmail}
+            name={adminName}
+            onEmail={setAdminEmail}
+            onName={setAdminName}
+          />
 
           <div className="space-y-1">
             <p className="text-sm font-medium">契約状態</p>
@@ -225,85 +357,20 @@ export function CreateOrganizationDialog() {
           <div className="space-y-2 border-t pt-3">
             <p className="text-sm font-medium">店舗</p>
             {draftStores.map((st, i) => (
-              <div key={i} className="space-y-1 rounded-md border p-2.5">
-                <div className="flex items-center gap-2">
-                  <Input
-                    value={st.name}
-                    onChange={(e) =>
-                      setDraftStores((prev) =>
-                        prev.map((x, k) =>
-                          k === i ? { ...x, name: e.target.value } : x
-                        )
-                      )
-                    }
-                    placeholder="店舗名（例: 銀座店）"
-                    className="h-8 flex-1"
-                  />
-                  <Select
-                    value={st.status}
-                    onValueChange={(v) =>
-                      setDraftStores((prev) =>
-                        prev.map((x, k) =>
-                          k === i ? { ...x, status: v as Store["status"] } : x
-                        )
-                      )
-                    }
-                  >
-                    <SelectTrigger className="h-8 w-28">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(Object.keys(STORE_STATUS_LABEL) as Store["status"][]).map(
-                        (k) => (
-                          <SelectItem key={k} value={k}>
-                            {STORE_STATUS_LABEL[k]}
-                          </SelectItem>
-                        )
-                      )}
-                    </SelectContent>
-                  </Select>
-                  {draftStores.length > 1 ? (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-8 shrink-0"
-                      aria-label="この店舗を外す"
-                      onClick={() =>
-                        setDraftStores((prev) => prev.filter((_, k) => k !== i))
-                      }
-                    >
-                      <XIcon className="size-4" />
-                    </Button>
-                  ) : null}
-                </div>
-                <div className="flex items-center gap-2">
-                  <Input
-                    value={st.managerEmail}
-                    onChange={(e) =>
-                      setDraftStores((prev) =>
-                        prev.map((x, k) =>
-                          k === i ? { ...x, managerEmail: e.target.value } : x
-                        )
-                      )
-                    }
-                    type="email"
-                    placeholder="担当者のメール（任意・店舗管理者として招待）"
-                    className="h-8 flex-1"
-                  />
-                  <Input
-                    value={st.managerName}
-                    onChange={(e) =>
-                      setDraftStores((prev) =>
-                        prev.map((x, k) =>
-                          k === i ? { ...x, managerName: e.target.value } : x
-                        )
-                      )
-                    }
-                    placeholder="お名前（任意）"
-                    className="h-8 w-40"
-                  />
-                </div>
-              </div>
+              <StoreFields
+                key={i}
+                store={st}
+                onChange={(patch) =>
+                  setDraftStores((prev) =>
+                    prev.map((x, k) => (k === i ? { ...x, ...patch } : x))
+                  )
+                }
+                onRemove={
+                  draftStores.length > 1
+                    ? () => setDraftStores((prev) => prev.filter((_, k) => k !== i))
+                    : undefined
+                }
+              />
             ))}
             <Button
               variant="link"
@@ -349,40 +416,146 @@ export function CreateOrganizationDialog() {
  * ------------------------------------------------------------------ */
 
 export function EditCompanyDialog({ company }: { company: Company }) {
-  const { scope, companies, updateCompany, createStore } = useSession()
+  const {
+    scope,
+    accounts,
+    companies,
+    stores,
+    updateCompany,
+    createStore,
+    updateStore,
+    inviteMember,
+  } = useSession()
   const [open, setOpen] = useState(false)
   const [name, setName] = useState(company.name)
   const [status, setStatus] = useState(company.contractStatus)
   const [reason, setReason] = useState("")
-  const [newStore, setNewStore] = useState("")
+  const [adminEmail, setAdminEmail] = useState("")
+  const [adminName, setAdminName] = useState("")
+  const own = stores.filter((s) => s.companyId === company.id)
+  /** 既存店舗の編集内容。保存するまで反映しない。 */
+  const [storeDrafts, setStoreDrafts] = useState<Record<StoreId, DraftStore>>(() =>
+    Object.fromEntries(
+      own.map((s) => [
+        s.id,
+        { name: s.name, status: s.status, managerEmail: "", managerName: "" },
+      ])
+    )
+  )
+  /** 新しく足す店舗。 */
+  const [newStores, setNewStores] = useState<DraftStore[]>([])
 
   if (!canEditOrganizations(scope)) return null
 
+  const admins = companyAdminsOf(accounts, company.id)
   const decision = decideCreateCompany(scope, companies, name, company.id)
-  const storeDecision = decideCreateStore(scope, [], company.id, newStore)
-  const changed = name.trim() !== company.name || status !== company.contractStatus
+  const membersOf = (storeId: StoreId) =>
+    accounts.filter((a) => a.storeMemberships.some((m) => m.storeId === storeId))
+
+  const changedStores = own.filter((s) => {
+    const d = storeDrafts[s.id]
+    return d && (d.name.trim() !== s.name || d.status !== s.status)
+  })
+  const filledNew = newStores.filter((s) => s.name.trim())
+  const changed =
+    name.trim() !== company.name ||
+    status !== company.contractStatus ||
+    changedStores.length > 0 ||
+    filledNew.length > 0
   /* 🔴 解約・停止は影響が大きいので理由を必須にする (§13) */
-  const heavy = status !== company.contractStatus && status !== "active"
+  const heavy =
+    (status !== company.contractStatus && status !== "active") ||
+    changedStores.some((s) => storeDrafts[s.id].status === "closed")
+  const badEmail =
+    (adminEmail.trim() && !isEmailLike(adminEmail)) ||
+    Object.values(storeDrafts).some(
+      (d) => d.managerEmail.trim() && !isEmailLike(d.managerEmail)
+    ) ||
+    filledNew.some((s) => s.managerEmail.trim() && !isEmailLike(s.managerEmail))
   const ready =
-    decision.kind === "allowed" && changed && (!heavy || isReasonEnough(reason))
+    decision.kind === "allowed" &&
+    changed &&
+    !badEmail &&
+    (!heavy || isReasonEnough(reason))
+
+  function submit() {
+    if (name.trim() !== company.name || status !== company.contractStatus) {
+      updateCompany(company.id, { name, contractStatus: status })
+    }
+    for (const s of changedStores) {
+      const d = storeDrafts[s.id]
+      updateStore(s.id, { name: d.name, status: d.status })
+    }
+    for (const s of filledNew) {
+      createStore(company.id, { name: s.name, status: s.status })
+    }
+    /*
+      🔴 招待は担当ごと。既存店舗の担当者はその店舗へ、企業管理者は企業へ付ける。
+      ⚠️ 新しく足した店舗の担当者は、この時点では店舗 id が確定していないため
+         招待しない。店舗を作ったあと、その行から招待してもらう。
+    */
+    if (adminEmail.trim()) {
+      inviteMember(
+        adminEmail.trim(),
+        adminName.trim(),
+        { kind: "company", companyId: company.id, role: "company_admin" },
+        `${company.name} の企業管理者を招待`
+      )
+    }
+    for (const s of own) {
+      const d = storeDrafts[s.id]
+      if (!d?.managerEmail.trim()) continue
+      inviteMember(
+        d.managerEmail.trim(),
+        d.managerName.trim(),
+        { kind: "store", storeId: s.id, role: "store_admin" },
+        `${s.name} の店舗管理者を招待`
+      )
+    }
+    toast.success(`${company.name} を更新しました`)
+    setOpen(false)
+    setReason("")
+    setAdminEmail("")
+    setAdminName("")
+    setNewStores([])
+  }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next)
+        if (next) {
+          // 開くたびに今の値から始める(閉じている間に変わっている場合がある)
+          setName(company.name)
+          setStatus(company.contractStatus)
+          setStoreDrafts(
+            Object.fromEntries(
+              own.map((s) => [
+                s.id,
+                { name: s.name, status: s.status, managerEmail: "", managerName: "" },
+              ])
+            )
+          )
+          setNewStores([])
+        }
+      }}
+    >
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="h-7 text-xs">
           編集
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{company.name}</DialogTitle>
+          <DialogTitle>企業・店舗を編集</DialogTitle>
           <DialogDescription>
             解約・一時停止しても、顧客・分析履歴・同意・保存期限は作り直しません。
             企業を止めると配下の店舗もまとめて止まります。
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3">
+        <div className="max-h-[60vh] space-y-3 overflow-y-auto">
           <div className="space-y-1">
             <p className="text-sm font-medium">企業名</p>
             <Input
@@ -396,6 +569,16 @@ export function EditCompanyDialog({ company }: { company: Company }) {
               </p>
             ) : null}
           </div>
+
+          <MemberField
+            label="企業管理者"
+            hint="メールで招待します"
+            members={admins}
+            email={adminEmail}
+            name={adminName}
+            onEmail={setAdminEmail}
+            onName={setAdminName}
+          />
 
           <div className="space-y-1">
             <p className="text-sm font-medium">契約状態</p>
@@ -423,39 +606,68 @@ export function EditCompanyDialog({ company }: { company: Company }) {
               value={reason}
               onChange={setReason}
               label="変更の理由"
-              hint="契約状態を止める操作です。監査に残ります。"
+              hint="契約や店舗を止める操作です。監査に残ります。"
             />
           ) : null}
 
-          <div className="space-y-1 border-t pt-3">
-            <p className="text-sm font-medium">店舗を追加</p>
-            <div className="flex items-center gap-2">
-              <Input
-                value={newStore}
-                onChange={(e) => setNewStore(e.target.value)}
-                placeholder="店舗名"
-                className="h-8 flex-1"
-              />
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8"
-                disabled={storeDecision.kind !== "allowed"}
-                onClick={() => {
-                  createStore(company.id, { name: newStore, status: "active" })
-                  toast.success(`店舗「${newStore.trim()}」を追加しました`)
-                  setNewStore("")
+          <div className="space-y-2 border-t pt-3">
+            <p className="text-sm font-medium">店舗</p>
+            {own.map((s) => (
+              <StoreFields
+                key={s.id}
+                store={storeDrafts[s.id] ?? {
+                  name: s.name,
+                  status: s.status,
+                  managerEmail: "",
+                  managerName: "",
                 }}
-              >
-                追加
-              </Button>
-            </div>
+                members={membersOf(s.id)}
+                onChange={(patch) =>
+                  setStoreDrafts((prev) => ({
+                    ...prev,
+                    [s.id]: { ...prev[s.id], ...patch },
+                  }))
+                }
+              />
+            ))}
+            {newStores.map((st, i) => (
+              <StoreFields
+                key={`new_${i}`}
+                store={st}
+                onChange={(patch) =>
+                  setNewStores((prev) =>
+                    prev.map((x, k) => (k === i ? { ...x, ...patch } : x))
+                  )
+                }
+                onRemove={() =>
+                  setNewStores((prev) => prev.filter((_, k) => k !== i))
+                }
+              />
+            ))}
+            <Button
+              variant="link"
+              size="sm"
+              className="h-auto px-0 text-xs"
+              onClick={() =>
+                setNewStores((prev) => [
+                  ...prev,
+                  { name: "", status: "active", managerEmail: "", managerName: "" },
+                ])
+              }
+            >
+              店舗を追加する
+            </Button>
+            {filledNew.length > 0 ? (
+              <p className="text-xs text-muted-foreground">
+                新しく足す店舗の担当者は、保存して店舗ができてから招待してください。
+              </p>
+            ) : null}
           </div>
         </div>
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => setOpen(false)}>
-            閉じる
+            やめる
           </Button>
           <Button
             disabled={!ready}
@@ -466,12 +678,7 @@ export function EditCompanyDialog({ company }: { company: Company }) {
                   ? "理由を入力してください"
                   : undefined
             }
-            onClick={() => {
-              updateCompany(company.id, { name, contractStatus: status })
-              toast.success(`${company.name} を更新しました`)
-              setOpen(false)
-              setReason("")
-            }}
+            onClick={submit}
           >
             保存する
           </Button>
