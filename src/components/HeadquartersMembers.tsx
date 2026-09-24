@@ -151,7 +151,7 @@ function InviteHeadquartersMemberDialog({
               setName("")
             }}
           >
-            招待する
+            <PlusIcon /> 招待する
           </Button>
         </DialogFooter>
       </DialogContent>

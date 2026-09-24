@@ -17,6 +17,8 @@
 import { useMemo, useState } from "react"
 import { toast } from "sonner"
 
+import { PlusIcon } from "lucide-react"
+
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -220,7 +222,7 @@ function RoleSection({ target }: { target: MembershipTarget }) {
                 if (a) submit(a.id, "grant", a.displayName)
               }}
             >
-              付与
+              <PlusIcon /> 付与
             </Button>
           </div>
           <ReasonField
@@ -276,7 +278,7 @@ function RoleSection({ target }: { target: MembershipTarget }) {
                   disabled={invite.kind !== "allowed" || !reason.trim()}
                   onClick={submitInvite}
                 >
-                  招待する
+                  <PlusIcon /> 招待する
                 </Button>
               </div>
             </div>

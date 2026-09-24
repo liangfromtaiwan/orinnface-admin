@@ -15,7 +15,7 @@
  */
 
 import { useEffect, useRef, useState } from "react"
-import { UploadIcon } from "lucide-react"
+import { PlusIcon, UploadIcon } from "lucide-react"
 import { toast } from "sonner"
 
 import { CareVideoPreview } from "@/components/CareVideoPreview"
@@ -787,7 +787,7 @@ export function CareAssetAddDialog({ children }: { children: React.ReactNode }) 
               やめる
             </Button>
             <Button size="sm" disabled={!valid} onClick={submit}>
-              追加する
+              <PlusIcon /> 追加する
             </Button>
           </div>
         </div>

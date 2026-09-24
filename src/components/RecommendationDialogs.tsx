@@ -14,6 +14,8 @@
 import { useState } from "react"
 import { toast } from "sonner"
 
+import { PlusIcon } from "lucide-react"
+
 import { AggregateStat } from "@/components/AggregateStat"
 import { PeriodBanner } from "@/components/PageHeader"
 import { BaselineDiff, PolicyDiff } from "@/components/RecommendationDiff"
@@ -218,7 +220,9 @@ export function BaselineDraftDialog({
             編集
           </Button>
         ) : (
-          <Button size="sm">下書きを作成</Button>
+          <Button size="sm">
+            <PlusIcon /> 下書きを作成
+          </Button>
         )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
@@ -421,7 +425,9 @@ export function PolicyDraftDialog({
             編集
           </Button>
         ) : (
-          <Button size="sm">下書きを作成</Button>
+          <Button size="sm">
+            <PlusIcon /> 下書きを作成
+          </Button>
         )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">

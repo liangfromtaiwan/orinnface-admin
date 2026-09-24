@@ -10,6 +10,8 @@
 import { useMemo, useState } from "react"
 import { toast } from "sonner"
 
+import { PlusIcon } from "lucide-react"
+
 import { CareAssetAddDialog, CareReplaceDialog } from "@/components/CareAssetDialog"
 import { CareRequestReviewDialog } from "@/components/CareRequestReviewDialog"
 import { CareRightsDialog } from "@/components/CareRightsDialog"
@@ -216,7 +218,9 @@ export default function CareVideosPage() {
           </TabsList>
           {replacement.kind === "denied" ? null : (
             <CareAssetAddDialog>
-              <Button size="sm">動画を追加</Button>
+              <Button size="sm">
+                <PlusIcon /> 動画を追加
+              </Button>
             </CareAssetAddDialog>
           )}
         </div>

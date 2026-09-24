@@ -484,7 +484,7 @@ export function CreateOrganizationDialog() {
             }
             onClick={submit}
           >
-            追加する
+            <PlusIcon /> 追加する
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -758,7 +758,7 @@ export function EditCompanyDialog({ company }: { company: Company }) {
                 ])
               }
             >
-              店舗を追加する
+              <PlusIcon /> 店舗を追加する
             </Button>
             {filledNew.length > 0 ? (
               <p className="text-xs text-muted-foreground">
