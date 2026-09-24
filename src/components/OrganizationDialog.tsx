@@ -570,7 +570,7 @@ export function EditCompanyDialog({ company }: { company: Company }) {
   const [newStores, setNewStores] = useState<DraftStore[]>([])
 
   const rights = companyEditRights(scope)
-  const storeRights = storeEditRights(scope)
+  const storeRightsOf = (s: Store) => storeEditRights(scope, s)
   const canInviteAdmin = canManageMembership(scope, {
     kind: "company",
     companyId: company.id,
@@ -589,7 +589,11 @@ export function EditCompanyDialog({ company }: { company: Company }) {
     ⚠️ 担当者だけはこの条件に入れない。契約企業管理者・店舗管理者の担当者操作は
        一覧の「担当者」列から入れるので、読み取り専用のダイアログを二重に開かせない。
   */
-  const canOpen = rights.name || rights.status || canAddStore || storeRights.name
+  const canOpen =
+    rights.name ||
+    rights.status ||
+    canAddStore ||
+    own.some((s) => storeRightsOf(s).name || storeRightsOf(s).status)
   if (!canOpen) return null
 
   const admins = companyAdminsOf(accounts, company.id)
@@ -798,7 +802,7 @@ export function EditCompanyDialog({ company }: { company: Company }) {
                   managerName: "",
                 }}
                 members={membersOf(s.id)}
-                rights={storeRights}
+                rights={storeRightsOf(s)}
                 canInvite={canInviteStoreManager(s)}
                 onRevoke={(a) => {
                   const m = a.storeMemberships.find((x) => x.storeId === s.id)
@@ -891,7 +895,7 @@ export function EditStoreDialog({ store }: { store: Store }) {
   /* 🔴 §4.3 店舗には店舗管理者と店舗スタッフの 2 つの担当がある */
   const [role, setRole] = useState<"store_admin" | "store_staff">("store_staff")
 
-  const rights = storeEditRights(scope)
+  const rights = storeEditRights(scope, store)
   const canInviteAdmin = canManageMembership(scope, {
     kind: "store",
     storeId: store.id,

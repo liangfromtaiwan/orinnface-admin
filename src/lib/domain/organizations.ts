@@ -38,13 +38,15 @@ export function canEditOrganizations(scope: Scope): boolean {
 }
 
 /* ------------------------------------------------------------------ *
- * 既存の企業・店舗を直せる範囲
+ * 既存の企業・店舗を直せる範囲 (使用者確定 2026-09-24)
  *
- * 🔴 **企業名・店舗名・契約状態・店舗の開閉は本部だけ**(使用者確定 2026-09-24)。
- *    店舗名は契約書上の名称なので、契約企業側から変えられるようにしない。
- *    課金と撮影可否にも直結する。
- * 🔴 契約企業管理者・店舗管理者にできるのは**担当者の追加・解除だけ**。
- *    可否はここでは判定しない。`decideMembershipEdit()` が正本
+ * 🔴 **名前は本部だけ**。企業名も店舗名も契約書上の名称なので、契約企業側からは
+ *    変えられるようにしない。
+ * 🔴 **店舗の営業状態(営業中 / 閉店)は契約企業管理者も変えられる**。休業・閉店は
+ *    現場で起きることで、そのたびに本部へ依頼する運用にはしない。
+ *    ただし閉店は影響が大きいので理由を必須にして監査に残す (§13)。
+ * 🔴 **企業の契約状態は本部だけ**。こちらは契約そのもの。
+ * 🔴 担当者はここでは判定しない。`decideMembershipEdit()` が正本
  *    (契約企業管理者の指名は本部のみ / 店舗管理者はスタッフのみ)。
  * ------------------------------------------------------------------ */
 
@@ -63,9 +65,12 @@ export function companyEditRights(scope: Scope): OrgEditRights {
   return { name: hq, status: hq }
 }
 
-export function storeEditRights(scope: Scope): OrgEditRights {
-  const hq = canEditOrganizations(scope)
-  return { name: hq, status: hq }
+export function storeEditRights(scope: Scope, store: Store): OrgEditRights {
+  if (canEditOrganizations(scope)) return { name: true, status: true }
+  /* 自社の店舗の営業状態は契約企業管理者が変えられる。名前は変えられない */
+  const ownCompany =
+    scope.role === "company_admin" && scope.companyId === store.companyId
+  return { name: false, status: ownCompany }
 }
 
 /** 既存企業の改称。追加とは別に判定する(本部以外にも開ける余地があるため)。 */
@@ -88,7 +93,7 @@ export function decideRenameStore(
   store: Store,
   name: string
 ): OrgDecision {
-  if (!storeEditRights(scope).name) {
+  if (!storeEditRights(scope, store).name) {
     return { kind: "denied", reason: "not_allowed" }
   }
   return checkName(
