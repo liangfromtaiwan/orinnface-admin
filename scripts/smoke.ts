@@ -15,6 +15,7 @@ import { decideRawImageView, usesB2bDisplay } from "@/lib/domain/scope"
 import { compareWithAgeBand, metricsByGroup } from "@/lib/domain/metrics"
 import { ageBandAverages, companyBrandings, customerIdentities } from "@/lib/mock/seed"
 import { HISTORY_PREVIEW_LIMIT } from "@/components/AnalysisHistoryTable"
+import { ROLE_REQUIRES_2FA } from "@/lib/domain/types"
 import { TIER_BADGE, PLAN_STEP, CONTRACT_STEP } from "@/components/tier-badge"
 import { resolveBranding, brandingCompanyIdFor, hasUnappliedDraft, isStandard, readableTextOn, validateBranding, STANDARD_BRANDING } from "@/lib/domain/branding"
 import { monthlyActiveUsers, totalAnalyses, continuingUsers, churnRiskUsers, improvementRate, careCompletionRate, isEligible, isChurnRisk, billableActiveUsers, makeBillingIdentityResolver } from "@/lib/domain/kpi"
@@ -1158,6 +1159,47 @@ console.log("── 筋肉タグ ──")
       "(1 か所だけ直すと同じ筋肉が 2 つの名前になる)")
     check("改名で重複は作らない",
       renameMuscleTag(DEFAULT_MUSCLE_TAGS, "頬骨筋", "口輪筋").smile.join() === "口輪筋")
+  }
+}
+
+console.log("── 本部メンバーの追加 (吉田さん確定 2026-09-24) ──")
+{
+  const opScope = resolveScope(adminAccounts[0], stores)
+  const caScope = resolveScope(adminAccounts[1], stores)
+  const saScope = resolveScope(adminAccounts[2], stores)
+  const hq = companies.find(c => c.kind === "internal")!
+  const target = { kind: "company", companyId: hq.id, role: "operator" } as const
+
+  check("本部は本部メンバーを増やせる", canManageMembership(opScope, target))
+  check("契約企業管理者は本部メンバーを増やせない",
+    !canManageMembership(caScope, target))
+  check("店舗管理者も増やせない", !canManageMembership(saScope, target))
+
+  {
+    const r = applyInvite(adminAccounts, {
+      email: "ops2@fitwayworld.example.jp", displayName: "運用担当 2",
+      target, now: NOW.toISOString(),
+    })
+    const created = r.accounts.find(a => a.id === r.accountId)!
+    check("招待すると本部の担当が付く",
+      resolveScope(created, stores).role === "operator")
+    check("🔴 2FA は未設定から始まる(設定するのは本人)",
+      created.twoFactorEnabled === false)
+    check("operator は 2FA 必須", ROLE_REQUIRES_2FA.operator)
+    check("招待中は使えない", created.status === "invited")
+    check("本部は 1 人ではなくなる",
+      r.accounts.filter(a => resolveScope(a, stores).role === "operator").length === 2)
+    check("seed は書き換わらない", adminAccounts.length === 4)
+  }
+
+  {
+    // 同じアドレスならアカウントを作り直さず担当だけ足す (§2)
+    const again = applyInvite(adminAccounts, {
+      email: adminAccounts[1].email, target, now: NOW.toISOString(),
+    })
+    check("既存アカウントは作り直さない", again.isNew === false)
+    check("既存アカウントに本部の担当が足される",
+      hasMembership(again.accounts.find(a => a.id === again.accountId)!, target))
   }
 }
 

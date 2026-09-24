@@ -121,7 +121,12 @@ export function companyAdminsOf(
  * ------------------------------------------------------------------ */
 
 export type MembershipTarget =
-  | { kind: "company"; companyId: CompanyId; role: "company_admin" }
+  /*
+    🔴 本部(operator)も company の membership として持つ。内部的に本部にも
+       company(FitWayWorld)があり、role だけが違う。別の仕組みを作らない。
+       本部メンバーを増やせるのは本部だけ (decideMembershipEdit)。
+  */
+  | { kind: "company"; companyId: CompanyId; role: "company_admin" | "operator" }
   | { kind: "store"; storeId: StoreId; role: "store_admin" | "store_staff" }
 
 export type MembershipEditDecision =
@@ -146,7 +151,7 @@ export function decideMembershipEdit(
   // 本部は全部できる
   if (scope.crossCompany) return { kind: "allowed" }
 
-  // 契約企業管理者の指名は本部の操作 (§4.1)
+  // 契約企業管理者の指名も、本部メンバーを増やすのも本部の操作 (§4.1)
   if (target.kind === "company") {
     return { kind: "denied", reason: "operator_only" }
   }
@@ -184,7 +189,7 @@ export const MEMBERSHIP_DENIED_LABEL: Record<
   Extract<MembershipEditDecision, { kind: "denied" }>["reason"],
   string
 > = {
-  operator_only: "契約企業管理者を指名できるのは本部だけです",
+  operator_only: "この担当を指名できるのは本部だけです",
   out_of_scope: "権限範囲外の店舗です",
   staff_only: "店舗管理者が追加できるのは店舗スタッフだけです",
   read_only_role: "このロールは担当者を確認できますが変更はできません",

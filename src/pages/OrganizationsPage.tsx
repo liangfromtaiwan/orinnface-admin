@@ -21,6 +21,7 @@ import { ChevronRightIcon, SearchIcon } from "lucide-react"
 
 import { ContractBadge } from "@/components/ContractBadge"
 import { MembershipDialog } from "@/components/MembershipDialog"
+import { HeadquartersMembers } from "@/components/HeadquartersMembers"
 import {
   CreateOrganizationDialog,
   EditCompanyDialog,
@@ -187,6 +188,9 @@ export default function OrganizationsPage() {
           </>
         }
       />
+
+      {/* 🔴 本部だけに出す。契約企業の一覧とは別のもの(本部は契約企業ではない) */}
+      <HeadquartersMembers />
 
       {rows.length === 0 ? (
         <Card>

@@ -110,6 +110,7 @@
 - [x] `MetricCatalogTable` ✅ 2026-09-22 - 指標カタログの一覧(表示のみ)。結果画面と同じセクション順。正本は AI分析 v1.6
 - [x] `CareRightsDialog` ✅ 2026-09-22 - care 動画の権利確認(§7.1)。本部のみ・中身を再生してから確認・記録必須
 - [x] `OrganizationDialog` ✅ 2026-09-24 - 企業・店舗の追加と編集(本部のみ)。企業名/企業管理者の招待/契約状態 + 店舗(名前・状態・担当者)。解約・停止は状態変更で、削除は無い
+- [x] `HeadquartersMembers` ✅ 2026-09-24 - 本部メンバーの招待・解除(本部のみ)。1 人 1 アカウント・2FA 未設定を明示
 - [ ] `EmptyState` - 空狀態顯示
 
 > ⚠️ v1.0 対応で削除: `CompanySwitcher` / `AdminDashboard` / `B2BDashboard` / `OEMDashboard`
