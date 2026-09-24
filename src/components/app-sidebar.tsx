@@ -1,6 +1,6 @@
 import * as React from "react"
 import {
-  BuildingIcon,
+  Building2Icon,
   ClipboardListIcon,
   ImageIcon,
   LayoutDashboardIcon,
@@ -31,7 +31,7 @@ import { stores } from "@/lib/mock/seed"
 /** 画面構成は仕様書 v1.0 §4。表示可否は role の membership で決まる。 */
 const SCREEN_ROUTES: Record<ScreenKey, { url: string; icon: React.ReactNode }> = {
   dashboard: { url: "/dashboard", icon: <LayoutDashboardIcon /> },
-  organizations: { url: "/organizations", icon: <BuildingIcon /> },
+  organizations: { url: "/organizations", icon: <Building2Icon /> },
   customers: { url: "/customers", icon: <UsersIcon /> },
   analysis: { url: "/analysis", icon: <ScanFaceIcon /> },
   care: { url: "/care", icon: <VideoIcon /> },

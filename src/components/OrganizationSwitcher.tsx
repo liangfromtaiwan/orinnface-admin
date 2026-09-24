@@ -13,7 +13,12 @@
  * 本部視点では標準ブランド(orinnFACE)になる。
  */
 
-import { BuildingIcon, CheckIcon, ChevronsUpDownIcon, GlobeIcon } from "lucide-react"
+import {
+  Building2Icon,
+  CheckIcon,
+  ChevronsUpDownIcon,
+  ShieldIcon,
+} from "lucide-react"
 
 import {
   DropdownMenu,
@@ -57,9 +62,16 @@ export function OrganizationSwitcher() {
         {branding.logoUrl ? (
           <img src={branding.logoUrl} alt="" className="size-full object-contain" />
         ) : current ? (
-          <BuildingIcon className="size-4" style={{ color: readableTextOn(branding.mainColor) }} />
+          <Building2Icon
+            className="size-4"
+            style={{ color: readableTextOn(branding.mainColor) }}
+          />
         ) : (
-          <GlobeIcon className="size-4" style={{ color: readableTextOn(branding.mainColor) }} />
+          /* 🔴 本部は「運営する側」なので盾。企業と同じビルにすると区別が付かない */
+          <ShieldIcon
+            className="size-4"
+            style={{ color: readableTextOn(branding.mainColor) }}
+          />
         )}
       </div>
       <div className="grid flex-1 text-left text-sm leading-tight">
@@ -111,7 +123,9 @@ export function OrganizationSwitcher() {
             </DropdownMenuLabel>
 
             <DropdownMenuItem onClick={() => setViewCompany(undefined)} className="gap-2">
-              <GlobeIcon className="size-4 text-muted-foreground" />
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-md border bg-background">
+                <ShieldIcon className="size-4 text-muted-foreground" />
+              </span>
               <div className="grid flex-1">
                 <span className="text-sm">本部</span>
                 <span className="text-xs text-muted-foreground">全社横断</span>
@@ -129,7 +143,9 @@ export function OrganizationSwitcher() {
                   onClick={() => setViewCompany(c.id)}
                   className="gap-2"
                 >
-                  <BuildingIcon className="size-4 text-muted-foreground" />
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-md border bg-background">
+                    <Building2Icon className="size-4 text-muted-foreground" />
+                  </span>
                   <div className="grid flex-1 gap-0.5">
                     <span className="flex items-center gap-1.5 text-sm">
                       {c.name}
