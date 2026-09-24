@@ -19,8 +19,9 @@ import { TIER_BADGE, PLAN_STEP, CONTRACT_STEP } from "@/components/tier-badge"
 import { resolveBranding, brandingCompanyIdFor, hasUnappliedDraft, isStandard, readableTextOn, validateBranding, STANDARD_BRANDING } from "@/lib/domain/branding"
 import { monthlyActiveUsers, totalAnalyses, continuingUsers, churnRiskUsers, improvementRate, careCompletionRate, isEligible, isChurnRisk, billableActiveUsers, makeBillingIdentityResolver } from "@/lib/domain/kpi"
 import { buildPeriod } from "@/lib/domain/periods"
-import { careAssets, careAssignments } from "@/lib/mock/seed"
+import { careAssets, careAssignments, companies } from "@/lib/mock/seed"
 import { BADGE_HINT } from "@/components/badge-hints"
+import { applyCompanyStatusToStores, applyCreateCompany, applyCreateStore, applyUpdateCompany, applyUpdateStore, canEditOrganizations, decideCreateCompany, decideCreateStore, nextCompanyId, nextStoreId } from "@/lib/domain/organizations"
 import { DEFAULT_MUSCLE_TAGS, MAX_TAGS_PER_POSE, MUSCLE_TAG_DESCRIPTION, addMuscleTag, allMuscleNames, decideAddMuscleTag, diffMuscleTags, removeMuscleTag, renameMuscleTag } from "@/lib/domain/muscles"
 import { POSE_DISPLAY } from "@/lib/domain/metrics"
 import { baselineSets, policySets } from "@/lib/mock/seed"
@@ -1155,6 +1156,71 @@ console.log("── 筋肉タグ ──")
       "(1 か所だけ直すと同じ筋肉が 2 つの名前になる)")
     check("改名で重複は作らない",
       renameMuscleTag(DEFAULT_MUSCLE_TAGS, "頬骨筋", "口輪筋").smile.join() === "口輪筋")
+  }
+}
+
+console.log("── 企業・店舗の追加 (吉田さん確定 2026-09-24) ──")
+{
+  const opScope = resolveScope(adminAccounts[0], stores)
+  const caScope = resolveScope(adminAccounts[1], stores)
+  const saScope = resolveScope(adminAccounts[2], stores)
+  const now = NOW.toISOString()
+
+  check("本部は企業・店舗を追加できる", canEditOrganizations(opScope))
+  check("契約企業管理者は追加できない", !canEditOrganizations(caScope),
+    "(V1 は本部が管理画面から追加する)")
+  check("店舗管理者も追加できない", !canEditOrganizations(saScope))
+
+  check("名前が空なら作れない",
+    decideCreateCompany(opScope, companies, "  ").kind === "denied")
+  check("同じ企業名は作れない",
+    decideCreateCompany(opScope, companies, "株式会社ルミエール").kind === "denied")
+  check("自分自身は重複判定から外す(改名できる)",
+    decideCreateCompany(opScope, companies, "株式会社ルミエール", "co_lumiere").kind === "allowed")
+  check("店舗名は企業をまたげば重複してよい",
+    decideCreateStore(opScope, stores, "co_aoyama", "ルミエール 銀座店").kind === "allowed",
+    "(「〇〇店」は各社にありうる)")
+  check("同じ企業の中では店舗名を重複させない",
+    decideCreateStore(opScope, stores, "co_lumiere", "ルミエール 銀座店").kind === "denied")
+
+  {
+    const id = nextCompanyId(companies)
+    const added = applyCreateCompany(companies, { id, name: " 新規テスト社 ", contractStatus: "active" }, now)
+    const c = added.find(x => x.id === id)!
+    check("追加した企業は契約企業(partner)", c.kind === "partner",
+      "(本部 internal は増やさない)")
+    check("前後の空白は落とす", c.name === "新規テスト社")
+    check("既存の企業は変わらない", added.length === companies.length + 1)
+
+    const sid = nextStoreId(id, stores)
+    const withStore = applyCreateStore(stores, { id: sid, companyId: id, name: "1号店", status: "active" }, now)
+    check("店舗は企業に紐づく",
+      withStore.find(x => x.id === sid)?.companyId === id)
+  }
+
+  {
+    // 🔴 企業を止めたら配下の店舗も止まる
+    const suspended = applyUpdateCompany(companies, "co_lumiere", { contractStatus: "suspended" })
+    check("契約状態を変えられる",
+      suspended.find(c => c.id === "co_lumiere")?.contractStatus === "suspended")
+    const st = applyCompanyStatusToStores(stores, "co_lumiere", "suspended")
+    check("企業を止めると配下の店舗も止まる",
+      st.filter(s => s.companyId === "co_lumiere").every(s => s.status === "closed"),
+      "(店舗だけ動いたままだと契約が切れているのに撮影できる)")
+    check("他社の店舗は止めない",
+      st.filter(s => s.companyId === "co_aoyama").every(s => s.status === "active"))
+    check("契約中へ戻すときは店舗を勝手に開けない",
+      applyCompanyStatusToStores(st, "co_lumiere", "active") === st,
+      "(どの店舗を再開するかは個別に決める)")
+  }
+
+  {
+    const renamed = applyUpdateStore(stores, "st_lumiere_ginza", { name: "ルミエール 銀座本店" })
+    check("店舗名を変えられる",
+      renamed.find(s => s.id === "st_lumiere_ginza")?.name === "ルミエール 銀座本店")
+    check("企業・店舗は消さずに状態で表す",
+      applyUpdateStore(stores, "st_lumiere_ginza", { status: "closed" }).length === stores.length,
+      "(§2 顧客・分析履歴・同意・保存期限を作り直さない)")
   }
 }
 

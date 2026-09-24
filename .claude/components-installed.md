@@ -109,6 +109,7 @@
 - [x] `MuscleTagEditor` ✅ 2026-09-22 - 動作ごとの関連筋肉タグの追加・削除・改名(結果画面の表示用)。本部のみ・改名は全動作まとめて
 - [x] `MetricCatalogTable` ✅ 2026-09-22 - 指標カタログの一覧(表示のみ)。結果画面と同じセクション順。正本は AI分析 v1.6
 - [x] `CareRightsDialog` ✅ 2026-09-22 - care 動画の権利確認(§7.1)。本部のみ・中身を再生してから確認・記録必須
+- [x] `OrganizationDialog` ✅ 2026-09-24 - 企業・店舗の追加と編集(本部のみ)。企業名/企業管理者の招待/契約状態 + 店舗(名前・状態・担当者)。解約・停止は状態変更で、削除は無い
 - [ ] `EmptyState` - 空狀態顯示
 
 > ⚠️ v1.0 対応で削除: `CompanySwitcher` / `AdminDashboard` / `B2BDashboard` / `OEMDashboard`

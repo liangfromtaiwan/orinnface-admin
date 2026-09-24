@@ -30,6 +30,7 @@ import type {
   Company,
   Customer,
   Store,
+  StoreId,
   StoreDataLink,
 } from "@/lib/domain/types"
 import {
@@ -120,6 +121,31 @@ export type SessionValue = {
    * 🔴 確認した人と日時を asset に残し、根拠は理由として §11 の監査にも残す。
    */
   clearCareAssetRights: (careAssetId: string, reason: string) => void
+
+  /* ---- 企業・店舗 (吉田さん確定 2026-09-24: V1 は本部が管理画面から追加) ---- */
+
+  /**
+   * 🔴 呼ぶ前に `decideCreateCompany()` / `decideCreateStore()` で可否を判定すること。
+   * 🔴 解約・停止は消さずに状態を変える。顧客・分析履歴・同意・保存期限を
+   *    作り直さない (§2)。企業を止めると配下の店舗もまとめて止まる。
+   */
+  createCompany: (input: {
+    name: string
+    contractStatus: Company["contractStatus"]
+    stores: { name: string; status: Store["status"] }[]
+  }) => CompanyId
+  updateCompany: (
+    companyId: CompanyId,
+    patch: { name?: string; contractStatus?: Company["contractStatus"] }
+  ) => void
+  createStore: (
+    companyId: CompanyId,
+    input: { name: string; status: Store["status"] }
+  ) => void
+  updateStore: (
+    storeId: StoreId,
+    patch: { name?: string; status?: Store["status"] }
+  ) => void
 
   /* ---- 動作ごとの関連筋肉タグ (結果画面の表示) ---- */
 

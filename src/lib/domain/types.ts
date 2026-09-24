@@ -579,6 +579,12 @@ export type AuditCategory =
   | "deletion"
   | "rollback"
   | "branding_change"
+  /**
+   * 企業・店舗の作成・編集・解約・停止。
+   * ⚠️ §11 のカテゴリ一覧には無い。V1 で本部が管理画面から追加する運用になった
+   *    ため(吉田さん 2026-09-24)こちらで足した。→ QUESTIONS_FOR_YOSHIDA.md #23
+   */
+  | "organization_change"
 
 export const AUDIT_CATEGORY_LABEL: Record<AuditCategory, string> = {
   role_change: "権限変更",
@@ -590,6 +596,7 @@ export const AUDIT_CATEGORY_LABEL: Record<AuditCategory, string> = {
   deletion: "削除",
   rollback: "版の復元",
   branding_change: "ブランド設定変更",
+  organization_change: "企業・店舗の変更",
 }
 
 export type AuditEvent = {

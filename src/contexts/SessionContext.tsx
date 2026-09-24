@@ -46,6 +46,15 @@ import {
   type MuscleTagMap,
 } from "@/lib/domain/muscles"
 import {
+  applyCompanyStatusToStores,
+  applyCreateCompany,
+  applyCreateStore,
+  applyUpdateCompany,
+  applyUpdateStore,
+  nextCompanyId,
+  nextStoreId,
+} from "@/lib/domain/organizations"
+import {
   applyInvite,
   applyMembershipChange,
   membershipAuditLabel,
@@ -57,14 +66,18 @@ import {
 import type {
   AccountId,
   AdminAccount,
+  Company,
+  Store,
   AuditEvent,
   CareAssignment,
   CareVideoAsset,
   CompanyId,
+  StoreId,
   DataSubjectId,
   RecommendationBaselineSet,
   RecommendationPolicySet,
 } from "@/lib/domain/types"
+import { CONTRACT_STATUS_LABEL } from "@/lib/domain/types"
 import {
   adminAccounts as seededAccounts,
   analysisSessions,
@@ -73,12 +86,12 @@ import {
   careAssets as seededCareAssets,
   careAssignments as seededCareAssignments,
   carePlaybacks,
-  companies,
+  companies as seededCompanies,
   companyBrandings,
   customers,
   policySets as seededPolicySets,
   storeDataLinks,
-  stores,
+  stores as seededStores,
 } from "@/lib/mock/seed"
 
 /** 差し替え履歴に残す catalog version。seed と同じ値を使う。 */
@@ -161,6 +174,13 @@ export function SessionProvider({
   const [muscleTagHistory, setMuscleTagHistory] = useState<
     MuscleTagHistoryEntry[]
   >([])
+  /*
+    企業・店舗は本部が管理画面から追加する(吉田さん確定 2026-09-24)。
+    🔴 解約・停止は消さずに状態を変える。顧客・分析履歴・同意・保存期限を
+       作り直さないため (§2)。
+  */
+  const [companies, setCompanies] = useState<Company[]>(seededCompanies)
+  const [stores, setStores] = useState<Store[]>(seededStores)
 
   /** アカウントを変えたら視点は全社横断に戻す(他社の視点を持ち越さない)。 */
   function switchAccount(id: string) {
@@ -323,6 +343,112 @@ export function SessionProvider({
       )
     },
     [accountId, careAssets, pushAudit]
+  )
+
+  /* ---- 企業・店舗 (吉田さん確定 2026-09-24: V1 は本部が管理画面から追加) ---- */
+
+  /*
+    🔴 可否は呼び出し側の decideCreateCompany() / decideCreateStore()。
+       ここは state と監査だけ。
+    🔴 解約・停止した企業の店舗もまとめて止める。店舗だけ動いたままだと、
+       契約が切れているのに撮影できる状態になる。
+  */
+  const createCompany = useCallback(
+    (input: {
+      name: string
+      contractStatus: Company["contractStatus"]
+      stores: { name: string; status: Store["status"] }[]
+    }) => {
+      const now = new Date().toISOString()
+      const companyId = nextCompanyId(companies)
+      setCompanies((prev) => applyCreateCompany(prev, { ...input, id: companyId }, now))
+      setStores((prev) => {
+        let next = prev
+        for (const st of input.stores) {
+          next = applyCreateStore(
+            next,
+            { id: nextStoreId(companyId, next), companyId, ...st },
+            now
+          )
+        }
+        return next
+      })
+      pushAudit(
+        "organization_change",
+        `企業「${input.name.trim()}」を追加(店舗 ${input.stores.length} 件)`,
+        ""
+      )
+      return companyId
+    },
+    [companies, pushAudit]
+  )
+
+  const updateCompany = useCallback(
+    (
+      companyId: CompanyId,
+      patch: { name?: string; contractStatus?: Company["contractStatus"] }
+    ) => {
+      const before = companies.find((c) => c.id === companyId)
+      setCompanies((prev) => applyUpdateCompany(prev, companyId, patch))
+      if (patch.contractStatus) {
+        setStores((prev) =>
+          applyCompanyStatusToStores(prev, companyId, patch.contractStatus!)
+        )
+      }
+      if (!before) return
+      const what = [
+        patch.name && patch.name.trim() !== before.name
+          ? `名称を「${patch.name.trim()}」へ`
+          : "",
+        patch.contractStatus && patch.contractStatus !== before.contractStatus
+          ? `契約状態を ${CONTRACT_STATUS_LABEL[patch.contractStatus]} へ`
+          : "",
+      ]
+        .filter(Boolean)
+        .join(" / ")
+      if (!what) return
+      pushAudit("organization_change", `企業「${before.name}」の${what}変更`, "")
+    },
+    [companies, pushAudit]
+  )
+
+  const createStore = useCallback(
+    (companyId: CompanyId, input: { name: string; status: Store["status"] }) => {
+      const now = new Date().toISOString()
+      const company = companies.find((c) => c.id === companyId)
+      let storeId = ""
+      setStores((prev) => {
+        storeId = nextStoreId(companyId, prev)
+        return applyCreateStore(prev, { id: storeId, companyId, ...input }, now)
+      })
+      pushAudit(
+        "organization_change",
+        `${company?.name ?? companyId} に店舗「${input.name.trim()}」を追加`,
+        ""
+      )
+    },
+    [companies, pushAudit]
+  )
+
+  const updateStore = useCallback(
+    (storeId: StoreId, patch: { name?: string; status?: Store["status"] }) => {
+      const before = stores.find((s) => s.id === storeId)
+      setStores((prev) => applyUpdateStore(prev, storeId, patch))
+      if (!before) return
+      const what = [
+        patch.name && patch.name.trim() !== before.name
+          ? `名称を「${patch.name.trim()}」へ`
+          : "",
+        patch.status && patch.status !== before.status
+          ? `状態を ${patch.status === "active" ? "営業中" : "閉店"} へ`
+          : "",
+      ]
+        .filter(Boolean)
+        .join(" / ")
+      if (!what) return
+      pushAudit("organization_change", `店舗「${before.name}」の${what}変更`, "")
+    },
+    [stores, pushAudit]
   )
 
   /* ---- 筋肉タグ ---- */
@@ -597,6 +723,10 @@ export function SessionProvider({
       addCareVideoAsset,
       reviewCareRequest,
       clearCareAssetRights,
+      createCompany,
+      updateCompany,
+      createStore,
+      updateStore,
       muscleTags,
       muscleTagHistory,
       saveMuscleTags,
@@ -640,6 +770,12 @@ export function SessionProvider({
     addCareVideoAsset,
     reviewCareRequest,
     clearCareAssetRights,
+    companies,
+    stores,
+    createCompany,
+    updateCompany,
+    createStore,
+    updateStore,
     muscleTags,
     muscleTagHistory,
     saveMuscleTags,

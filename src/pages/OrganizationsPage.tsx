@@ -21,6 +21,11 @@ import { ChevronRightIcon, SearchIcon } from "lucide-react"
 
 import { ContractBadge } from "@/components/ContractBadge"
 import { MembershipDialog } from "@/components/MembershipDialog"
+import {
+  CreateOrganizationDialog,
+  EditCompanyDialog,
+  EditStoreDialog,
+} from "@/components/OrganizationDialog"
 import { PageHeader, SpecNote } from "@/components/PageHeader"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -147,9 +152,11 @@ export default function OrganizationsPage() {
     <div className="space-y-4">
       <PageHeader
         title="企業・店舗"
-        description={`${rows.length} 社 / ${visibleStoreCount} 店舗。契約作成は V1 では手動運用です。`}
+        description={`${rows.length} 社 / ${visibleStoreCount} 店舗。V1 は本部が管理画面から追加します。`}
         actions={
           <>
+            {/* 🔴 追加できるのは本部だけ。ボタン自体を出し分ける */}
+            <CreateOrganizationDialog />
             <div className="relative">
               <SearchIcon className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -261,7 +268,8 @@ export default function OrganizationsPage() {
                     契約はあるのに管理者が居ない状態は運用上の問題なので黙って隠さない。
                     未設定を出すだけだと直す先が無いので、同じ行から指名できるようにする。
                   */}
-                  <p className="flex flex-wrap items-center gap-x-1.5 pt-3 pr-4 pl-11 text-xs text-muted-foreground">
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-3 pr-4 pl-11">
+                  <p className="flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
                     契約企業管理者:{" "}
                     {companyAdmins.length > 0 ? (
                       companyAdmins
@@ -299,6 +307,9 @@ export default function OrganizationsPage() {
                       </MembershipDialog>
                     ) : null}
                   </p>
+                  {/* 名称変更・一時停止・解約。削除は用意しない (§2) */}
+                  <EditCompanyDialog company={company} />
+                  </div>
 
                   {listed.length === 0 ? (
                     <p className="py-6 pr-4 pl-11 text-sm text-muted-foreground">
@@ -313,7 +324,8 @@ export default function OrganizationsPage() {
                             <TableHead className="w-[10%]">状態</TableHead>
                             <TableHead className="w-[12%] text-right">連携顧客</TableHead>
                             <TableHead className="w-[12%] text-right">適格分析</TableHead>
-                            <TableHead className="w-[36%]">担当者</TableHead>
+                            <TableHead className="w-[30%]">担当者</TableHead>
+                            <TableHead className="w-[6%]" />
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -368,6 +380,9 @@ export default function OrganizationsPage() {
                                       )}
                                     </button>
                                   </MembershipDialog>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <EditStoreDialog store={store} />
                                 </TableCell>
                               </TableRow>
                             )
