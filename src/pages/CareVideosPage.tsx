@@ -192,13 +192,6 @@ export default function CareVideosPage() {
       <PageHeader
         title="care動画"
         description={`固定 ${CARE_VIDEO_SLOTS.length} 枠 / 登録済み動画 ${careAssets.length} 本。ユーザー向け機能名は「顔トレ」、内部総称は care video です。`}
-        actions={
-          replacement.kind === "denied" ? null : (
-            <CareAssetAddDialog>
-              <Button size="sm">動画を追加</Button>
-            </CareAssetAddDialog>
-          )
-        }
       />
 
       {/*
@@ -207,18 +200,26 @@ export default function CareVideosPage() {
         🔴 登録済み動画は本部だけなので、タブ自体を出し分ける。
       */}
       <Tabs defaultValue="slots" className="gap-4">
-        <TabsList>
-          <TabsTrigger value="slots">動画</TabsTrigger>
-          <TabsTrigger value="requests">
-            差し替え申請
-            {requests.length > 0 ? ` (${requests.length})` : ""}
-          </TabsTrigger>
-          {canApprove ? (
-            <TabsTrigger value="assets">
-              登録済み動画 ({careAssets.length})
+        {/* 🔴 操作ボタンはタブと同じ行に置く(推奨設定と揃える) */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <TabsList>
+            <TabsTrigger value="slots">動画</TabsTrigger>
+            <TabsTrigger value="requests">
+              差し替え申請
+              {requests.length > 0 ? ` (${requests.length})` : ""}
             </TabsTrigger>
-          ) : null}
-        </TabsList>
+            {canApprove ? (
+              <TabsTrigger value="assets">
+                登録済み動画 ({careAssets.length})
+              </TabsTrigger>
+            ) : null}
+          </TabsList>
+          {replacement.kind === "denied" ? null : (
+            <CareAssetAddDialog>
+              <Button size="sm">動画を追加</Button>
+            </CareAssetAddDialog>
+          )}
+        </div>
 
         <TabsContent value="slots" className="space-y-4">
         <Card className="overflow-hidden py-0">
