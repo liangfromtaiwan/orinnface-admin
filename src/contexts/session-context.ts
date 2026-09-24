@@ -7,7 +7,10 @@ import { createContext, useContext } from "react"
 
 import type { Branding } from "@/lib/domain/branding"
 import type { CareRequestAction } from "@/lib/domain/care-catalog"
-import type { MusclePose, MuscleTagMap } from "@/lib/domain/muscles"
+import type {
+  MuscleTagHistoryEntry,
+  MuscleTagMap,
+} from "@/lib/domain/muscles"
 import type {
   RecommendationPose,
   SetAction,
@@ -121,14 +124,15 @@ export type SessionValue = {
   /* ---- 動作ごとの関連筋肉タグ (結果画面の表示) ---- */
 
   muscleTags: MuscleTagMap
+  /** 変更の履歴(新しい順)。誰がいつ何を変えたか。 */
+  muscleTagHistory: MuscleTagHistoryEntry[]
   /**
-   * 🔴 呼ぶ前に `decideAddMuscleTag()` で可否を判定すること。
-   * 🔴 表示だけの情報だが、ユーザーに見えるものなので変更は監査に残す。
+   * 編集した内容をまとめて保存する。
+   * 🔴 保存する前に画面で差分を見せること(吉田さん確定 2026-09-24「変更確認」)。
+   *    タグはユーザーの結果画面に出るので、押した瞬間に反映すると気付けない。
+   * 🔴 履歴と §11 の監査の両方に残す。
    */
-  addMuscleTag: (pose: MusclePose, name: string) => void
-  removeMuscleTag: (pose: MusclePose, name: string) => void
-  /** 🔴 同じ筋肉が複数の動作に付くので、改名は全動作をまとめて行う。 */
-  renameMuscleTag: (from: string, to: string) => void
+  saveMuscleTags: (next: MuscleTagMap) => void
 
   /* ---- 推奨基準値・方針 (§8) ---- */
 

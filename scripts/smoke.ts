@@ -21,7 +21,7 @@ import { monthlyActiveUsers, totalAnalyses, continuingUsers, churnRiskUsers, imp
 import { buildPeriod } from "@/lib/domain/periods"
 import { careAssets, careAssignments } from "@/lib/mock/seed"
 import { BADGE_HINT } from "@/components/badge-hints"
-import { DEFAULT_MUSCLE_TAGS, MAX_TAGS_PER_POSE, addMuscleTag, allMuscleNames, decideAddMuscleTag, removeMuscleTag, renameMuscleTag } from "@/lib/domain/muscles"
+import { DEFAULT_MUSCLE_TAGS, MAX_TAGS_PER_POSE, MUSCLE_TAG_DESCRIPTION, addMuscleTag, allMuscleNames, decideAddMuscleTag, diffMuscleTags, removeMuscleTag, renameMuscleTag } from "@/lib/domain/muscles"
 import { POSE_DISPLAY } from "@/lib/domain/metrics"
 import { baselineSets, policySets } from "@/lib/mock/seed"
 import { applyBaselineDelete, applyPolicyDelete, decideSetDelete, applyBaselineEdit, applyPolicyEdit, decideSetEdit, availableActions, applyBaselineAction, applyPolicyAction, comparisonBaseFor, createBaselineDraft, decideDraftCreate, decideSetAction, diffBaselineSets, nextVersion, previewBaselineImpact, previewPolicyImpact, rankRecommendedPoses, baselineValuesOf, RECOMMENDATION_POSES } from "@/lib/domain/recommendation"
@@ -1155,6 +1155,40 @@ console.log("── 筋肉タグ ──")
       "(1 か所だけ直すと同じ筋肉が 2 つの名前になる)")
     check("改名で重複は作らない",
       renameMuscleTag(DEFAULT_MUSCLE_TAGS, "頬骨筋", "口輪筋").smile.join() === "口輪筋")
+  }
+}
+
+console.log("── 筋肉タグの変更確認 (吉田さん確定 2026-09-24) ──")
+{
+  check("説明文は吉田さんの文言をそのまま使う",
+    MUSCLE_TAG_DESCRIPTION === "その動作に関係する筋肉を示す表示用タグ")
+
+  check("変更が無ければ差分も無い",
+    diffMuscleTags(DEFAULT_MUSCLE_TAGS, DEFAULT_MUSCLE_TAGS).length === 0)
+
+  {
+    const next = addMuscleTag(DEFAULT_MUSCLE_TAGS, "eye_open", "上眼瞼挙筋")
+    const d = diffMuscleTags(DEFAULT_MUSCLE_TAGS, next)
+    check("追加が 1 件の差分になる",
+      d.length === 1 && d[0].kind === "added")
+  }
+  {
+    const next = removeMuscleTag(DEFAULT_MUSCLE_TAGS, "smile", "頬骨筋")
+    const d = diffMuscleTags(DEFAULT_MUSCLE_TAGS, next)
+    check("削除が 1 件の差分になる",
+      d.length === 1 && d[0].kind === "removed")
+  }
+  {
+    // 🔴 改名は「全動作で消えて足された」形になるが、削除+追加に数えない
+    const next = renameMuscleTag(DEFAULT_MUSCLE_TAGS, "口輪筋", "口輪筋(OO)")
+    const d = diffMuscleTags(DEFAULT_MUSCLE_TAGS, next)
+    check("改名は 1 件の差分として出る",
+      d.length === 1 && d[0].kind === "renamed",
+      "(削除 2 + 追加 2 に見えてはいけない)")
+    const renamed = d[0]
+    check("改名は効いた動作をすべて持つ",
+      renamed.kind === "renamed" && renamed.poses.length === 2,
+      "(口輪筋は 口角挙上 と 口すぼめ に付いている)")
   }
 }
 

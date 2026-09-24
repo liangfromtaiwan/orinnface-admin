@@ -32,6 +32,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs"
 import { MetricCatalogTable } from "@/components/MetricCatalogTable"
+import { MUSCLE_TAG_DESCRIPTION } from "@/lib/domain/muscles"
 import { MuscleTagEditor } from "@/components/MuscleTagEditor"
 import { METRIC_GROUP_LABEL } from "@/lib/domain/metrics"
 import {
@@ -495,13 +496,12 @@ export default function RecommendationPage() {
         </TabsContent>
         <TabsContent value="muscles" className="space-y-2">
           <p className="text-xs text-muted-foreground">
-            結果画面で各動作のカードの下に出るタグ。どの筋肉に効く動作なのかを本人に
-            伝えるためのもので、
+            {MUSCLE_TAG_DESCRIPTION}。結果画面で各動作のカードの下に出ます。
             <span className="font-medium text-foreground">
               {" "}
-              推奨の順位や判定には使いません
+              表示用のみで、AI 分析・判定・推奨の順位には影響しません
             </span>
-            （表示だけ）。
+            （吉田さん確定 2026-09-24）。
           </p>
 
           <Card>

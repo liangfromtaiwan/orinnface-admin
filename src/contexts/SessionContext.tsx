@@ -40,10 +40,9 @@ import {
 } from "@/lib/domain/recommendation"
 import {
   DEFAULT_MUSCLE_TAGS,
-  addMuscleTag as applyAddMuscleTag,
-  removeMuscleTag as applyRemoveMuscleTag,
-  renameMuscleTag as applyRenameMuscleTag,
-  type MusclePose,
+  diffMuscleTags,
+  type MuscleTagChange,
+  type MuscleTagHistoryEntry,
   type MuscleTagMap,
 } from "@/lib/domain/muscles"
 import {
@@ -106,6 +105,20 @@ function setActionAuditLabel(
   }
 }
 
+/** 監査の 1 行に収まる長さで変更をまとめる。 */
+function summarize(changes: MuscleTagChange[]): string {
+  const added = changes.filter((c) => c.kind === "added").length
+  const removed = changes.filter((c) => c.kind === "removed").length
+  const renamed = changes.filter((c) => c.kind === "renamed").length
+  return [
+    added ? `追加 ${added}` : "",
+    removed ? `削除 ${removed}` : "",
+    renamed ? `改名 ${renamed}` : "",
+  ]
+    .filter(Boolean)
+    .join(" / ")
+}
+
 /** 監査の request ID を seed と同じ桁で揃える。 */
 function pad6(n: number): string {
   return String(n).padStart(6, "0")
@@ -145,6 +158,9 @@ export function SessionProvider({
     useState<RecommendationPolicySet[]>(seededPolicySets)
   /** 動作ごとの関連筋肉タグ。結果画面に出る表示用の情報。 */
   const [muscleTags, setMuscleTags] = useState<MuscleTagMap>(DEFAULT_MUSCLE_TAGS)
+  const [muscleTagHistory, setMuscleTagHistory] = useState<
+    MuscleTagHistoryEntry[]
+  >([])
 
   /** アカウントを変えたら視点は全社横断に戻す(他社の視点を持ち越さない)。 */
   function switchAccount(id: string) {
@@ -312,37 +328,32 @@ export function SessionProvider({
   /* ---- 筋肉タグ ---- */
 
   /*
-    🔴 可否は呼び出し側の decideAddMuscleTag()。ここは state と監査だけ。
+    🔴 1 件ずつではなく、編集した結果をまとめて保存する。可否は画面側の
+       decideAddMuscleTag()。ここは state と履歴・監査だけ。
     ⚠️ 監査カテゴリに「表示設定の変更」が無いため policy_change を借りている。
        §11 のカテゴリ一覧に足すべきか QUESTIONS_FOR_YOSHIDA.md #23 で確認中。
-       借りているあいだは targetLabel に「筋肉タグ」と明記して見分けられるようにする。
   */
-  const addMuscleTag = useCallback(
-    (pose: MusclePose, name: string) => {
-      setMuscleTags((prev) => applyAddMuscleTag(prev, pose, name))
-      pushAudit("policy_change", `筋肉タグ ${pose} に「${name.trim()}」を追加`, "")
-    },
-    [pushAudit]
-  )
+  const saveMuscleTags = useCallback(
+    (next: MuscleTagMap) => {
+      const actor =
+        seededAccounts.find((a) => a.id === accountId) ?? seededAccounts[0]
+      const now = new Date().toISOString()
+      const changes = diffMuscleTags(muscleTags, next)
+      if (changes.length === 0) return
 
-  const removeMuscleTag = useCallback(
-    (pose: MusclePose, name: string) => {
-      setMuscleTags((prev) => applyRemoveMuscleTag(prev, pose, name))
-      pushAudit("policy_change", `筋肉タグ ${pose} から「${name}」を削除`, "")
+      setMuscleTags(next)
+      setMuscleTagHistory((prev) => [
+        {
+          id: `mtl_${prev.length + 1}`,
+          at: now,
+          by: actor.displayName,
+          changes,
+        },
+        ...prev,
+      ])
+      pushAudit("policy_change", `筋肉タグを変更(${summarize(changes)})`, "")
     },
-    [pushAudit]
-  )
-
-  const renameMuscleTag = useCallback(
-    (from: string, to: string) => {
-      setMuscleTags((prev) => applyRenameMuscleTag(prev, from, to))
-      pushAudit(
-        "policy_change",
-        `筋肉タグ「${from}」を「${to.trim()}」へ改名(全動作)`,
-        ""
-      )
-    },
-    [pushAudit]
+    [accountId, muscleTags, pushAudit]
   )
 
   /* ---- 推奨基準値・方針 (§8) ---- */
@@ -587,9 +598,8 @@ export function SessionProvider({
       reviewCareRequest,
       clearCareAssetRights,
       muscleTags,
-      addMuscleTag,
-      removeMuscleTag,
-      renameMuscleTag,
+      muscleTagHistory,
+      saveMuscleTags,
       baselineSets,
       policySets,
       createBaselineDraft,
@@ -631,9 +641,8 @@ export function SessionProvider({
     reviewCareRequest,
     clearCareAssetRights,
     muscleTags,
-    addMuscleTag,
-    removeMuscleTag,
-    renameMuscleTag,
+    muscleTagHistory,
+    saveMuscleTags,
     baselineSets,
     policySets,
     createBaselineDraft,

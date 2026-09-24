@@ -25,7 +25,18 @@ export const DEFAULT_MUSCLE_TAGS: MuscleTagMap = {
   brow_furrow: ["前頭筋", "皺眉筋"],
 }
 
-/** 1 動作に付けられるタグの上限。画面のカード幅に収まる数。 */
+/**
+ * 画面に出す説明文。
+ * 🔴 吉田さん確定 2026-09-24 の文言をそのまま使う。言い換えない。
+ */
+export const MUSCLE_TAG_DESCRIPTION =
+  "その動作に関係する筋肉を示す表示用タグ"
+
+/**
+ * 1 動作に付けられるタグの上限。
+ * ⚠️ **暫定**。4 件という数は吉田さん 2026-09-24 時点で「未確定」。画面のカード幅に
+ *    収まる数として置いているだけなので、決まったら差し替える。
+ */
 export const MAX_TAGS_PER_POSE = 4
 
 export type MuscleTagDenial =
@@ -41,7 +52,7 @@ export type MuscleTagDenial =
 export const MUSCLE_TAG_DENIAL_LABEL: Record<MuscleTagDenial, string> = {
   not_operator: "筋肉タグを編集できるのは本部だけです。",
   duplicate: "同じ筋肉がすでに登録されています。",
-  too_many: `1 つの動作に付けられるのは ${MAX_TAGS_PER_POSE} 件までです。`,
+  too_many: `1 つの動作に付けられるのは ${MAX_TAGS_PER_POSE} 件までです(この上限は暫定)。`,
   empty: "筋肉名を入力してください。",
 }
 
@@ -111,4 +122,76 @@ export function renameMuscleTag(
 /** 今使われている筋肉名の一覧(重複なし・出現順)。 */
 export function allMuscleNames(tags: MuscleTagMap): string[] {
   return [...new Set(Object.values(tags).flat())]
+}
+
+/* ------------------------------------------------------------------ *
+ * 変更の確認と履歴 (吉田さん確定 2026-09-24)
+ *
+ * 🔴 保存する前に「何が変わるか」を出す。タグはユーザーの結果画面に出るので、
+ *    押した瞬間に反映されると、意図しない変更に気付けない。
+ * 🔴 変更は履歴に残す。誰がいつ何を変えたかを後から追えるようにする。
+ * ------------------------------------------------------------------ */
+
+export type MuscleTagChange =
+  | { kind: "added"; pose: MusclePose; name: string }
+  | { kind: "removed"; pose: MusclePose; name: string }
+  | { kind: "renamed"; from: string; to: string; poses: MusclePose[] }
+
+/**
+ * 2 つの状態の差分。
+ * 🔴 改名は「全動作で同時に消えて足された」形に見えるので、先に拾ってから
+ *    追加・削除を数える。そうしないと 1 回の改名が「削除 2 + 追加 2」に見える。
+ */
+export function diffMuscleTags(
+  before: MuscleTagMap,
+  after: MuscleTagMap
+): MuscleTagChange[] {
+  const poses = Object.keys(before) as MusclePose[]
+  const removedBy = new Map<string, MusclePose[]>()
+  const addedBy = new Map<string, MusclePose[]>()
+
+  for (const pose of poses) {
+    for (const name of before[pose]) {
+      if (!after[pose].includes(name)) {
+        removedBy.set(name, [...(removedBy.get(name) ?? []), pose])
+      }
+    }
+    for (const name of after[pose]) {
+      if (!before[pose].includes(name)) {
+        addedBy.set(name, [...(addedBy.get(name) ?? []), pose])
+      }
+    }
+  }
+
+  const changes: MuscleTagChange[] = []
+
+  // 消えた名前と足された名前が同じ動作の集合なら、改名とみなす
+  for (const [from, fromPoses] of removedBy) {
+    for (const [to, toPoses] of addedBy) {
+      const same =
+        fromPoses.length === toPoses.length &&
+        fromPoses.every((p) => toPoses.includes(p))
+      if (same) {
+        changes.push({ kind: "renamed", from, to, poses: fromPoses })
+        removedBy.delete(from)
+        addedBy.delete(to)
+        break
+      }
+    }
+  }
+
+  for (const [name, list] of removedBy) {
+    for (const pose of list) changes.push({ kind: "removed", pose, name })
+  }
+  for (const [name, list] of addedBy) {
+    for (const pose of list) changes.push({ kind: "added", pose, name })
+  }
+  return changes
+}
+
+export type MuscleTagHistoryEntry = {
+  id: string
+  at: string
+  by: string
+  changes: MuscleTagChange[]
 }
