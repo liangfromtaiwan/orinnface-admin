@@ -570,7 +570,7 @@ export function EditCompanyDialog({ company }: { company: Company }) {
   const [newStores, setNewStores] = useState<DraftStore[]>([])
 
   const rights = companyEditRights(scope)
-  const storeRightsOf = (s: Store) => storeEditRights(scope, s)
+  const storeRights = storeEditRights(scope)
   const canInviteAdmin = canManageMembership(scope, {
     kind: "company",
     companyId: company.id,
@@ -584,16 +584,12 @@ export function EditCompanyDialog({ company }: { company: Company }) {
     })
   /* 店舗を足せるのは本部だけ(吉田さん確定 2026-09-24) */
   const canAddStore = canEditOrganizations(scope)
-  /* 🔴 1 つも触れないなら編集ボタン自体を出さない。押しても何もできない画面を作らない */
-  const canOpen =
-    rights.name ||
-    rights.status ||
-    canInviteAdmin ||
-    canAddStore ||
-    own.some(
-      (s) =>
-        storeRightsOf(s).name || storeRightsOf(s).status || canInviteStoreManager(s)
-    )
+  /*
+    🔴 1 つも直せないなら編集ボタン自体を出さない。押しても何もできない画面を作らない。
+    ⚠️ 担当者だけはこの条件に入れない。契約企業管理者・店舗管理者の担当者操作は
+       一覧の「担当者」列から入れるので、読み取り専用のダイアログを二重に開かせない。
+  */
+  const canOpen = rights.name || rights.status || canAddStore || storeRights.name
   if (!canOpen) return null
 
   const admins = companyAdminsOf(accounts, company.id)
@@ -802,7 +798,7 @@ export function EditCompanyDialog({ company }: { company: Company }) {
                   managerName: "",
                 }}
                 members={membersOf(s.id)}
-                rights={storeRightsOf(s)}
+                rights={storeRights}
                 canInvite={canInviteStoreManager(s)}
                 onRevoke={(a) => {
                   const m = a.storeMemberships.find((x) => x.storeId === s.id)
@@ -895,7 +891,7 @@ export function EditStoreDialog({ store }: { store: Store }) {
   /* 🔴 §4.3 店舗には店舗管理者と店舗スタッフの 2 つの担当がある */
   const [role, setRole] = useState<"store_admin" | "store_staff">("store_staff")
 
-  const rights = storeEditRights(scope, store)
+  const rights = storeEditRights(scope)
   const canInviteAdmin = canManageMembership(scope, {
     kind: "store",
     storeId: store.id,
@@ -907,8 +903,8 @@ export function EditStoreDialog({ store }: { store: Store }) {
     role: "store_staff",
   })
   const canInvite = canInviteAdmin || canInviteStaff
-  /* 🔴 1 つも触れないなら編集ボタン自体を出さない */
-  if (!rights.name && !rights.status && !canInvite) return null
+  /* 🔴 1 つも直せないなら編集ボタン自体を出さない(担当者は一覧の「担当者」列から) */
+  if (!rights.name && !rights.status) return null
 
   const members = accounts.filter((a) =>
     a.storeMemberships.some((m) => m.storeId === store.id)

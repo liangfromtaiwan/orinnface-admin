@@ -1232,28 +1232,26 @@ console.log("── 企業・店舗の追加 (吉田さん確定 2026-09-24) ─
     🔴 契約に関わる項目(企業名・契約状態・店舗の開閉)は本部だけ。
   */
   {
-    const ginza = stores.find(s => s.id === "st_lumiere_ginza")!
-    const aoyama = stores.find(s => s.companyId === "co_aoyama")!
-
     check("本部はどの項目も直せる",
       companyEditRights(opScope).name && companyEditRights(opScope).status &&
-      storeEditRights(opScope, ginza).name && storeEditRights(opScope, ginza).status)
+      storeEditRights(opScope).name && storeEditRights(opScope).status)
     check("契約企業管理者は企業名も契約状態も直せない",
       !companyEditRights(caScope).name && !companyEditRights(caScope).status,
       "(契約上の名義と契約状態は本部が持つ)")
-    check("契約企業管理者は自社の店舗名を直せる",
-      storeEditRights(caScope, ginza).name,
-      "(移転・改称は運用側で起きる)")
+    check("契約企業管理者は自社の店舗名も直せない",
+      !storeEditRights(caScope).name,
+      "(店舗名は契約書上の名称。使用者確定 2026-09-24)")
     check("契約企業管理者でも店舗の開閉はできない",
-      !storeEditRights(caScope, ginza).status,
+      !storeEditRights(caScope).status,
       "(閉店は課金と撮影可否に効く)")
-    check("他社の店舗は直せない", !storeEditRights(caScope, aoyama).name)
     check("店舗管理者は店舗名も状態も直せない",
-      !storeEditRights(saScope, ginza).name && !storeEditRights(saScope, ginza).status,
+      !storeEditRights(saScope).name && !storeEditRights(saScope).status,
       "(担当者の追加だけ)")
-    check("改名も同じ企業の中では重複させない",
-      decideRenameStore(caScope, stores, ginza, "ルミエール 渋谷店").kind === "denied")
+    const ginza = stores.find(s => s.id === "st_lumiere_ginza")!
+    check("本部の改名は同じ企業の中で重複させない",
+      decideRenameStore(opScope, stores, ginza, "ルミエール 渋谷店").kind === "denied")
     check("権限が無ければ改名も弾く",
+      decideRenameStore(caScope, stores, ginza, "新しい名前").kind === "denied" &&
       decideRenameStore(saScope, stores, ginza, "新しい名前").kind === "denied")
   }
 
