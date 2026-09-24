@@ -188,60 +188,64 @@ export function HeadquartersMembers() {
   return (
     <Collapsible open={open} onOpenChange={setOpen} asChild>
       <Card className="gap-0 overflow-hidden py-0">
-        {/* 🔴 開閉トリガーの中にボタンは置けない(button の入れ子)。隣に並べる */}
-        <div className="flex items-center gap-2 pr-4">
-          <CollapsibleTrigger asChild>
-            <button
-              type="button"
-              className="group flex flex-1 items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/50"
-              aria-label={`本部メンバーの一覧を${open ? "閉じる" : "開く"}`}
-            >
-              <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="group flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/50"
+            aria-label={`本部メンバーの一覧を${open ? "閉じる" : "開く"}`}
+          >
+            <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
 
-              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-                <span className="font-medium">本部メンバー</span>
-                <span className="text-xs text-muted-foreground">
-                  全企業・全店舗を横断
-                </span>
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+              <span className="font-medium">本部メンバー</span>
+              <span className="text-xs text-muted-foreground">
+                全企業・全店舗を横断
+              </span>
+            </div>
+
+            {/* 閉じたままでも人数と 2FA の状況が分かるよう、要約は常に出す */}
+            <dl className="flex shrink-0 items-baseline gap-4 text-xs text-muted-foreground">
+              <div className="flex items-baseline gap-1">
+                <dt>人数</dt>
+                <dd className="w-6 text-right tabular-nums text-foreground">
+                  {members.length}
+                </dd>
               </div>
-
-              {/* 閉じたままでも人数と 2FA の状況が分かるよう、要約は常に出す */}
-              <dl className="flex shrink-0 items-baseline gap-4 text-xs text-muted-foreground">
+              {missing2fa > 0 ? (
                 <div className="flex items-baseline gap-1">
-                  <dt>人数</dt>
-                  <dd className="w-6 text-right tabular-nums text-foreground">
-                    {members.length}
+                  <dt>2段階認証 未設定</dt>
+                  <dd className="w-6 text-right tabular-nums text-destructive">
+                    {missing2fa}
                   </dd>
                 </div>
-                {missing2fa > 0 ? (
-                  <div className="flex items-baseline gap-1">
-                    <dt>2段階認証 未設定</dt>
-                    <dd className="w-6 text-right tabular-nums text-destructive">
-                      {missing2fa}
-                    </dd>
-                  </div>
-                ) : null}
-              </dl>
-            </button>
-          </CollapsibleTrigger>
-          <InviteHeadquartersMemberDialog target={target} />
-        </div>
+              ) : null}
+            </dl>
+          </button>
+        </CollapsibleTrigger>
 
         <CollapsibleContent>
           <div className="space-y-3 border-t px-4 py-3">
-            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              アカウントは 1 人 1 つにしてください。共有すると、監査に残る「誰がやったか」
-              が分からなくなります。
-              <InfoHint label="本部メンバーについて">
-                <p>
-                  全企業・全店舗を横断して操作できる担当者です。増やせるのは本部だけです。
-                </p>
-                <p className="mt-1">
-                  2 段階認証は必須ですが、設定するのはご本人です。招待した直後は未設定の
-                  状態から始まります。
-                </p>
-              </InfoHint>
-            </p>
+            {/*
+              🔴 「追加」は開いた中に置く。ヘッダーは開閉ボタンなので、その中に
+                 ボタンを置けない(button の入れ子)し、隣に並べると開閉の当たり判定が
+                 途中で切れる。契約企業のカードも編集を開いた中に置いている。
+            */}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                アカウントは 1 人 1 つにしてください。共有すると、監査に残る「誰がやったか」
+                が分からなくなります。
+                <InfoHint label="本部メンバーについて">
+                  <p>
+                    全企業・全店舗を横断して操作できる担当者です。増やせるのは本部だけです。
+                  </p>
+                  <p className="mt-1">
+                    2 段階認証は必須ですが、設定するのはご本人です。招待した直後は未設定の
+                    状態から始まります。
+                  </p>
+                </InfoHint>
+              </p>
+              <InviteHeadquartersMemberDialog target={target} />
+            </div>
             <ul className="space-y-1">
               {members.map((m) => {
                 const isSelf = m.id === account.id
