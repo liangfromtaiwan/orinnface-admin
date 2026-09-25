@@ -26,7 +26,7 @@ export const METRIC_DIRECTION_LABEL: Record<MetricDirection, string> = {
 }
 
 export type MetricGroup =
-  | "neutral" // 無表情 6 指標
+  | "neutral" // 無表情(§5 は 6 指標だが結果画面は 3。QUESTIONS #23)
   | "range" // 5動作の可動域
   | "asymmetry" // 左右差・偏位
   | "compensation" // 代償・過緊張

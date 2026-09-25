@@ -24,6 +24,7 @@ import { buildPeriod } from "@/lib/domain/periods"
 import { careAssets, careAssignments, companies } from "@/lib/mock/seed"
 import { BADGE_HINT } from "@/components/badge-hints"
 import { applyCompanyStatusToStores, applyCreateCompany, applyCreateStore, applyUpdateCompany, applyUpdateStore, canEditOrganizations, companyEditRights, decideCreateCompany, decideCreateStore, decideRenameStore, storeEditRights, nextCompanyId, nextStoreId } from "@/lib/domain/organizations"
+import { ACTIVE_THRESHOLD_SET, POSTURE_THRESHOLD_STATUS } from "@/lib/domain/thresholds"
 import { DEFAULT_MUSCLE_TAGS, MAX_TAGS_PER_POSE, MUSCLE_TAG_DESCRIPTION, addMuscleTag, allMuscleNames, decideAddMuscleTag, diffMuscleTags, removeMuscleTag, renameMuscleTag } from "@/lib/domain/muscles"
 import { POSE_DISPLAY } from "@/lib/domain/metrics"
 import { baselineSets, policySets } from "@/lib/mock/seed"
@@ -1310,6 +1311,30 @@ console.log("── 企業・店舗の追加 (吉田さん確定 2026-09-24) ─
       applyUpdateStore(stores, "st_lumiere_ginza", { status: "closed" }).length === stores.length,
       "(§2 顧客・分析履歴・同意・保存期限を作り直さない)")
   }
+}
+
+console.log("── 版は分析種別ごとに別物 (吉田さん指摘 2026-09-25) ──")
+{
+  const face = analysisSessions.filter(s => s.analysisType === "face")
+  const posture = analysisSessions.filter(s => s.analysisType === "posture")
+  check("姿勢に顔のモデル版を出さない",
+    posture.length > 0 &&
+    posture.every(s => s.versions.modelVersion !== ACTIVE_THRESHOLD_SET.modelVersion),
+    `(${posture.length} 件)`)
+  check("姿勢のモデル版・閾値版は姿勢のもの",
+    posture.every(s =>
+      s.versions.modelVersion === POSTURE_THRESHOLD_STATUS.modelVersion &&
+      s.versions.thresholdVersion === POSTURE_THRESHOLD_STATUS.version))
+  check("同年代平均は無表情だけに付く",
+    posture.every(s => !s.versions.averageVersion) &&
+    face.every(s => !!s.versions.averageVersion),
+    "(§5.2 姿勢に同年代比較は無い)")
+  check("顔の閾値セットは顔の指標だけ",
+    ACTIVE_THRESHOLD_SET.analysisType === "face" &&
+    ACTIVE_THRESHOLD_SET.rules.every(r => !r.group.startsWith("posture")))
+  check("姿勢の閾値は未入手のままにする",
+    POSTURE_THRESHOLD_STATUS.received === false,
+    "(顔の閾値で代用しない。正本は AI分析 v1.6)")
 }
 
 console.log("── 顧客の呼び名 (店舗スタッフ画面の設計 2026-09-25) ──")

@@ -38,6 +38,7 @@ import { METRIC_GROUP_LABEL } from "@/lib/domain/metrics"
 import {
   ACTIVE_THRESHOLD_SET,
   JUDGE_LABEL,
+  POSTURE_THRESHOLD_STATUS,
   THRESHOLD_KIND_LABEL,
 } from "@/lib/domain/thresholds"
 import { useSession } from "@/contexts/session-context"
@@ -53,6 +54,7 @@ import {
 } from "@/lib/domain/recommendation"
 import { cn } from "@/lib/utils"
 import {
+  ANALYSIS_TYPE_LABEL,
   VERSIONED_SET_STATUS_LABEL,
   type RecommendationBaselineSet,
   type RecommendationPolicySet,
@@ -378,6 +380,10 @@ export default function RecommendationPage() {
                 <span className="font-mono text-sm">
                   {ACTIVE_THRESHOLD_SET.version}
                 </span>
+                {/* 🔴 どの分析種別の閾値かを見出しに出す。顔と姿勢は別物 */}
+                <Badge variant="secondary">
+                  {ANALYSIS_TYPE_LABEL[ACTIVE_THRESHOLD_SET.analysisType]}
+                </Badge>
                 <Badge variant="outline">表示のみ</Badge>
                 {ACTIVE_THRESHOLD_SET.provisional ? (
                   <Badge
@@ -389,7 +395,9 @@ export default function RecommendationPage() {
                 ) : null}
               </CardTitle>
               <CardDescription className="text-xs">
-                対象モデル {ACTIVE_THRESHOLD_SET.modelVersion}
+                対象モデル {ACTIVE_THRESHOLD_SET.modelVersion} ／ この表は
+                {ANALYSIS_TYPE_LABEL[ACTIVE_THRESHOLD_SET.analysisType]}
+                の指標だけです
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -479,6 +487,38 @@ export default function RecommendationPage() {
                 AI分析 v1.6 側にあり、この画面からは変更できません。運用で調整したい場合は
                 AI 側の版を上げる必要があります。
               </p>
+            </CardContent>
+          </Card>
+
+          {/*
+            🔴 姿勢の閾値は受け取っていない。顔の表だけ出して黙っていると
+               「姿勢もこの線で判定している」と読まれる (吉田さん指摘 2026-09-25)。
+          */}
+          <Card className="border-dashed">
+            <CardHeader>
+              <CardTitle className="flex flex-wrap items-center gap-2 text-base">
+                <span className="font-mono text-sm">
+                  {POSTURE_THRESHOLD_STATUS.version}
+                </span>
+                <Badge variant="secondary">
+                  {ANALYSIS_TYPE_LABEL[POSTURE_THRESHOLD_STATUS.analysisType]}
+                </Badge>
+                <Badge
+                  variant="outline"
+                  className="border-amber-300 text-amber-700"
+                >
+                  未入手
+                </Badge>
+              </CardTitle>
+              <CardDescription className="text-xs">
+                対象モデル {POSTURE_THRESHOLD_STATUS.modelVersion}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="text-xs text-muted-foreground">
+              姿勢の判定閾値はまだ受け取っていません。単位(mm / deg)も指標も顔とは
+              別なので、顔の閾値で代用していません。分析結果には
+              threshold_version として {POSTURE_THRESHOLD_STATUS.version} が
+              記録されています。正本は AI分析 v1.6 です。
             </CardContent>
           </Card>
         </TabsContent>

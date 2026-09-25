@@ -18,6 +18,7 @@
  */
 
 import type { MetricGroup } from "./metrics"
+import type { AnalysisType } from "./types"
 
 export type ThresholdKind = "higher_better" | "near_zero" | "binary"
 
@@ -46,6 +47,12 @@ export type ThresholdSet = {
   version: string
   /** AI分析 の版。この閾値がどのモデルに対するものか。 */
   modelVersion: string
+  /**
+   * どの分析種別の閾値か。
+   * 🔴 版は**分析種別ごとに別物**(吉田さん指摘 2026-09-25)。顔の閾値セットに
+   *    姿勢の指標を混ぜない。姿勢は別のモデル・別の threshold_version を持つ。
+   */
+  analysisType: AnalysisType
   rules: ThresholdRule[]
   /** 実測 + 指標責任者の承認が済んでいない間は true。 */
   provisional: boolean
@@ -57,9 +64,24 @@ export type ThresholdSet = {
  *    左右差 ±7〜9pt=正常 / ±10〜12pt=要注意 / ±21pt=要ケア)から逆算した推定で、
  *    AI分析 v1.6 の正本ではない。
  */
+/**
+ * 姿勢の判定閾値は**未入手**。
+ * 🔴 顔の閾値で代用しない。単位(mm / deg)も指標も別で、代用すると結果画面の色が
+ *    説明できなくなる。画面には「未入手」と出し、値は置かない。
+ * 正本は AI分析 v1.6 → QUESTIONS #22。
+ */
+export const POSTURE_THRESHOLD_STATUS = {
+  analysisType: "posture" as AnalysisType,
+  /** 分析セッションが記録している版。値の中身はまだ受け取っていない。 */
+  version: "th-posture-v1.6.0",
+  modelVersion: "posture-v1.6.0",
+  received: false,
+}
+
 export const ACTIVE_THRESHOLD_SET: ThresholdSet = {
   version: "th-v1.6.0",
   modelVersion: "face-v1.6.0",
+  analysisType: "face",
   provisional: true,
   rules: [
     {
@@ -84,7 +106,7 @@ export const ACTIVE_THRESHOLD_SET: ThresholdSet = {
       unit: "pt",
       caution: 10,
       danger: 20,
-      note: "無表情 6 指標。同年代平均との比較は average_version 側。",
+      note: "無表情の指標。同年代平均との比較は average_version 側。",
     },
     {
       group: "compensation",

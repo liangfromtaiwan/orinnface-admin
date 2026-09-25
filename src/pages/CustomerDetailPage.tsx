@@ -505,7 +505,7 @@ function NeutralCard({
         <CardTitle className="flex items-center gap-1.5 text-base">
           同年代比較（{METRIC_GROUP_LABEL.neutral}）
           <InfoHint label="同年代比較について">
-            無表情の 6 指標です。5動作の可動域とは別の指標なので混ぜて表示しません。
+            無表情の指標です。5動作の可動域とは別の指標なので混ぜて表示しません。
             同年代平均は {ageBandAverages.version} の値で、AI の threshold_version や
             推奨基準の version とは別物です。
           </InfoHint>
