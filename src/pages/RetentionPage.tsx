@@ -11,6 +11,7 @@ import { SearchIcon } from "lucide-react"
 import { toast } from "sonner"
 
 import { PageHeader, SpecNote } from "@/components/PageHeader"
+import { TableEmpty } from "@/components/TableEmpty"
 import { RawImageViewButton } from "@/components/RawImageAccess"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -170,6 +171,20 @@ export default function RetentionPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
+              {rows.length === 0 ? (
+                <TableEmpty
+                  colSpan={7}
+                  filtered={state !== "all" || query.trim() !== ""}
+                  emptyLabel="生画像 asset はまだありません"
+                  /* 🔴 この画面は表示名を持たない(§5 analytics に PII を混ぜない)。
+                        名前で探して 0 件になった人に、探し方まで返す */
+                  filteredLabel="条件に合う asset がありません。この画面は顧客の表示名では探せません（asset ID・顧客番号・撮影場所で探してください）。"
+                  onClear={() => {
+                    setState("all")
+                    setQuery("")
+                  }}
+                />
+              ) : null}
               {rows.map((a) => {
                 const expired = new Date(a.expiresAt).getTime() < NOW.getTime()
                 return (

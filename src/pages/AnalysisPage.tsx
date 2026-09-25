@@ -9,6 +9,7 @@ import { useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 
 import { PageHeader, SpecNote } from "@/components/PageHeader"
+import { TableEmpty } from "@/components/TableEmpty"
 import { QualityBadge } from "@/components/QualityBadge"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
@@ -173,6 +174,17 @@ export default function AnalysisPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
+              {rows.length === 0 ? (
+                <TableEmpty
+                  colSpan={9}
+                  filtered={type !== "all" || status !== "all"}
+                  emptyLabel="表示できる分析がありません"
+                  onClear={() => {
+                    setType("all")
+                    setStatus("all")
+                  }}
+                />
+              ) : null}
               {rows.map((s) => (
                 <TableRow key={s.id}>
                   <TableCell className="tabular-nums">

@@ -67,7 +67,11 @@ import {
 function StatusBadge({
   set,
 }: {
-  set: { status: VersionedSetStatus; scheduledActivateAt?: string }
+  set: {
+    status: VersionedSetStatus
+    scheduledActivateAt?: string
+    provisional?: boolean
+  }
 }) {
   const scheduled =
     set.status === "approved" && set.scheduledActivateAt
@@ -75,11 +79,27 @@ function StatusBadge({
       : undefined
 
   return (
-    <Badge variant={set.status === "active" ? "default" : "outline"}>
-      {scheduled
-        ? `${formatDateTime(scheduled)} 有効化予定`
-        : VERSIONED_SET_STATUS_LABEL[set.status]}
-    </Badge>
+    <>
+      <Badge variant={set.status === "active" ? "default" : "outline"}>
+        {scheduled
+          ? `${formatDateTime(scheduled)} 有効化予定`
+          : VERSIONED_SET_STATUS_LABEL[set.status]}
+      </Badge>
+      {/*
+        🔴 有効でも正式値とは限らない (§16 P0「実測 + 事業承認」待ち)。
+           「未承認」と書いてあるのに有効な版が並んでいる、という食い違いを
+           残さないため、その版自体に暫定と出す(吉田さん指摘 2026-09-24)。
+      */}
+      {set.provisional ? (
+        <Badge
+          variant="outline"
+          className="border-amber-300 text-amber-700"
+          title="正式な初期値ではありません。実測と事業承認のあと差し替えます (§16 P0)"
+        >
+          暫定値
+        </Badge>
+      ) : null}
+    </>
   )
 }
 
@@ -521,9 +541,11 @@ export default function RecommendationPage() {
 
       <SpecNote>
         同年代平均の版(average_version)、AI の閾値の版(threshold_version)、推奨基準の版は
-        それぞれ別のものです。同じ値として扱わないでください。初期の推奨基準値と方針の版は
-        仕様書 §16 の P0 未決事項(実測 + 事業承認待ち)のため、下書きの作成・差分・
-        影響の試算まではできますが、実測と事業承認が揃うまで有効化しないでください。
+        それぞれ別のものです。同じ値として扱わないでください。
+        {/* 🔴 「未承認」と書きながら有効な版を出す、という食い違いを残さない */}
+        いま有効になっている初期の基準値・方針は「暫定値」バッジを付けた版で、
+        仕様書 §16 の P0(実測 + 事業承認)が済んでいません。画面の動きを確認するために
+        有効にしてあるだけなので、確定した値が出たら新しい版に差し替えてください。
         画面上の変更はサーバー未接続のため保存されません。
       </SpecNote>
     </div>

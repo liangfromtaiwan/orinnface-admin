@@ -31,7 +31,6 @@ import { useSession } from "@/contexts/session-context"
 import { formatDateTime } from "@/lib/domain/kpi"
 import { POSE_DISPLAY } from "@/lib/domain/metrics"
 import {
-  MAX_TAGS_PER_POSE,
   MUSCLE_TAG_DENIAL_LABEL,
   MUSCLE_TAG_DESCRIPTION,
   addMuscleTag,
@@ -142,7 +141,8 @@ function PoseRow({
             </span>
           ) : (
             <span className="text-xs text-muted-foreground">
-              {tags.length} / {MAX_TAGS_PER_POSE} 件（上限は暫定）
+              {/* 🔴 上限は未確定なので「N / 上限」の形にしない (吉田さん 2026-09-25) */}
+              {tags.length} 件（1 動作あたりの上限は未確定です）
             </span>
           )}
         </div>

@@ -433,7 +433,7 @@ export function CareReplaceDialog({
       replaceCareAsset(slot.videoCode, assetId, reason.trim())
       toast.success(
         `${slot.videoCode} を「${derivedTitle.trim()}」に切り替えました`,
-        { description: "動画を追加してから care_asset_id を切り替えました。" }
+        { description: "動画素材を登録してから care_asset_id を切り替えました。" }
       )
     }
     setOpen(false)
@@ -554,7 +554,7 @@ export function CareReplaceDialog({
               {selectable.length === 0 ? (
                 <p className="text-xs text-muted-foreground">
                   この枠に登録されている動画は公開中の 1 本だけです。
-                  差し替えるには、先に動画を追加してください。
+                  差し替えるには、先に動画素材を登録してください。
                   <Button
                     variant="link"
                     size="sm"
@@ -646,7 +646,10 @@ export function CareReplaceDialog({
 }
 
 /* ------------------------------------------------------------------ *
- * 動画の追加(既存の枠に asset を足す)
+ * 動画素材の登録(既存の枠に asset を足す)
+ *
+ * 🔴 「動画を追加」とは書かない(吉田さん指摘 2026-09-25)。枠が増えると読めて
+ *    しまうため。増えるのは枠ではなく**素材(asset)**で、固定 13 枠は変わらない。
  * ------------------------------------------------------------------ */
 
 export function CareAssetAddDialog({ children }: { children: React.ReactNode }) {
@@ -715,16 +718,16 @@ export function CareAssetAddDialog({ children }: { children: React.ReactNode }) 
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>動画を追加</DialogTitle>
+          <DialogTitle>動画素材を登録</DialogTitle>
           <DialogDescription>
-            既存の枠に動画を追加します。追加した動画は差し替えの候補になります。
-            枠そのものは V1 では増やせません。
+            固定 13 枠のどれかに動画素材(asset)を登録します。登録した素材は
+            差し替えの候補になります。枠(video_code)は V1 では増やせません。
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
           <div className="space-y-1">
-            <label className="text-xs text-muted-foreground">追加する枠</label>
+            <label className="text-xs text-muted-foreground">登録先の枠</label>
             <Select value={videoCode} onValueChange={setVideoCode}>
               <SelectTrigger className="h-9 w-full">
                 <SelectValue placeholder="固定 13 枠から選ぶ" />
@@ -747,7 +750,7 @@ export function CareAssetAddDialog({ children }: { children: React.ReactNode }) 
           {video.previewUrl ? (
             <CareVideoPreview
               previewUrl={video.previewUrl}
-              label="追加する動画の確認"
+              label="登録する動画の確認"
             />
           ) : null}
 
@@ -779,7 +782,7 @@ export function CareAssetAddDialog({ children }: { children: React.ReactNode }) 
             <Badge variant="outline" className="mr-1.5 px-1 py-0 text-xs">
               V1
             </Badge>
-            追加できるのは動画だけです。枠(video_code)は固定 13 枠から増やせません。
+            登録できるのは素材(動画)だけです。枠(video_code)は固定 13 枠から増やせません。
           </p>
 
           <div className="flex justify-end gap-2">
@@ -787,7 +790,7 @@ export function CareAssetAddDialog({ children }: { children: React.ReactNode }) 
               やめる
             </Button>
             <Button size="sm" disabled={!valid} onClick={submit}>
-              <PlusIcon /> 追加する
+              <PlusIcon /> 登録する
             </Button>
           </div>
         </div>

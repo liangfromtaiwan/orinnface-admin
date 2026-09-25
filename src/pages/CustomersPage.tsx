@@ -15,6 +15,7 @@ import { BADGE_HINT } from "@/components/badge-hints"
 import { HintBadge } from "@/components/HintBadge"
 import { InfoHint } from "@/components/InfoHint"
 import { PageHeader, SpecNote } from "@/components/PageHeader"
+import { TableEmpty } from "@/components/TableEmpty"
 import { QualityBadge } from "@/components/QualityBadge"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -211,7 +212,36 @@ export default function CustomersPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>顧客(名前 / ID)</TableHead>
+                <TableHead>
+                  <span className="inline-flex items-center gap-1.5">
+                    顧客(名前 / ID)
+                    {/*
+                      🔴 Guest 会員が店舗連携済みという状態はあり得る
+                         (吉田さん確定 2026-09-25)。未登録の仮データと同じに
+                         見えないよう、2 つの違いをここで説明する。
+                    */}
+                    <InfoHint label="バッジの見かた">
+                      <p className="font-medium text-foreground">
+                        Guest / Member / Premium
+                      </p>
+                      <p className="mt-1">
+                        登録済みの方のプランです。プランと店舗連携は別契約なので、
+                        <strong className="font-medium text-foreground">
+                          Guest のまま店舗連携済み
+                        </strong>
+                        という状態もあります（「Guest」と「連携済み」が並びます）。
+                      </p>
+                      <p className="mt-2 font-medium text-foreground">
+                        未登録（仮データ）
+                      </p>
+                      <p className="mt-1">
+                        まだ登録していない方の未連携分析です。アカウントが無いので
+                        プランも店舗連携も持たず、生画像は分析完了から 180 日で
+                        期限を迎えます。
+                      </p>
+                    </InfoHint>
+                  </span>
+                </TableHead>
                 <TableHead>店舗</TableHead>
                 <TableHead>最新分析</TableHead>
                 <TableHead className="text-right">適格分析</TableHead>
@@ -237,6 +267,17 @@ export default function CustomersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
+              {rows.length === 0 ? (
+                <TableEmpty
+                  colSpan={7}
+                  filtered={query.trim() !== "" || status !== "all"}
+                  emptyLabel="表示できる顧客がいません"
+                  onClear={() => {
+                    setQuery("")
+                    setStatus("all")
+                  }}
+                />
+              ) : null}
               {rows.map((r) => (
                 <TableRow
                   key={r.customer.dataSubjectId}

@@ -33,26 +33,27 @@ export const MUSCLE_TAG_DESCRIPTION =
   "その動作に関係する筋肉を示す表示用タグ"
 
 /**
- * 1 動作に付けられるタグの上限。
- * ⚠️ **暫定**。4 件という数は吉田さん 2026-09-24 時点で「未確定」。画面のカード幅に
- *    収まる数として置いているだけなので、決まったら差し替える。
+ * 1 動作に付けられるタグの上限は **決めない**(吉田さん確定 2026-09-25)。
+ *
+ * > 筋肉タグの「最大4件」は未確定なので、上限を決め打ちせず確認待ちとしてください。
+ *
+ * 🔴 数を決め打ちすると、決まっていない制限で運用を縛ることになる。
+ *    上限が決まったらここに定数を足し、`decideAddMuscleTag()` で弾く。
+ *    画面には「上限は未確定」と出す。
  */
-export const MAX_TAGS_PER_POSE = 4
+export const MAX_TAGS_PER_POSE: number | undefined = undefined
 
 export type MuscleTagDenial =
   /** 本部以外。 */
   | "not_operator"
   /** 同じ動作に同じ名前が既にある。 */
   | "duplicate"
-  /** 上限に達している。 */
-  | "too_many"
   /** 空文字・空白だけ。 */
   | "empty"
 
 export const MUSCLE_TAG_DENIAL_LABEL: Record<MuscleTagDenial, string> = {
   not_operator: "筋肉タグを編集できるのは本部だけです。",
   duplicate: "同じ筋肉がすでに登録されています。",
-  too_many: `1 つの動作に付けられるのは ${MAX_TAGS_PER_POSE} 件までです(この上限は暫定)。`,
   empty: "筋肉名を入力してください。",
 }
 
@@ -73,9 +74,7 @@ export function decideAddMuscleTag(
   const trimmed = name.trim()
   if (!trimmed) return { kind: "denied", reason: "empty" }
   if (current.includes(trimmed)) return { kind: "denied", reason: "duplicate" }
-  if (current.length >= MAX_TAGS_PER_POSE) {
-    return { kind: "denied", reason: "too_many" }
-  }
+  /* 🔴 件数では弾かない。上限が未確定のため (吉田さん 2026-09-25) */
   return { kind: "allowed" }
 }
 

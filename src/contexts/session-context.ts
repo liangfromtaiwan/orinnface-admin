@@ -90,7 +90,7 @@ export type SessionValue = {
     reason: string
   ) => void
   /**
-   * 既存の枠に動画を追加し、追加した asset の id を返す。
+   * 既存の枠に動画素材(asset)を登録し、その id を返す。枠は増やさない。
    * 🔴 追加できるのは asset だけ。枠(slot)は V1 では増やせない (§7, §12)。
    * id を返すのは、追加してそのまま差し替えたい導線があるため。
    */

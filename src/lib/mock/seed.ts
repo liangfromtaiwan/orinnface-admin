@@ -368,9 +368,17 @@ type RawImageStub = {
 }
 const rawImageStubs: RawImageStub[] = []
 
+/*
+  🔴 モデル・閾値の版は**分析種別ごとに別物**(吉田さん指摘 2026-09-24)。
+     顔の分析に姿勢の版を出さない。姿勢の分析に face-v1.6.0 を出さない。
+  ⚠️ 姿勢側の実際の版番号は AI分析 v1.6 が正本。ここは表示の確認用の仮の値。
+  🔴 同年代平均(average_version)は無表情の指標にだけ付く (§5.2)。姿勢には無い。
+*/
 const MODEL_VERSION = "face-v1.6.0"
 const THRESHOLD_VERSION = "th-v1.6.0"
 const AVERAGE_VERSION = "avg-2026Q2"
+const POSTURE_MODEL_VERSION = "posture-v1.6.0"
+const POSTURE_THRESHOLD_VERSION = "th-posture-v1.6.0"
 const ACTIVE_BASELINE_VERSION = "rb-2026.08.1"
 const ACTIVE_POLICY_VERSION = "rp-2026.08.1"
 const CARE_CATALOG_VERSION = "cc-2026.08.1"
@@ -454,6 +462,13 @@ customers.forEach((c, i) => {
         id: `${id}_p`,
         analysisType: "posture",
         metrics: metricValues(POSTURE_METRICS, s, i + 3),
+        /* 🔴 顔の版を引き継がない。姿勢は別モデル・別閾値で、同年代平均は無い */
+        versions: {
+          ...session.versions,
+          modelVersion: POSTURE_MODEL_VERSION,
+          thresholdVersion: POSTURE_THRESHOLD_VERSION,
+          averageVersion: undefined,
+        },
         rawImageAssetIds: [`ria_${pad(i + 1)}_${s}_p`],
       })
     }
@@ -716,6 +731,8 @@ export const baselineSets: RecommendationBaselineSet[] = [
     approvedBy: "吉田",
     createdAt: daysAgo(40),
     activatedAt: daysAgo(35),
+    /* 🔴 §16 P0 の未決。有効にはなっているが正式値ではない(画面にも暫定と出す) */
+    provisional: true,
     note: "公開前の暫定値。§16 P0: 実測 + 事業承認まで確定ではない。",
   },
   {
@@ -793,6 +810,9 @@ export const policySets: RecommendationPolicySet[] = [
     approvedBy: "吉田",
     createdAt: daysAgo(40),
     activatedAt: daysAgo(35),
+    /* 🔴 §16 P0 の未決。基準値セットと同じく正式値ではない */
+    provisional: true,
+    note: "公開前の暫定値。§16 P0: 実測 + 事業承認まで確定ではない。",
   },
   {
     version: "rp-2026.09.1",

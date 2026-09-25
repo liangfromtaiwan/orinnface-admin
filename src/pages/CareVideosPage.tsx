@@ -219,7 +219,7 @@ export default function CareVideosPage() {
           {replacement.kind === "denied" ? null : (
             <CareAssetAddDialog>
               <Button size="sm">
-                <PlusIcon /> 動画を追加
+                <PlusIcon /> 動画素材を登録
               </Button>
             </CareAssetAddDialog>
           )}

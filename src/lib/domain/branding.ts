@@ -153,11 +153,64 @@ export function readableTextOn(mainColor: string): "#ffffff" | "#111111" {
   return contrastRatio(mainColor, "#ffffff") >= 4.5 ? "#ffffff" : "#111111"
 }
 
+/* ------------------------------------------------------------------ *
+ * ロゴの形式とサイズ (吉田さん確定 2026-09-25)
+ *
+ * > ブランドロゴの形式は、仕様に合わせて PNG／WebP（2MB以下）にしてください。
+ *
+ * 🔴 SVG は受け付けない。スクリプトを含められるため、そのまま表示すると
+ *    他社のブランド設定から任意のコードを動かせてしまう。
+ * 🔴 ここは画面側の入口の検査。**backend でも同じ検査をすること**
+ *    (ファイルは API から直接投げられる)。
+ * ------------------------------------------------------------------ */
+
+export const LOGO_MIME_TYPES = ["image/png", "image/webp"] as const
+export const LOGO_ACCEPT = LOGO_MIME_TYPES.join(",")
+export const LOGO_MAX_BYTES = 2 * 1024 * 1024
+export const LOGO_RULE_TEXT = "PNG / WebP・2MB 以下"
+
+export type LogoRejection = { reason: "type" | "size"; message: string }
+
+/** 選ばれたファイルを受け付けてよいか。問題なければ undefined。 */
+export function checkLogoFile(file: {
+  type: string
+  size: number
+}): LogoRejection | undefined {
+  if (!(LOGO_MIME_TYPES as readonly string[]).includes(file.type)) {
+    return {
+      reason: "type",
+      message: `ロゴは ${LOGO_RULE_TEXT} です。この形式は登録できません。`,
+    }
+  }
+  if (file.size > LOGO_MAX_BYTES) {
+    const mb = (file.size / 1024 / 1024).toFixed(1)
+    return {
+      reason: "size",
+      message: `ロゴは 2MB 以下です（選んだファイルは ${mb}MB）。`,
+    }
+  }
+  return undefined
+}
+
+/** data URL からおおよそのバイト数を出す(base64 は 4 文字で 3 バイト)。 */
+export function dataUrlBytes(dataUrl: string): number {
+  const base64 = dataUrl.slice(dataUrl.indexOf(",") + 1)
+  const padding = base64.endsWith("==") ? 2 : base64.endsWith("=") ? 1 : 0
+  return Math.floor((base64.length * 3) / 4) - padding
+}
+
 export type BrandingIssue = { field: "displayName" | "logoUrl" | "mainColor"; message: string }
 
 /** 反映前に見つけたい問題。空配列なら反映してよい。 */
 export function validateBranding(b: Branding): BrandingIssue[] {
   const issues: BrandingIssue[] = []
+
+  /* 🔴 画面の入口だけでなく反映の直前でも見る (§4.1 の適用範囲は店舗側にも及ぶ) */
+  if (b.logoUrl?.startsWith("data:")) {
+    const mime = b.logoUrl.slice(5, b.logoUrl.indexOf(";"))
+    const rejection = checkLogoFile({ type: mime, size: dataUrlBytes(b.logoUrl) })
+    if (rejection) issues.push({ field: "logoUrl", message: rejection.message })
+  }
 
   const name = b.displayName.trim()
   if (name.length === 0) {

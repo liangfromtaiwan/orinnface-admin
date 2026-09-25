@@ -8,6 +8,7 @@
 import { useMemo, useState } from "react"
 
 import { PageHeader, SpecNote } from "@/components/PageHeader"
+import { TableEmpty } from "@/components/TableEmpty"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -113,6 +114,17 @@ export default function AuditPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
+              {rows.length === 0 ? (
+                <TableEmpty
+                  colSpan={7}
+                  filtered={category !== "all" || query.trim() !== ""}
+                  emptyLabel="監査イベントはまだありません"
+                  onClear={() => {
+                    setCategory("all")
+                    setQuery("")
+                  }}
+                />
+              ) : null}
               {rows.map((e) => (
                 <TableRow key={e.id}>
                   <TableCell className="text-sm tabular-nums">

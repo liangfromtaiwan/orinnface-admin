@@ -266,11 +266,15 @@ export type AnalysisSession = {
   /** 品質判定。欠測 capture の有無。 */
   quality: "ok" | "warn" | "insufficient"
   metrics: MetricValue[]
-  /** 技術情報 drawer 用 (§5)。 */
+  /**
+   * 技術情報 drawer 用 (§5)。
+   * 🔴 版は**分析種別ごと**に違う。顔の分析に姿勢のモデル版を出さない(逆も同じ)。
+   *    同年代平均は無表情の指標にだけあるので、姿勢では undefined。
+   */
   versions: {
     modelVersion: string
     thresholdVersion: string
-    averageVersion: string
+    averageVersion?: string
     recommendationBaselineVersion?: string
     recommendationPolicyVersion?: string
     careCatalogVersion?: string
@@ -338,6 +342,12 @@ export type RecommendationBaselineSet = {
   activatedAt?: string
   scheduledActivateAt?: string
   note?: string
+  /**
+   * 🔴 正式な値が確定する前の**暫定版**(§16 P0「初期推奨基準値・policy version /
+   *    確定条件: 実測 + 事業承認」)。有効になっていても正式値ではないことを
+   *    画面に出す。確定した版に差し替えたらこのフラグを外す。
+   */
+  provisional?: boolean
 }
 
 /** 順位・tie-break・欠損・fallback の方針 set (§8)。 */
@@ -355,6 +365,12 @@ export type RecommendationPolicySet = {
   activatedAt?: string
   scheduledActivateAt?: string
   note?: string
+  /**
+   * 🔴 正式な値が確定する前の**暫定版**(§16 P0「初期推奨基準値・policy version /
+   *    確定条件: 実測 + 事業承認」)。有効になっていても正式値ではないことを
+   *    画面に出す。確定した版に差し替えたらこのフラグを外す。
+   */
+  provisional?: boolean
 }
 
 /* ------------------------------------------------------------------ *

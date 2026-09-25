@@ -17,7 +17,7 @@ import { ageBandAverages, companyBrandings, customerIdentities } from "@/lib/moc
 import { HISTORY_PREVIEW_LIMIT } from "@/components/AnalysisHistoryTable"
 import { ROLE_REQUIRES_2FA } from "@/lib/domain/types"
 import { TIER_BADGE, PLAN_STEP, CONTRACT_STEP } from "@/components/tier-badge"
-import { resolveBranding, brandingCompanyIdFor, hasUnappliedDraft, isStandard, readableTextOn, validateBranding, STANDARD_BRANDING } from "@/lib/domain/branding"
+import { resolveBranding, brandingCompanyIdFor, checkLogoFile, hasUnappliedDraft, isStandard, readableTextOn, validateBranding, LOGO_MAX_BYTES, STANDARD_BRANDING } from "@/lib/domain/branding"
 import { monthlyActiveUsers, totalAnalyses, continuingUsers, churnRiskUsers, improvementRate, careCompletionRate, isEligible, isChurnRisk, billableActiveUsers, makeBillingIdentityResolver } from "@/lib/domain/kpi"
 import { buildPeriod } from "@/lib/domain/periods"
 import { careAssets, careAssignments, companies } from "@/lib/mock/seed"
@@ -1137,9 +1137,11 @@ console.log("── 筋肉タグ ──")
     decideAddMuscleTag(true, [], "  ").kind === "denied")
   check("同じ筋肉は 2 度足せない",
     decideAddMuscleTag(true, ["口輪筋"], "口輪筋").kind === "denied")
-  check("上限を超えては足せない",
-    decideAddMuscleTag(true, ["a","b","c","d"], "e").kind === "denied",
-    `(上限 ${MAX_TAGS_PER_POSE})`)
+  /* 🔴 上限は未確定なので件数では弾かない (吉田さん 2026-09-25) */
+  check("件数では弾かない",
+    decideAddMuscleTag(true, ["a","b","c","d","e"], "f").kind === "allowed" &&
+    MAX_TAGS_PER_POSE === undefined,
+    "(1 動作あたりの上限は確認待ち)")
   {
     const added = addMuscleTag(DEFAULT_MUSCLE_TAGS, "eye_open", " 上眼瞼挙筋 ")
     check("前後の空白は落として足す", added.eye_open.join() === "眼輪筋,上眼瞼挙筋")
@@ -1298,6 +1300,50 @@ console.log("── 企業・店舗の追加 (吉田さん確定 2026-09-24) ─
       applyUpdateStore(stores, "st_lumiere_ginza", { status: "closed" }).length === stores.length,
       "(§2 顧客・分析履歴・同意・保存期限を作り直さない)")
   }
+}
+
+console.log("── 公開 URL に出すデータ (吉田さん指摘 2026-09-25) ──")
+{
+  /*
+    🔴 公開 URL で確認してもらうので、seed に実在しそうな連絡先を混ぜない。
+       example.jp / example.com は RFC 2606 / 6761 が文書用に予約している。
+  */
+  const blob = JSON.stringify({
+    customers, customerIdentities, adminAccounts, companies, stores,
+    analysisSessions, rawImageAssets, careAssets,
+  })
+  const emails = blob.match(/[\w.+-]+@[\w.-]+/g) ?? []
+  check("メールアドレスは全部 example ドメイン",
+    emails.length > 0 && emails.every(e => /@([\w-]+\.)*example\.(jp|com)$/.test(e)),
+    `(${emails.length} 件)`)
+  check("電話番号らしき文字列が無い",
+    !/0\d{1,4}-\d{1,4}-\d{3,4}/.test(blob))
+  check("郵便番号らしき文字列が無い",
+    !/〒\s*\d{3}-\d{4}/.test(blob))
+}
+
+console.log("── ブランドロゴの形式とサイズ (吉田さん確定 2026-09-25) ──")
+{
+  check("PNG は受け付ける",
+    checkLogoFile({ type: "image/png", size: 500_000 }) === undefined)
+  check("WebP は受け付ける",
+    checkLogoFile({ type: "image/webp", size: 500_000 }) === undefined)
+  check("SVG は受け付けない",
+    checkLogoFile({ type: "image/svg+xml", size: 1000 })?.reason === "type",
+    "(スクリプトを埋め込めるため)")
+  check("JPEG も受け付けない",
+    checkLogoFile({ type: "image/jpeg", size: 1000 })?.reason === "type")
+  check("2MB ちょうどは通る",
+    checkLogoFile({ type: "image/png", size: LOGO_MAX_BYTES }) === undefined)
+  check("2MB を超えたら弾く",
+    checkLogoFile({ type: "image/png", size: LOGO_MAX_BYTES + 1 })?.reason === "size")
+  check("反映の直前でも弾く",
+    validateBranding({
+      displayName: "テスト",
+      mainColor: "#333333",
+      logoUrl: "data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=",
+    }).some(i => i.field === "logoUrl"),
+    "(画面の入口を通らずに draft が入ってきた場合)")
 }
 
 console.log("── 筋肉タグの変更確認 (吉田さん確定 2026-09-24) ──")

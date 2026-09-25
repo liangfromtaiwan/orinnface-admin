@@ -110,6 +110,11 @@ export default function LoginPage() {
         <div className="text-center">
           <p className="text-base font-medium tracking-wide">OrinnFACE</p>
           <h1 className="mt-1 text-2xl font-semibold">ログイン</h1>
+          {/* 🔴 公開 URL なので、最初の画面で架空のデータだと伝える */}
+          <p className="mt-2 text-xs text-muted-foreground">
+            デモ環境です。画面に出ている氏名・店舗名・数値はすべて架空のサンプルで、
+            実際にログインはしません。
+          </p>
         </div>
 
         <Card>

@@ -47,6 +47,9 @@ import {
 import { useSession } from "@/contexts/session-context"
 import {
   STANDARD_BRANDING,
+  LOGO_ACCEPT,
+  LOGO_RULE_TEXT,
+  checkLogoFile,
   contrastRatio,
   hasUnappliedDraft,
   isStandard,
@@ -212,9 +215,18 @@ function BrandingEditor({
     onChangeDraft({ ...draft, ...patch })
   }
 
-  /** この画面では preview のみ。保存先は backend 実装時に差し替える。 */
+  /**
+   * この画面では preview のみ。保存先は backend 実装時に差し替える。
+   * 🔴 形式とサイズは `checkLogoFile()` で弾く (PNG / WebP・2MB 以下)。
+   *    弾いた理由はその場で出す。黙って無視すると「選んだのに反映されない」になる。
+   */
   function pickLogo(file?: File) {
     if (!file) return
+    const rejection = checkLogoFile(file)
+    if (rejection) {
+      toast.error(rejection.message)
+      return
+    }
     const reader = new FileReader()
     reader.onload = () => set({ logoUrl: String(reader.result) })
     reader.readAsDataURL(file)
@@ -252,7 +264,7 @@ function BrandingEditor({
                 <input
                   ref={fileRef}
                   type="file"
-                  accept="image/png,image/svg+xml"
+                  accept={LOGO_ACCEPT}
                   className="hidden"
                   onChange={(e) => pickLogo(e.target.files?.[0])}
                 />
@@ -276,7 +288,7 @@ function BrandingEditor({
                 ) : null}
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                未設定の場合はブランド表示名の文字を出します。PNG / SVG。
+                未設定の場合はブランド表示名の文字を出します。{LOGO_RULE_TEXT}。
                 この画面ではプレビューのみで、保存先はサーバー実装時に接続します。
               </p>
             </Field>
