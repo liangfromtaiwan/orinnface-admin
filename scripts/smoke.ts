@@ -17,7 +17,7 @@ import { ageBandAverages, companyBrandings, customerIdentities } from "@/lib/moc
 import { HISTORY_PREVIEW_LIMIT } from "@/components/AnalysisHistoryTable"
 import { ROLE_REQUIRES_2FA } from "@/lib/domain/types"
 import { TIER_BADGE, PLAN_STEP, CONTRACT_STEP } from "@/components/tier-badge"
-import { UNREGISTERED_CUSTOMER_LABEL, customerLabel, customerSearchText } from "@/lib/domain/customers"
+import { GUEST_CUSTOMER_LABEL, customerLabel, customerSearchText } from "@/lib/domain/customers"
 import { resolveBranding, brandingCompanyIdFor, checkLogoFile, hasUnappliedDraft, isStandard, readableTextOn, validateBranding, LOGO_MAX_BYTES, STANDARD_BRANDING } from "@/lib/domain/branding"
 import { monthlyActiveUsers, totalAnalyses, continuingUsers, churnRiskUsers, improvementRate, careCompletionRate, isEligible, isChurnRisk, billableActiveUsers, makeBillingIdentityResolver } from "@/lib/domain/kpi"
 import { buildPeriod } from "@/lib/domain/periods"
@@ -1308,21 +1308,27 @@ console.log("── 企業・店舗の追加 (吉田さん確定 2026-09-24) ─
   }
 }
 
-console.log("── 未登録の仮データの呼び名 (使用者指摘 2026-09-25) ──")
+console.log("── 顧客の呼び名 (店舗スタッフ画面の設計 2026-09-25) ──")
 {
   const unregistered = customers.filter(c => c.unregistered)
-  check("未登録の仮データは名前を持たない",
-    unregistered.length > 0 && unregistered.every(c => !c.displayName),
-    "(本人が登録していないので誰も名乗っていない)")
-  check("未登録の仮データは匿名識別子を持つ",
-    unregistered.every(c => !!c.anonymousId), "(§9)")
   const loggedIn = customers.filter(c => !c.unregistered && c.plan !== "guest")
   const guests = customers.filter(c => !c.unregistered && c.plan === "guest")
+
+  /* 店舗スタッフが撮影前に「簡易登録」で名前・メール・年齢を入れる */
+  check("未登録顧客は名前を持つ",
+    unregistered.length > 0 && unregistered.every(c => !!c.displayName),
+    "(店舗スタッフが簡易登録で入力してから撮影する)")
+  check("未登録顧客は匿名識別子も持つ",
+    unregistered.every(c => !!c.anonymousId), "(§9 未連携分析は分離して数える)")
   check("ログインする顧客は名前を持ち匿名識別子は持たない",
     loggedIn.length > 0 && loggedIn.every(c => !!c.displayName && !c.anonymousId))
+
+  /* 🔴 名前が無いのは Guest だけ。店舗を通っていないので誰も入力していない */
   check("Guest は名前を持たない",
     guests.length > 0 && guests.every(c => !c.displayName && !!c.anonymousId),
-    "(ログインしないので名乗っていない。1 日 1 回の分析のみ)")
+    "(未ログイン・1 日 1 回の分析のみ)")
+  check("名前が無くても呼び名は出る",
+    customerLabel(guests[0]) === GUEST_CUSTOMER_LABEL)
   check("Guest は店舗連携を持たない",
     guests.every(c => !storeDataLinks.some(l => l.dataSubjectId === c.dataSubjectId)),
     "(連携の前に必ずログインが要り、ログインすると Member になる)")
@@ -1331,13 +1337,8 @@ console.log("── 未登録の仮データの呼び名 (使用者指摘 2026-0
       const c = customers.find(x => x.dataSubjectId === l.dataSubjectId)
       return !!c && !c.unregistered && c.plan !== "guest"
     }))
-  check("Guest と未登録の仮データは呼び名が違う",
-    customerLabel(guests[0]) !== customerLabel(unregistered[0]),
-    "(どちらも名前は無いが、由来が違うので見分けられるようにする)")
-  check("名前が無くても呼び名は出る",
-    customerLabel(unregistered[0]) === UNREGISTERED_CUSTOMER_LABEL)
-  check("未登録は匿名識別子で探せる",
-    customerSearchText(unregistered[0]).includes(unregistered[0].anonymousId!))
+  check("匿名識別子でも探せる",
+    customerSearchText(guests[0]).includes(guests[0].anonymousId!))
 }
 
 console.log("── 公開 URL に出すデータ (吉田さん指摘 2026-09-25) ──")

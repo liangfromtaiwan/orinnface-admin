@@ -219,28 +219,31 @@ export default function CustomersPage() {
                   <span className="inline-flex items-center gap-1.5">
                     顧客(名前 / ID)
                     {/*
-                      🔴 Guest 会員が店舗連携済みという状態はあり得る
-                         (吉田さん確定 2026-09-25)。未登録の仮データと同じに
-                         見えないよう、2 つの違いをここで説明する。
+                      🔴 名前を持つ人と持たない人が混ざるので、その違いを
+                         ここで説明する。名前の出どころは「本人の登録」か
+                         「店舗スタッフの簡易登録」のどちらか。
                     */}
                     <InfoHint label="バッジの見かた">
-                      <p className="font-medium text-foreground">
-                        Guest / Member / Premium
-                      </p>
+                      <p className="font-medium text-foreground">Guest（未ログイン）</p>
                       <p className="mt-1">
-                        登録済みの方のプランです。プランと店舗連携は別契約なので、
-                        <strong className="font-medium text-foreground">
-                          Guest のまま店舗連携済み
-                        </strong>
-                        という状態もあります（「Guest」と「連携済み」が並びます）。
+                        ログインせずに使っている方です。1 日 1 回の分析のみで、
+                        名前も連絡先も持たないため匿名IDで並びます。店舗連携の前には
+                        必ずログインが要り、ログインすると Member になります。
+                        生画像は分析完了から 180 日です。
                       </p>
                       <p className="mt-2 font-medium text-foreground">
                         未登録（仮データ）
                       </p>
                       <p className="mt-1">
-                        まだ登録していない方の未連携分析です。アカウントが無いので
-                        プランも店舗連携も持たず、生画像は分析完了から 180 日で
-                        期限を迎えます。
+                        店舗で撮影したものの、本人のアカウントとまだ紐付いていない
+                        未連携分析です。お名前は店舗スタッフが撮影前の簡易登録で
+                        入力したものです。生画像は分析完了から 180 日で、180 日以内に
+                        登録して紐付けると登録 2 年の規則へ移ります。
+                      </p>
+                      <p className="mt-2 font-medium text-foreground">Member / Premium</p>
+                      <p className="mt-1">
+                        本人が登録している方です。店舗連携ができ、生画像は最終の
+                        適格分析から 2 年です。
                       </p>
                     </InfoHint>
                   </span>
@@ -275,7 +278,7 @@ export default function CustomersPage() {
                   colSpan={7}
                   filtered={query.trim() !== "" || status !== "all"}
                   emptyLabel="表示できる顧客がいません"
-                  filteredLabel="条件に合う顧客がいません（未登録の方は名前を持たないので、匿名ID か顧客番号で探してください）。"
+                  filteredLabel="条件に合う顧客がいません（Guest は名前を持たないので、匿名IDで探してください）。"
                   onClear={() => {
                     setQuery("")
                     setStatus("all")

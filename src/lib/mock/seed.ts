@@ -218,22 +218,31 @@ export const customers: Customer[] = Array.from({ length: CUSTOMER_COUNT }, (_, 
     ? ("guest" as const)
     : pick(["guest", "member", "member", "premium", "premium"] as const)
   /*
-    🔴 名前が分かるのは**ログインしている人だけ**(使用者確定 2026-09-25)。
-       Guest はログインしない利用者なので、名前もメールアドレスも持たない。
-       未登録の仮データ(店舗で撮っただけ)も同じく持たない。
-       名前を捏造して出すと、公開 URL で実在の人の情報に見える。
+    🔴 名前の出どころは 2 つある(店舗スタッフ画面の設計 2026-09-25)。
+       - 未登録顧客: 店舗スタッフが**簡易登録**でお名前・メール・年齢を入れてから
+         撮影する。だから名前はある。アカウントはまだ無い(未連携)。
+       - Member / Premium: 本人が登録している。
+    🔴 **Guest(B2C・未ログイン)だけは名前を持たない**。店舗を通っていないので
+       誰も入力しておらず、本人もログインしていない。匿名識別子で識別する。
+       名前を捏造して出すと、公開 URL で実在の人の情報に見える(使用者指摘)。
   */
-  const anonymous = unregistered || plan === "guest"
-  const displayName = anonymous ? undefined : `${pick(FAMILY)} ${pick(GIVEN)}`
+  const displayName =
+    plan === "guest" && !unregistered
+      ? undefined
+      : `${pick(FAMILY)} ${pick(GIVEN)}`
   return {
     dataSubjectId: `ds_${pad(n)}`,
     displayCode: `C-${pad(n, 4)}`,
     displayName,
     plan,
     unregistered,
-    // ログインしない利用者は匿名識別子で識別する (§9)
-    anonymousId: anonymous ? `anon_${pad(n)}` : undefined,
-    registeredAt: anonymous ? undefined : daysAgo(Math.floor(rand() * 200) + 20),
+    /* 未連携分析(§9)と B2C Guest は匿名識別子で識別する */
+    anonymousId:
+      unregistered || plan === "guest" ? `anon_${pad(n)}` : undefined,
+    registeredAt:
+      unregistered || plan === "guest"
+        ? undefined
+        : daysAgo(Math.floor(rand() * 200) + 20),
     ageBand: pick(AGE_BANDS),
   }
 })
