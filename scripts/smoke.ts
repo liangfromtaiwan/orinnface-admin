@@ -1313,6 +1313,25 @@ console.log("── 企業・店舗の追加 (吉田さん確定 2026-09-24) ─
   }
 }
 
+console.log("── 初期の推奨基準値は暫定 (吉田さん指摘 2026-09-25) ──")
+{
+  const activeBaseline = baselineSets.find(s => s.status === "active")
+  const activePolicy = policySets.find(s => s.status === "active")
+  check("有効な基準値・方針がそれぞれ 1 件ある",
+    !!activeBaseline && !!activePolicy)
+  /*
+    🔴 §16 P0(実測 + 事業承認)が済んでいないのに有効になっている。状態としては
+       正しいので、「暫定値」であることを版自身が持ち、画面に出す。
+  */
+  check("初期の版は暫定値として印が付いている",
+    activeBaseline?.provisional === true && activePolicy?.provisional === true,
+    "(有効なのに未承認、という食い違いを画面に残さない)")
+  check("分析結果が参照しているのはその有効な版",
+    analysisSessions.every(s =>
+      !s.versions.recommendationBaselineVersion ||
+      s.versions.recommendationBaselineVersion === activeBaseline!.version))
+}
+
 console.log("── 版は分析種別ごとに別物 (吉田さん指摘 2026-09-25) ──")
 {
   const face = analysisSessions.filter(s => s.analysisType === "face")

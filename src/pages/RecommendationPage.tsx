@@ -136,6 +136,24 @@ function SetMeta({
  *    文字とのコントラストが落ちて読みにくくなる。
  * 🔴 退役は少し落とす。消さずに残す(過去の推奨の根拠)が、今読むものではない。
  */
+/**
+ * 有効なのに正式値ではない版の注記。
+ *
+ * 🔴 バッジだけだと「有効と書いてあるのに未承認とも書いてある」と読まれる
+ *    (吉田さん指摘 2026-09-25)。**なぜ有効なのに暫定なのか**をカードの中で
+ *    言い切る。§16 P0 は「実測 + 事業承認」が確定条件。
+ */
+function ProvisionalNote({ kind }: { kind: "基準値" | "方針" }) {
+  return (
+    <p className="rounded-md border border-amber-300 bg-amber-50/60 px-3 py-2 text-xs leading-relaxed text-amber-800">
+      この{kind}は<strong>暫定値</strong>です。仕様書 §16 の P0(実測 + 事業承認)が
+      済んでいないため正式な初期値ではありませんが、推奨が動く状態を確認できるよう
+      有効にしてあります。確定した値が出たら、新しい版を作って差し替えてください
+      （この版を直接書き換えることはしません）。
+    </p>
+  )
+}
+
 function cardTone(status: VersionedSetStatus): string | undefined {
   if (status === "active") return "border-2 border-emerald-600"
   if (status === "retired") return "opacity-80"
@@ -178,6 +196,8 @@ function BaselineCard({
             </div>
           ))}
         </div>
+
+        {set.provisional ? <ProvisionalNote kind="基準値" /> : null}
 
         {/* 🔴 差分は必ず「何と比べた差分か」を添える */}
         {base ? (
@@ -239,6 +259,8 @@ function PolicyCard({
         <SetMeta set={set} />
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
+        {set.provisional ? <ProvisionalNote kind="方針" /> : null}
+
         {base ? (
           <PolicyDiff rows={diffPolicySets(base, set)} fromVersion={base.version} />
         ) : (
@@ -582,10 +604,8 @@ export default function RecommendationPage() {
       <SpecNote>
         同年代平均の版(average_version)、AI の閾値の版(threshold_version)、推奨基準の版は
         それぞれ別のものです。同じ値として扱わないでください。
-        {/* 🔴 「未承認」と書きながら有効な版を出す、という食い違いを残さない */}
-        いま有効になっている初期の基準値・方針は「暫定値」バッジを付けた版で、
-        仕様書 §16 の P0(実測 + 事業承認)が済んでいません。画面の動きを確認するために
-        有効にしてあるだけなので、確定した値が出たら新しい版に差し替えてください。
+        {/* 🔴 暫定であることは版のカードに書く。ここで繰り返して食い違わせない */}
+        「暫定値」バッジの付いた版は §16 P0(実測 + 事業承認)が済んでいません。
         画面上の変更はサーバー未接続のため保存されません。
       </SpecNote>
     </div>

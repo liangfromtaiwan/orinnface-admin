@@ -791,7 +791,6 @@ export const baselineSets: RecommendationBaselineSet[] = [
     activatedAt: daysAgo(35),
     /* 🔴 §16 P0 の未決。有効にはなっているが正式値ではない(画面にも暫定と出す) */
     provisional: true,
-    note: "公開前の暫定値。§16 P0: 実測 + 事業承認まで確定ではない。",
   },
   {
     version: "rb-2026.09.1",
@@ -870,7 +869,6 @@ export const policySets: RecommendationPolicySet[] = [
     activatedAt: daysAgo(35),
     /* 🔴 §16 P0 の未決。基準値セットと同じく正式値ではない */
     provisional: true,
-    note: "公開前の暫定値。§16 P0: 実測 + 事業承認まで確定ではない。",
   },
   {
     version: "rp-2026.09.1",

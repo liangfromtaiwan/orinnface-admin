@@ -441,6 +441,10 @@ scripts/              仕様不変条件の smoke test
 - 推奨の版操作は `decideDraftCreate()` / `decideSetAction()` を通す。画面側で role を
   直接見て分岐しない。状態で出せる操作は `availableActions()` が決める
   (draft→承認 / approved→有効化・予約 / retired→rollback / **active は何もできない**)。
+  🔴 **有効なのに正式値でない版**には `provisional` を立て、画面に「暫定値」バッジと
+  理由(§16 P0 実測 + 事業承認待ち)をカードの中に出す(吉田さん指摘 2026-09-25)。
+  「初期基準値は未承認」と注記しながら有効な版が並ぶ、という食い違いを残さない。
+  確定値が来たら**新しい版**に差し替える(その版を直接書き換えない)。
   🔴 `rollback` は retired を active に戻さず**同じ値の新 draft** を起こす。元の版は残す。
   🔴 有効化すると前の active は自動で retired。active は常に 1 件 (`npm run smoke` で検証)。
   🔴 下書き・承認済は**消せる**(`decideSetDelete()`)。編集ダイアログの中に置き、
