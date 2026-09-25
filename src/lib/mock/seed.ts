@@ -204,8 +204,15 @@ export const adminAccounts: AdminAccount[] = [
  * 顧客
  * ------------------------------------------------------------------ */
 
-const FAMILY = ["田中", "佐藤", "鈴木", "高橋", "伊藤", "渡辺", "山本", "中村", "小林", "加藤"]
-const GIVEN = ["美咲", "陽子", "彩", "翔太", "健一", "葵", "沙織", "直樹", "萌", "拓海"]
+/*
+  🔴 公開 URL で確認してもらうので、表示名は**この組み合わせ以外を作らない**
+     (吉田さん指摘 2026-09-25)。実データを貼り込まれていないことを
+     `npm run smoke` が検証できるよう、プールを export する。
+*/
+export const SAMPLE_FAMILY_NAMES = ["田中", "佐藤", "鈴木", "高橋", "伊藤", "渡辺", "山本", "中村", "小林", "加藤"]
+export const SAMPLE_GIVEN_NAMES = ["美咲", "陽子", "彩", "翔太", "健一", "葵", "沙織", "直樹", "萌", "拓海"]
+const FAMILY = SAMPLE_FAMILY_NAMES
+const GIVEN = SAMPLE_GIVEN_NAMES
 const AGE_BANDS = ["20代", "30代", "40代", "50代", "60代"]
 
 const CUSTOMER_COUNT = 64

@@ -24,6 +24,7 @@ import { buildPeriod } from "@/lib/domain/periods"
 import { careAssets, careAssignments, companies } from "@/lib/mock/seed"
 import { BADGE_HINT } from "@/components/badge-hints"
 import { applyCompanyStatusToStores, applyCreateCompany, applyCreateStore, applyUpdateCompany, applyUpdateStore, canEditOrganizations, companyEditRights, decideCreateCompany, decideCreateStore, decideRenameStore, storeEditRights, nextCompanyId, nextStoreId } from "@/lib/domain/organizations"
+import { SAMPLE_FAMILY_NAMES, SAMPLE_GIVEN_NAMES } from "@/lib/mock/seed"
 import { ACTIVE_THRESHOLD_SET, POSTURE_THRESHOLD_STATUS } from "@/lib/domain/thresholds"
 import { DEFAULT_MUSCLE_TAGS, MAX_TAGS_PER_POSE, MUSCLE_TAG_DESCRIPTION, addMuscleTag, allMuscleNames, decideAddMuscleTag, diffMuscleTags, removeMuscleTag, renameMuscleTag } from "@/lib/domain/muscles"
 import { POSE_DISPLAY } from "@/lib/domain/metrics"
@@ -1407,6 +1408,22 @@ console.log("── 公開 URL に出すデータ (吉田さん指摘 2026-09-25
     !/0\d{1,4}-\d{1,4}-\d{3,4}/.test(blob))
   check("郵便番号らしき文字列が無い",
     !/〒\s*\d{3}-\d{4}/.test(blob))
+
+  /*
+    🔴 実データを貼り込まれていないことまで見る。顧客の表示名は
+       サンプルの姓名プールの組み合わせ以外を作らない。
+  */
+  const named = customers.filter(c => c.displayName)
+  check("顧客の表示名はサンプルの姓名だけで出来ている",
+    named.length > 0 && named.every(c => {
+      const [family, given] = c.displayName!.split(" ")
+      return SAMPLE_FAMILY_NAMES.includes(family) && SAMPLE_GIVEN_NAMES.includes(given)
+    }),
+    `(${named.length} 名)`)
+  check("顧客番号・匿名IDの形式が揃っている",
+    customers.every(c =>
+      /^C-\d{4}$/.test(c.displayCode) &&
+      (!c.anonymousId || /^anon_\d{3}$/.test(c.anonymousId))))
 }
 
 console.log("── ブランドロゴの形式とサイズ (吉田さん確定 2026-09-25) ──")
