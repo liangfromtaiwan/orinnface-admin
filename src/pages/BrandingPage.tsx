@@ -208,6 +208,10 @@ function BrandingEditor({
   const dirty = hasUnappliedDraft(entry)
   const [confirm, setConfirm] = useState<null | "apply" | "reset">(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  /** 形式・サイズで弾いた理由。選び直すまで欄の側に出しておく。 */
+  const [logoError, setLogoError] = useState<string | undefined>()
+  /** 選んだファイル名。data URL からは分からないので覚えておく。 */
+  const [logoFileName, setLogoFileName] = useState<string | undefined>()
 
   const storeCount = allStores.filter((s) => s.companyId === company.id).length
 
@@ -224,9 +228,13 @@ function BrandingEditor({
     if (!file) return
     const rejection = checkLogoFile(file)
     if (rejection) {
+      /* 🔴 理由は欄の側に残す。トーストは消えるので、後から見返せない */
+      setLogoError(`${file.name}: ${rejection.message}`)
       toast.error(rejection.message)
       return
     }
+    setLogoError(undefined)
+    setLogoFileName(file.name)
     const reader = new FileReader()
     reader.onload = () => set({ logoUrl: String(reader.result) })
     reader.readAsDataURL(file)
@@ -252,7 +260,7 @@ function BrandingEditor({
               />
             </Field>
 
-            <Field label="ロゴ" issue={issueFor(issues, "logoUrl")}>
+            <Field label="ロゴ" issue={logoError ?? issueFor(issues, "logoUrl")}>
               <div className="flex flex-wrap items-center gap-2">
                 <div className="flex h-10 w-24 items-center justify-center overflow-hidden rounded-md border bg-muted/40">
                   {draft.logoUrl ? (
@@ -281,15 +289,26 @@ function BrandingEditor({
                     variant="ghost"
                     size="sm"
                     disabled={readOnly}
-                    onClick={() => set({ logoUrl: undefined })}
+                    onClick={() => {
+                      set({ logoUrl: undefined })
+                      setLogoFileName(undefined)
+                      setLogoError(undefined)
+                    }}
                   >
                     削除
                   </Button>
                 ) : null}
+                {logoFileName && draft.logoUrl ? (
+                  <span className="truncate text-xs text-muted-foreground">
+                    {logoFileName}
+                  </span>
+                ) : null}
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                未設定の場合はブランド表示名の文字を出します。{LOGO_RULE_TEXT}。
-                この画面ではプレビューのみで、保存先はサーバー実装時に接続します。
+                {/* 🔴 受け付ける形式は「押せないボタン」ではなく文字で先に伝える */}
+                未設定の場合はブランド表示名の文字を出します。形式は{LOGO_RULE_TEXT}
+                （SVG は受け付けません）。この画面ではプレビューのみで、保存先は
+                サーバー実装時に接続します。
               </p>
             </Field>
 
