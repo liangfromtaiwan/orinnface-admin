@@ -156,11 +156,24 @@ export type Customer = {
   dataSubjectId: DataSubjectId
   /** 表示名／顧客番号等の必要最小限。analytics へ PII を混入しない (§5)。 */
   displayCode: string
-  displayName: string
+  /**
+   * 表示名。**登録時に本人が入れたもの**なので、登録していない人は持たない。
+   * 🔴 未登録(未連携分析のみ)の仮データに名前を出さない。誰も名乗っていないのに
+   *    名前が出ていると、実在の人物の情報が入っているように見える
+   *    (使用者指摘 2026-09-25)。
+   * ⚠️ 登録時にどの名前が入るか(本人の入力 / Google の表示名 / 取得しない)は
+   *    アカウント認証 v1.0 が未入手のため未確定。→ QUESTIONS #26
+   */
+  displayName?: string
   plan: PlanCode
   registeredAt?: string
   /** 未登録 (未連携分析のみ) の場合 true。 */
   unregistered: boolean
+  /**
+   * 未連携分析の匿名識別子 (§9)。未登録の仮データはこれで識別する。
+   * 🔴 登録済みの顧客は持たない(data_subject_id で識別する)。
+   */
+  anonymousId?: string
   ageBand?: string
 }
 

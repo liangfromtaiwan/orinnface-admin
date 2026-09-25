@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useSession } from "@/contexts/session-context"
+import { customerLabel } from "@/lib/domain/customers"
 import { usesB2bDisplay } from "@/lib/domain/scope"
 import {
   ANALYSIS_TYPE_LABEL,
@@ -87,7 +88,7 @@ export default function CustomerAnalysesPage() {
   return (
     <div className="space-y-4">
       <PageHeader
-        title={`${customer.displayName} の分析履歴`}
+        title={`${customerLabel(customer)} の分析履歴`}
         titleAside={
           identity ? (
             identity.email

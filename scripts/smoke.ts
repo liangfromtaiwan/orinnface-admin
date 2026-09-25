@@ -17,6 +17,7 @@ import { ageBandAverages, companyBrandings, customerIdentities } from "@/lib/moc
 import { HISTORY_PREVIEW_LIMIT } from "@/components/AnalysisHistoryTable"
 import { ROLE_REQUIRES_2FA } from "@/lib/domain/types"
 import { TIER_BADGE, PLAN_STEP, CONTRACT_STEP } from "@/components/tier-badge"
+import { UNREGISTERED_CUSTOMER_LABEL, customerLabel, customerSearchText } from "@/lib/domain/customers"
 import { resolveBranding, brandingCompanyIdFor, checkLogoFile, hasUnappliedDraft, isStandard, readableTextOn, validateBranding, LOGO_MAX_BYTES, STANDARD_BRANDING } from "@/lib/domain/branding"
 import { monthlyActiveUsers, totalAnalyses, continuingUsers, churnRiskUsers, improvementRate, careCompletionRate, isEligible, isChurnRisk, billableActiveUsers, makeBillingIdentityResolver } from "@/lib/domain/kpi"
 import { buildPeriod } from "@/lib/domain/periods"
@@ -1300,6 +1301,23 @@ console.log("── 企業・店舗の追加 (吉田さん確定 2026-09-24) ─
       applyUpdateStore(stores, "st_lumiere_ginza", { status: "closed" }).length === stores.length,
       "(§2 顧客・分析履歴・同意・保存期限を作り直さない)")
   }
+}
+
+console.log("── 未登録の仮データの呼び名 (使用者指摘 2026-09-25) ──")
+{
+  const unregistered = customers.filter(c => c.unregistered)
+  const registered = customers.filter(c => !c.unregistered)
+  check("未登録の仮データは名前を持たない",
+    unregistered.length > 0 && unregistered.every(c => !c.displayName),
+    "(本人が登録していないので誰も名乗っていない)")
+  check("未登録の仮データは匿名識別子を持つ",
+    unregistered.every(c => !!c.anonymousId), "(§9)")
+  check("登録済みは名前を持ち匿名識別子は持たない",
+    registered.every(c => !!c.displayName && !c.anonymousId))
+  check("名前が無くても呼び名は出る",
+    customerLabel(unregistered[0]) === UNREGISTERED_CUSTOMER_LABEL)
+  check("未登録は匿名識別子で探せる",
+    customerSearchText(unregistered[0]).includes(unregistered[0].anonymousId!))
 }
 
 console.log("── 公開 URL に出すデータ (吉田さん指摘 2026-09-25) ──")

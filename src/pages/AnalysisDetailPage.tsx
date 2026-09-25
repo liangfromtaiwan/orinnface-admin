@@ -20,6 +20,7 @@ import { SessionDetail } from "@/components/SessionDetail"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { useSession, useStoreName } from "@/contexts/session-context"
+import { customerLabel } from "@/lib/domain/customers"
 import { formatDate, isEligible } from "@/lib/domain/kpi"
 import { usesB2bDisplay } from "@/lib/domain/scope"
 import { ANALYSIS_TYPE_LABEL } from "@/lib/domain/types"
@@ -77,7 +78,7 @@ export default function AnalysisDetailPage() {
               to={`/customers/${customer.dataSubjectId}`}
               className="underline-offset-2 hover:underline"
             >
-              {customer.displayName}
+              {customerLabel(customer)}
             </Link>
             <span className="mx-1.5">/</span>
             {storeName(session.storeId)}

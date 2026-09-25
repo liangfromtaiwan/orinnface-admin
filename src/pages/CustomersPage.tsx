@@ -35,6 +35,11 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { useSession, useStoreName } from "@/contexts/session-context"
+import {
+  customerIdLabel,
+  customerLabel,
+  customerSearchText,
+} from "@/lib/domain/customers"
 import { careEntitlement } from "@/lib/domain/care-catalog"
 import {
   CUSTOMER_FILTER_LABEL,
@@ -109,10 +114,8 @@ export default function CustomersPage() {
       .filter((c) => {
         if (!query.trim()) return true
         const q = query.trim().toLowerCase()
-        return (
-          c.displayCode.toLowerCase().includes(q) ||
-          c.displayName.toLowerCase().includes(q)
-        )
+        /* 名前を持たない未登録の仮データは、匿名識別子で探せるようにする */
+        return customerSearchText(c).includes(q)
       })
       .map((c) => {
         const own = analysisSessions.filter(
@@ -183,7 +186,7 @@ export default function CustomersPage() {
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="顧客番号・表示名"
+                placeholder="顧客番号・表示名・匿名ID"
                 className="h-9 w-56 pl-8"
               />
             </div>
@@ -272,6 +275,7 @@ export default function CustomersPage() {
                   colSpan={7}
                   filtered={query.trim() !== "" || status !== "all"}
                   emptyLabel="表示できる顧客がいません"
+                  filteredLabel="条件に合う顧客がいません（未登録の方は名前を持たないので、匿名ID か顧客番号で探してください）。"
                   onClear={() => {
                     setQuery("")
                     setStatus("all")
@@ -298,7 +302,16 @@ export default function CustomersPage() {
                         to={`/customers/${r.customer.dataSubjectId}`}
                         className="font-medium underline-offset-4 after:absolute after:inset-0 after:content-[''] hover:underline"
                       >
-                        {r.customer.displayName}
+                        {/* 🔴 登録していない人に名前は無い (§9 仮データは匿名識別子) */}
+                        <span
+                          className={
+                            r.customer.displayName
+                              ? undefined
+                              : "text-muted-foreground"
+                          }
+                        >
+                          {customerLabel(r.customer)}
+                        </span>
                       </Link>
                       <CustomerBadges
                         customer={r.customer}
@@ -306,7 +319,7 @@ export default function CustomersPage() {
                       />
                     </div>
                     <div className="font-mono text-xs text-muted-foreground tabular-nums">
-                      {r.customer.displayCode}
+                      {customerIdLabel(r.customer)}
                     </div>
                   </TableCell>
                   <TableCell className="text-sm">

@@ -43,6 +43,7 @@ import {
 } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useSession, useStoreName } from "@/contexts/session-context"
+import { customerLabel } from "@/lib/domain/customers"
 import { formatDate, isEligible } from "@/lib/domain/kpi"
 import {
   describePlanVisibility,
@@ -148,7 +149,7 @@ export default function CustomerDetailPage() {
   return (
     <div className="space-y-4">
       <PageHeader
-        title={customer.displayName}
+        title={customerLabel(customer)}
         /* 🔴 email は identity 側。Customer には持たせず dataSubjectId で join する (§5) */
         titleAside={
           identity ? (

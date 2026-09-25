@@ -217,12 +217,16 @@ export const customers: Customer[] = Array.from({ length: CUSTOMER_COUNT }, (_, 
   const plan = unregistered
     ? ("guest" as const)
     : pick(["guest", "member", "member", "premium", "premium"] as const)
+  /* 🔴 未登録の仮データに名前は無い。本人が登録していないので誰も名乗っていない */
+  const displayName = unregistered ? undefined : `${pick(FAMILY)} ${pick(GIVEN)}`
   return {
     dataSubjectId: `ds_${pad(n)}`,
     displayCode: `C-${pad(n, 4)}`,
-    displayName: `${pick(FAMILY)} ${pick(GIVEN)}`,
+    displayName,
     plan,
     unregistered,
+    // 未連携分析は匿名識別子で識別する (§9)
+    anonymousId: unregistered ? `anon_${pad(n)}` : undefined,
     registeredAt: unregistered ? undefined : daysAgo(Math.floor(rand() * 200) + 20),
     ageBand: pick(AGE_BANDS),
   }
