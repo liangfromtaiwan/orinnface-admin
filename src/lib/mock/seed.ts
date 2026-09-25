@@ -217,17 +217,23 @@ export const customers: Customer[] = Array.from({ length: CUSTOMER_COUNT }, (_, 
   const plan = unregistered
     ? ("guest" as const)
     : pick(["guest", "member", "member", "premium", "premium"] as const)
-  /* 🔴 未登録の仮データに名前は無い。本人が登録していないので誰も名乗っていない */
-  const displayName = unregistered ? undefined : `${pick(FAMILY)} ${pick(GIVEN)}`
+  /*
+    🔴 名前が分かるのは**ログインしている人だけ**(使用者確定 2026-09-25)。
+       Guest はログインしない利用者なので、名前もメールアドレスも持たない。
+       未登録の仮データ(店舗で撮っただけ)も同じく持たない。
+       名前を捏造して出すと、公開 URL で実在の人の情報に見える。
+  */
+  const anonymous = unregistered || plan === "guest"
+  const displayName = anonymous ? undefined : `${pick(FAMILY)} ${pick(GIVEN)}`
   return {
     dataSubjectId: `ds_${pad(n)}`,
     displayCode: `C-${pad(n, 4)}`,
     displayName,
     plan,
     unregistered,
-    // 未連携分析は匿名識別子で識別する (§9)
-    anonymousId: unregistered ? `anon_${pad(n)}` : undefined,
-    registeredAt: unregistered ? undefined : daysAgo(Math.floor(rand() * 200) + 20),
+    // ログインしない利用者は匿名識別子で識別する (§9)
+    anonymousId: anonymous ? `anon_${pad(n)}` : undefined,
+    registeredAt: anonymous ? undefined : daysAgo(Math.floor(rand() * 200) + 20),
     ageBand: pick(AGE_BANDS),
   }
 })
@@ -242,7 +248,8 @@ export const customers: Customer[] = Array.from({ length: CUSTOMER_COUNT }, (_, 
  * ------------------------------------------------------------------ */
 
 export const customerIdentities: CustomerIdentity[] = customers
-  .filter((c) => !c.unregistered)
+  /* 🔴 ログインしない人(Guest・未登録の仮データ)はアカウントが無いので連絡先も無い */
+  .filter((c) => !c.unregistered && c.plan !== "guest")
   .map((c) => ({
     dataSubjectId: c.dataSubjectId,
     accountId: `uacc_${c.displayCode.replace("-", "").toLowerCase()}`,
@@ -263,9 +270,14 @@ export const storeDataLinks: StoreDataLink[] = []
 export const storeVisits: StoreVisit[] = []
 
 customers.forEach((c, i) => {
-  // 🔴 未登録顧客(未連携分析のみ)は store_data_link を持たない。
-  //    §9 のとおり、連携は「通常登録して handoff token を 1 回消費した時」に作られる。
-  if (c.unregistered) return
+  /*
+    🔴 連携できるのは**ログインしている人だけ**(使用者確定 2026-09-25)。
+       店舗連携の前に必ずログインが要り、ログインした時点で Member になる。
+       つまり Guest のまま店舗連携済み、という状態は作らない。
+    🔴 未登録顧客(未連携分析のみ)も store_data_link を持たない。§9 のとおり、
+       連携は「通常登録して handoff token を 1 回消費した時」に作られる。
+  */
+  if (c.unregistered || c.plan === "guest") return
   // 約 6 割を店舗連携あり(B2B)、残りは B2C とする。
   if (i % 5 === 4) return
   const store = activeStores[i % activeStores.length]
@@ -292,6 +304,25 @@ customers.forEach((c, i) => {
     })
   }
 })
+
+/*
+  🔴 「連携を解除した顧客は店舗から見えない」を必ず確認できるよう、店舗管理者の
+     担当店舗にも解除済みの連携を 1 件は残す。Guest を連携の対象から外した結果
+     (2026-09-25)、たまたま 0 件になることがあるため。
+*/
+for (const storeId of ["st_lumiere_ginza", "st_lumiere_shibuya"]) {
+  const hasRevoked = storeDataLinks.some(
+    (l) => l.storeId === storeId && l.status === "revoked"
+  )
+  if (hasRevoked) continue
+  const target = storeDataLinks.find(
+    (l) => l.storeId === storeId && l.status === "active"
+  )
+  if (target) {
+    target.status = "revoked"
+    target.revokedAt = daysAgo(7)
+  }
+}
 
 /* ------------------------------------------------------------------ *
  * 分析セッション

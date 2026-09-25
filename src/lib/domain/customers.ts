@@ -12,13 +12,22 @@
 
 import type { Customer } from "./types"
 
-/** 未登録の仮データに使う呼び名。 */
+/** 未登録の仮データ(店舗で撮っただけ)に使う呼び名。 */
 export const UNREGISTERED_CUSTOMER_LABEL = "未登録の顧客"
 
-/** 一覧・見出しに出す呼び名。 */
+/** Guest(ログインしていない利用者)に使う呼び名。 */
+export const GUEST_CUSTOMER_LABEL = "Guest（未ログイン）"
+
+/**
+ * 一覧・見出しに出す呼び名。
+ * 🔴 名前が分かるのはログインしている人だけ。Guest と未登録の仮データは
+ *    名前を持たないので、それぞれの呼び名を出す(どちらか分かるように語を変える)。
+ */
 export function customerLabel(customer: Customer): string {
   if (customer.displayName) return customer.displayName
-  return UNREGISTERED_CUSTOMER_LABEL
+  return customer.unregistered
+    ? UNREGISTERED_CUSTOMER_LABEL
+    : GUEST_CUSTOMER_LABEL
 }
 
 /**

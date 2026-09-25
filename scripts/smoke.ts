@@ -569,9 +569,14 @@ console.log("── 顧客の連絡先と分析履歴 ──")
 {
   check("email は identity 側に持ち、Customer 型には無い",
     !("email" in customers[0]), "(§5 analytics へ PII を混入しない)")
-  check("登録済みの顧客には連絡先がある",
-    customers.filter(c => !c.unregistered)
+  /* 🔴 連絡先を持つのはログインする人(Member / Premium)だけ (使用者確定 2026-09-25) */
+  check("ログインする顧客には連絡先がある",
+    customers.filter(c => !c.unregistered && c.plan !== "guest")
       .every(c => customerIdentities.some(x => x.dataSubjectId === c.dataSubjectId)))
+  check("Guest には連絡先が無い",
+    customers.filter(c => c.plan === "guest")
+      .every(c => !customerIdentities.some(x => x.dataSubjectId === c.dataSubjectId)),
+    "(ログインしないのでアカウントが無い)")
   check("未登録(未連携分析のみ)には連絡先が無い",
     customers.filter(c => c.unregistered)
       .every(c => !customerIdentities.some(x => x.dataSubjectId === c.dataSubjectId)),
@@ -1306,14 +1311,29 @@ console.log("── 企業・店舗の追加 (吉田さん確定 2026-09-24) ─
 console.log("── 未登録の仮データの呼び名 (使用者指摘 2026-09-25) ──")
 {
   const unregistered = customers.filter(c => c.unregistered)
-  const registered = customers.filter(c => !c.unregistered)
   check("未登録の仮データは名前を持たない",
     unregistered.length > 0 && unregistered.every(c => !c.displayName),
     "(本人が登録していないので誰も名乗っていない)")
   check("未登録の仮データは匿名識別子を持つ",
     unregistered.every(c => !!c.anonymousId), "(§9)")
-  check("登録済みは名前を持ち匿名識別子は持たない",
-    registered.every(c => !!c.displayName && !c.anonymousId))
+  const loggedIn = customers.filter(c => !c.unregistered && c.plan !== "guest")
+  const guests = customers.filter(c => !c.unregistered && c.plan === "guest")
+  check("ログインする顧客は名前を持ち匿名識別子は持たない",
+    loggedIn.length > 0 && loggedIn.every(c => !!c.displayName && !c.anonymousId))
+  check("Guest は名前を持たない",
+    guests.length > 0 && guests.every(c => !c.displayName && !!c.anonymousId),
+    "(ログインしないので名乗っていない。1 日 1 回の分析のみ)")
+  check("Guest は店舗連携を持たない",
+    guests.every(c => !storeDataLinks.some(l => l.dataSubjectId === c.dataSubjectId)),
+    "(連携の前に必ずログインが要り、ログインすると Member になる)")
+  check("店舗連携を持つのはログインする顧客だけ",
+    storeDataLinks.every(l => {
+      const c = customers.find(x => x.dataSubjectId === l.dataSubjectId)
+      return !!c && !c.unregistered && c.plan !== "guest"
+    }))
+  check("Guest と未登録の仮データは呼び名が違う",
+    customerLabel(guests[0]) !== customerLabel(unregistered[0]),
+    "(どちらも名前は無いが、由来が違うので見分けられるようにする)")
   check("名前が無くても呼び名は出る",
     customerLabel(unregistered[0]) === UNREGISTERED_CUSTOMER_LABEL)
   check("未登録は匿名識別子で探せる",
