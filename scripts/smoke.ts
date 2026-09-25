@@ -569,18 +569,22 @@ console.log("── 顧客の連絡先と分析履歴 ──")
 {
   check("email は identity 側に持ち、Customer 型には無い",
     !("email" in customers[0]), "(§5 analytics へ PII を混入しない)")
-  /* 🔴 連絡先を持つのはログインする人(Member / Premium)だけ (使用者確定 2026-09-25) */
-  check("ログインする顧客には連絡先がある",
+  const identityOf = (id: string) =>
+    customerIdentities.find(x => x.dataSubjectId === id)
+  check("本人が登録した顧客には連絡先がある",
     customers.filter(c => !c.unregistered && c.plan !== "guest")
-      .every(c => customerIdentities.some(x => x.dataSubjectId === c.dataSubjectId)))
+      .every(c => identityOf(c.dataSubjectId)?.source === "account"))
+  /* 🔴 未登録顧客のメールは店舗スタッフが簡易登録で入力したもの。アカウントはまだ無い */
+  check("未登録顧客は店舗の簡易登録の連絡先を持つ",
+    customers.filter(c => c.unregistered).every(c => {
+      const i = identityOf(c.dataSubjectId)
+      return i?.source === "store_intake" && !i.accountId
+    }),
+    "(撮影前に店舗スタッフが入力する。本人のアカウントはまだ無い)")
   check("Guest には連絡先が無い",
-    customers.filter(c => c.plan === "guest")
-      .every(c => !customerIdentities.some(x => x.dataSubjectId === c.dataSubjectId)),
-    "(ログインしないのでアカウントが無い)")
-  check("未登録(未連携分析のみ)には連絡先が無い",
-    customers.filter(c => c.unregistered)
-      .every(c => !customerIdentities.some(x => x.dataSubjectId === c.dataSubjectId)),
-    `(未登録 ${customers.filter(c => c.unregistered).length} 名)`)
+    customers.filter(c => !c.unregistered && c.plan === "guest")
+      .every(c => !identityOf(c.dataSubjectId)),
+    "(未ログインで店舗も通っていないので誰も入力していない)")
 
   const perCustomer = new Map<string, number>()
   for (const s of analysisSessions)

@@ -182,12 +182,22 @@ export type Customer = {
  *
  * 🔴 analytics 側の Customer には混ぜない (§5)。Customer は表示名・顧客番号までで、
  *    メールアドレスは identity 側に置き、必要な画面でだけ join して出す。
- * 🔴 未登録(未連携分析のみ)の顧客は登録していないので存在しない。
+ * 🔴 Guest(未ログイン)は連絡先を持たない。店舗も通っていないので誰も入力していない。
+ * 🔴 未登録顧客は**店舗スタッフが簡易登録で入れたメールアドレス**を持つ。
+ *    本人のアカウントはまだ無いので accountId は付かない。
  */
 export type CustomerIdentity = {
   dataSubjectId: DataSubjectId
-  accountId: AccountId
+  /** 本人のアカウント。店舗の簡易登録だけの段階では**まだ無い**。 */
+  accountId?: AccountId
   email: string
+  /**
+   * 連絡先の出どころ (店舗スタッフ画面の設計 2026-09-25)。
+   * - `account`: 本人が登録したときのメールアドレス
+   * - `store_intake`: 撮影前に**店舗スタッフが簡易登録で入力**したもの。
+   *   本人のアカウントはまだ無い(未連携)。画面ではどちらか分かるように出す。
+   */
+  source: "account" | "store_intake"
 }
 
 /**

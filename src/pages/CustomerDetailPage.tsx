@@ -43,6 +43,7 @@ import {
 } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useSession, useStoreName } from "@/contexts/session-context"
+import { CustomerContact } from "@/components/CustomerContact"
 import { customerLabel } from "@/lib/domain/customers"
 import { formatDate, isEligible } from "@/lib/domain/kpi"
 import {
@@ -151,13 +152,7 @@ export default function CustomerDetailPage() {
       <PageHeader
         title={customerLabel(customer)}
         /* 🔴 email は identity 側。Customer には持たせず dataSubjectId で join する (§5) */
-        titleAside={
-          identity ? (
-            identity.email
-          ) : (
-            <span className="text-xs">メールアドレスなし（未登録）</span>
-          )
-        }
+        titleAside={<CustomerContact identity={identity} />}
         description={
           <span className="flex flex-wrap items-center gap-2">
             <span className="font-mono tabular-nums">{customer.displayCode}</span>

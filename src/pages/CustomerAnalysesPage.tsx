@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useSession } from "@/contexts/session-context"
+import { CustomerContact } from "@/components/CustomerContact"
 import { customerLabel } from "@/lib/domain/customers"
 import { usesB2bDisplay } from "@/lib/domain/scope"
 import {
@@ -89,13 +90,7 @@ export default function CustomerAnalysesPage() {
     <div className="space-y-4">
       <PageHeader
         title={`${customerLabel(customer)} の分析履歴`}
-        titleAside={
-          identity ? (
-            identity.email
-          ) : (
-            <span className="text-xs">メールアドレスなし（未登録）</span>
-          )
-        }
+        titleAside={<CustomerContact identity={identity} />}
         description={
           <span className="flex flex-wrap items-center gap-2">
             <span className="font-mono tabular-nums">{customer.displayCode}</span>

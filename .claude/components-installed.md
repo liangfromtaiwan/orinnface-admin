@@ -111,6 +111,8 @@
 - [x] `CareRightsDialog` ✅ 2026-09-22 - care 動画の権利確認(§7.1)。本部のみ・中身を再生してから確認・記録必須
 - [x] `OrganizationDialog` ✅ 2026-09-24 - 企業・店舗の追加と編集(本部のみ)。企業名/企業管理者の招待/契約状態 + 店舗(名前・状態・担当者)。解約・停止は状態変更で、削除は無い
 - [x] `HeadquartersMembers` ✅ 2026-09-24 - 本部メンバーの招待・解除(本部のみ)。1 人 1 アカウント・2FA 未設定を明示
+- [x] `CustomerContact` ✅ 2026-09-25 - 顧客の連絡先。出どころ(本人の登録 / 店舗の簡易登録)を一緒に出す。Guest は連絡先なし
+- [x] `TableEmpty` ✅ 2026-09-25 - 表が 0 件のときの行。絞り込みの結果ならその場で解除できる
 - [ ] `EmptyState` - 空狀態顯示
 
 > ⚠️ v1.0 対応で削除: `CompanySwitcher` / `AdminDashboard` / `B2BDashboard` / `OEMDashboard`

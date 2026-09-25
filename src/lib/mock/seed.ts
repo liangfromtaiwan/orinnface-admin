@@ -257,13 +257,27 @@ export const customers: Customer[] = Array.from({ length: CUSTOMER_COUNT }, (_, 
  * ------------------------------------------------------------------ */
 
 export const customerIdentities: CustomerIdentity[] = customers
-  /* 🔴 ログインしない人(Guest・未登録の仮データ)はアカウントが無いので連絡先も無い */
-  .filter((c) => !c.unregistered && c.plan !== "guest")
-  .map((c) => ({
-    dataSubjectId: c.dataSubjectId,
-    accountId: `uacc_${c.displayCode.replace("-", "").toLowerCase()}`,
-    email: `${c.displayCode.replace("-", "").toLowerCase()}@example.jp`,
-  }))
+  /* 🔴 Guest(未ログイン)だけは連絡先を持たない。誰も入力していないため */
+  .filter((c) => c.unregistered || c.plan !== "guest")
+  .map((c) => {
+    const local = c.displayCode.replace("-", "").toLowerCase()
+    /*
+      🔴 未登録顧客のメールは**店舗スタッフが簡易登録で入力したもの**。
+         本人のアカウントはまだ無いので accountId は付けない(未連携)。
+    */
+    return c.unregistered
+      ? {
+          dataSubjectId: c.dataSubjectId,
+          email: `${local}@example.jp`,
+          source: "store_intake" as const,
+        }
+      : {
+          dataSubjectId: c.dataSubjectId,
+          accountId: `uacc_${local}`,
+          email: `${local}@example.jp`,
+          source: "account" as const,
+        }
+  })
 
 /* ------------------------------------------------------------------ *
  * 店舗連携 / 来店履歴
